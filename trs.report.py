@@ -20,12 +20,39 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- SECURITY OUTBOUND REDIRECT GUARD & DOM ELEMENT BLOCKER ---
+# --- LINE 1 GLOBAL CSS INJECTION (BLOCKS MARKERS INSTANTLY BEFORE SPINNERS RENDER) ---
+st.markdown("""
+<style>
+    /* Aggressive global display blocking to eliminate component flickering during loading states */
+    ._profilePreview_gzau3_63,
+    ._link_gzau3_10,
+    [class*='_profilePreview'],
+    [class*='_link_gzau3'],
+    a[href*='share.streamlit.io'],
+    a[href*='streamlit.io'],
+    img[src*='avatar'],
+    [class*='avatar'],
+    #MainMenu,
+    footer,
+    header,
+    button[title="View source"],
+    .stAppDeployButton,
+    div[data-testid="stStatusWidget"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        height: 0 !important;
+        width: 0 !important;
+        pointer-events: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- SECONDARY RUNTIME FRAME PROTECTION ENFORCER ---
 def deploy_workspace_security_protocols():
     """
-    Injects a client-side script that:
-    1. Blocks outbound navigation/redirection to restricted domains.
-    2. Instantly and continuously removes profile previews, logo links, avatars, and specific domains from the UI.
+    Deploys runtime JavaScript observers to handle asynchronously generated 
+    components or external iframe scopes across post-login execution lifecycles.
     """
     injected_js = """
     <script>
@@ -80,10 +107,8 @@ def deploy_workspace_security_protocols():
                 }
             };
 
-
-            // --- PROTOCOL 2: DOM ELEMENT BLOCKER ENFORCER ---
+            // --- PROTOCOL 2: RUNTIME DOM SWEEPER ---
             function purgeTargetElements() {
-                // Target list mapping explicit classes, partial substring selectors, and nested attributes
                 const targetSelectors = [
                     "._profilePreview_gzau3_63",
                     "._link_gzau3_10",
@@ -96,7 +121,6 @@ def deploy_workspace_security_protocols():
                 ];
 
                 targetSelectors.forEach(selector => {
-                    // Search both within local instance scope and top parent frame layouts
                     const localElements = document.querySelectorAll(selector);
                     localElements.forEach(el => el.style.setProperty('display', 'none', 'important'));
 
@@ -104,17 +128,13 @@ def deploy_workspace_security_protocols():
                         try {
                             const topElements = window.top.document.querySelectorAll(selector);
                             topElements.forEach(el => el.style.setProperty('display', 'none', 'important'));
-                        } catch(err) {
-                            // Cross-origin boundaries handled safely
-                        }
+                        } catch(err) {}
                     }
                 });
             }
 
-            // Run execution phase immediately on page lifecycle initialization
             purgeTargetElements();
 
-            // Establish MutationObserver to handle layout modifications dynamically when widgets load asynchronously
             const layoutObserver = new MutationObserver(function(mutations) {
                 purgeTargetElements();
             });
@@ -128,7 +148,6 @@ def deploy_workspace_security_protocols():
                 } catch(e) {}
             }
 
-            // Fallback interval loop protection sequence against unobserved changes
             setInterval(function() {
                 purgeTargetElements();
                 try {
@@ -143,7 +162,7 @@ def deploy_workspace_security_protocols():
     """
     components.html(injected_js, height=0, width=0)
 
-# Deploy all security protocols and block targets on app start
+# Deploy pre-login protection mechanics
 deploy_workspace_security_protocols()
 
 # --- PROGRAMMATIC LIGHT MODE LOCK ---
@@ -162,12 +181,6 @@ st.markdown("""
     * { 
         font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; 
     }
-    #MainMenu {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
-    header {visibility: hidden !important;}
-    button[title="View source"] {display: none !important;}
-    .stAppDeployButton {display: none !important;}
-    div[data-testid="stStatusWidget"] {display: none !important;}
     
     .block-container {
         padding-top: 1rem !important;
@@ -224,7 +237,7 @@ st.markdown("""
         margin-bottom: 1rem;
     }
     
-    /* Flat clean black-and-white visibility overlay icon framework */
+    /* Flat clean visibility toggle override using monochrome character symbols */
     div[data-testid="stTextInput"] button {
         background: transparent !important;
         border: none !important;
@@ -279,6 +292,9 @@ if not st.session_state.authenticated:
                 st.error("Invalid token string provided.")
     st.stop()
 
+# --- POST-LOGIN RE-ENFORCEMENT ---
+deploy_workspace_security_protocols()
+
 # --- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
@@ -321,9 +337,13 @@ def parse_site_number(site_display_str):
     match = re.match(r"^(\d+)", site_display_str)
     return int(match.group(1)) if match else float('inf')
 
-def generate_trade_area_report(df, trade_area, template_bytes, placeholders):
+# FIXED SLOW LOADING: Removed df, bytes, and lists from arguments to eliminate Streamlit's structural object hashing lags completely.
+@st.cache_data(ttl=600, show_spinner=False)
+def generate_trade_area_report(trade_area):
+    """Generates multi-tab spreadsheet dynamically, pulling globally cached datasets instantly without argument hashing."""
+    global df, placeholders, template_bytes_raw
     ta_data = df[df["TRADE AREA"] == trade_area]
-    wb = load_workbook(io.BytesIO(template_bytes))
+    wb = load_workbook(io.BytesIO(template_bytes_raw))
     
     original_sheets = wb.sheetnames
     base_sheet = wb.active
@@ -755,11 +775,15 @@ HTML_FRAMEWORK = """
         <tr style="height: auto;"><td class="s2">Company Name</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Company Name</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s5" colspan="2">Developer Account Name</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Developer Account Name</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Business Address</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Business Address</td><td class="s9" colspan="5"></td></tr>
-        <tr style="height: auto;"><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td><td class="s3"></td><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s9" colspan="5"></td></tr>
+        <tr style="height: auto;"><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td>
+            <td class="s3"></td>
+            <td class="s5" colspan="2">Name of Authorized Representative</td>
+            <td class="s9" colspan="5"></td>
+        </tr>
         <tr style="height: auto;"><td class="s5" colspan="2">Residence Address of Authorized Representative</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Residence Address of Authorized Representative</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Contact No.</td><td class="s2"></td><td class="s4" colspan="5">_CONTACT_NUMBER_</td><td class="s3"></td><td class="s5" colspan="2">Contact No.</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">E-mail Address</td><td class="s2"></td><td class="s4" colspan="5">_EMAIL_ADDRESS_</td><td class="s3"></td><td class="s5" colspan="2">E-mail Address</td><td class="s9" colspan="5"></td></tr>
-        <tr style="height: 9px;"><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s3"></td><td class="s2"></td><td class="s2"></td><td class="s3" colspan="5"></td></tr>
+        <tr style="height: auto;"><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s3"></td><td class="s2"></td><td class="s2"></td><td class="s3" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Name of Lessee</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Name of Sub-Lessee</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Position</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Position</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Contact No.</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Contact No.</td><td class="s9" colspan="5"></td></tr>
@@ -836,6 +860,9 @@ if df is None or template_bytes_raw is None:
     st.error("Failed to load data. Please check connection profiles.")
     st.stop()
 
+# --- POST-LOGIN SECURITY PROTOCOLS RE-ENFORCEMENT ---
+deploy_workspace_security_protocols()
+
 # --- CONTROLS ROW ---
 trade_areas = ["Select Trade Area..."] + sorted(df["TRADE AREA"].dropna().unique().tolist())
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
@@ -856,10 +883,10 @@ with col2:
 
 with col3:
     if selected_ta and selected_ta != "Select Trade Area...":
-        # Native lazy data download payload stream
+        # Native single-click background computation data payload stream utilizing optimized single-key cache parameter hooks
         st.download_button(
             label="Export",
-            data=generate_trade_area_report(df, selected_ta, template_bytes_raw, placeholders),
+            data=generate_trade_area_report(selected_ta),
             file_name=f"{selected_ta}_Full_Report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
