@@ -15,7 +15,7 @@ import base64
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="trs.sitesourcing.viewer",
+    page_title="trs-site-report",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
