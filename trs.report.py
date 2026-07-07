@@ -163,7 +163,7 @@ def deploy_workspace_security_protocols():
     """
     components.html(injected_js, height=0, width=0)
 
-# Deploy runtime observation layer
+# Deploy runtime observation layer immediately for pre-login layout
 deploy_workspace_security_protocols()
 
 # --- PROGRAMMATIC LIGHT MODE LOCK ---
@@ -276,9 +276,6 @@ TARGET_HASH = "6e7dfba0b39da481db37c3263c61cac6"
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
-def check_password(password):
-    return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
-
 if not st.session_state.authenticated:
     r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
     with r1_col2:
@@ -292,6 +289,10 @@ if not st.session_state.authenticated:
             else:
                 st.error("Invalid token string provided.")
     st.stop()
+
+# --- POST-LOGIN RE-ENFORCEMENT ---
+# Re-mount the hidden protective canvas frame because st.rerun cleared the DOM space
+deploy_workspace_security_protocols()
 
 # --- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
@@ -598,56 +599,6 @@ HTML_FRAMEWORK = """
             padding-top: 8px !important;
         }
     </style>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            function checkAndWrapCells() {
-                const dataCells = document.querySelectorAll('.s4, .s9');
-                
-                dataCells.forEach(function(cell) {
-                    if (cell.textContent && cell.textContent.trim().length > 0) {
-                        const contentWidth = cell.scrollWidth;
-                        const columnWidth = cell.offsetWidth;
-                        
-                        if (contentWidth > columnWidth + 5) {
-                            cell.classList.add('wrap-text');
-                        } else {
-                            cell.classList.remove('wrap-text');
-                        }
-                    }
-                });
-                
-                const remarksCell = document.querySelector('.remarks-row td.s5');
-                if (remarksCell) {
-                    remarksCell.style.whiteSpace = 'normal';
-                    remarksCell.style.wordWrap = 'break-word';
-                    remarksCell.style.wordBreak = 'break-word';
-                    remarksCell.style.overflowWrap = 'break-word';
-                    
-                    const parentRow = remarksCell.closest('tr');
-                    if (parentRow) {
-                        parentRow.style.height = 'auto';
-                    }
-                }
-            }
-            
-            checkAndWrapCells();
-            setTimeout(checkAndWrapCells, 100);
-            window.addEventListener('resize', checkAndWrapCells);
-            
-            const observer = new MutationObserver(function(mutations) {
-                checkAndWrapCells();
-            });
-            
-            const tableBody = document.querySelector('.waffle tbody');
-            if (tableBody) {
-                observer.observe(tableBody, { 
-                    childList: true, 
-                    subtree: true, 
-                    characterData: true 
-                });
-            }
-        });
-    </script>
 </head>
 <body>
 <div class="ritz grid-container" dir="ltr">
@@ -770,11 +721,15 @@ HTML_FRAMEWORK = """
         <tr style="height: auto;"><td class="s2">Company Name</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Company Name</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s5" colspan="2">Developer Account Name</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Developer Account Name</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Business Address</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Business Address</td><td class="s9" colspan="5"></td></tr>
-        <tr style="height: auto;"><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td><td class="s3"></td><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s9" colspan="5"></td></tr>
+        <tr style="height: auto;"><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td>
+            <td class="s3"></td>
+            <td class="s5" colspan="2">Name of Authorized Representative</td>
+            <td class="s9" colspan="5"></td>
+        </tr>
         <tr style="height: auto;"><td class="s5" colspan="2">Residence Address of Authorized Representative</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Residence Address of Authorized Representative</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Contact No.</td><td class="s2"></td><td class="s4" colspan="5">_CONTACT_NUMBER_</td><td class="s3"></td><td class="s5" colspan="2">Contact No.</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">E-mail Address</td><td class="s2"></td><td class="s4" colspan="5">_EMAIL_ADDRESS_</td><td class="s3"></td><td class="s5" colspan="2">E-mail Address</td><td class="s9" colspan="5"></td></tr>
-        <tr style="height: 9px;"><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s3"></td><td class="s2"></td><td class="s2"></td><td class="s3" colspan="5"></td></tr>
+        <tr style="height: auto;"><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s3"></td><td class="s2"></td><td class="s2"></td><td class="s3" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Name of Lessee</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Name of Sub-Lessee</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Position</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Position</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Contact No.</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Contact No.</td><td class="s9" colspan="5"></td></tr>
@@ -871,7 +826,6 @@ with col2:
 
 with col3:
     if selected_ta and selected_ta != "Select Trade Area...":
-        # Cached, fast single-click spreadsheet package generation download response
         st.download_button(
             label="Export",
             data=generate_trade_area_report(df, selected_ta, template_bytes_raw, placeholders),
@@ -931,6 +885,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             components.html(rendered_view, height=850, scrolling=True)
                 
         except Exception as e:
-            st.error(f"Error compiling visual matrix framework: {str(e)}")
+            st.error(f"Error compiling layout matrix: {str(e)}")
 else:
     st.info("Please select a Trade Area and a Site to view the specific report.")
