@@ -737,7 +737,7 @@ with col1:
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=0, label_visibility="collapsed")
     
 with col2:
-    st.markdown("<p style='font-size:0.75rem; font-weight:500; color:#444746; margin:0;'>Site View</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size:0.75rem; font-weight:500; color:#444746; margin:0;'>Site</p>", unsafe_allow_html=True)
     if selected_ta and selected_ta != "Select Trade Area...":
         raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
         sorted_sites = sorted(raw_sites, key=parse_site_number)
@@ -754,7 +754,7 @@ with col3:
             st.session_state.export_data = None
             st.session_state.export_filename = None
         
-        if st.button("Export", use_container_width=True):
+        if st.button("Generate Report", use_container_width=True):
             with st.spinner("Exporting report and preparing download..."):
                 wb_buffer = generate_trade_area_report(df, selected_ta, template_bytes_raw, placeholders)
                 st.session_state.export_data = wb_buffer.getvalue()
