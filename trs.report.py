@@ -20,40 +20,12 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- INSTANT CSS ELEMENT BLOCKER (PARSED BEFORE SPINNERS RENDER) ---
-st.markdown("""
-<style>
-    /* Aggressive global display blocking to prevent element flickering during loading */
-    ._profilePreview_gzau3_63,
-    ._link_gzau3_10,
-    [class*='_profilePreview'],
-    [class*='_link_gzau3'],
-    a[href*='share.streamlit.io'],
-    a[href*='streamlit.io'],
-    img[src*='avatar'],
-    [class*='avatar'],
-    #MainMenu,
-    footer,
-    header,
-    button[title="View source"],
-    .stAppDeployButton,
-    div[data-testid="stStatusWidget"] {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        height: 0 !important;
-        width: 0 !important;
-        pointer-events: none !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-
-# --- SECONDARY RUNTIME FRAME PROTECTION ENFORCER ---
+# --- SECURITY OUTBOUND REDIRECT GUARD & DOM ELEMENT BLOCKER ---
 def deploy_workspace_security_protocols():
     """
-    Deploys runtime JavaScript observers to handle asynchronously generated 
-    components or external iframe scopes.
+    Injects a client-side script that:
+    1. Blocks outbound navigation/redirection to restricted domains.
+    2. Instantly and continuously removes profile previews, logo links, avatars, and specific domains from the UI.
     """
     injected_js = """
     <script>
@@ -108,8 +80,10 @@ def deploy_workspace_security_protocols():
                 }
             };
 
-            // --- PROTOCOL 2: RUNTIME DOM SWEEPER ---
+
+            // --- PROTOCOL 2: DOM ELEMENT BLOCKER ENFORCER ---
             function purgeTargetElements() {
+                // Target list mapping explicit classes, partial substring selectors, and nested attributes
                 const targetSelectors = [
                     "._profilePreview_gzau3_63",
                     "._link_gzau3_10",
@@ -122,6 +96,7 @@ def deploy_workspace_security_protocols():
                 ];
 
                 targetSelectors.forEach(selector => {
+                    // Search both within local instance scope and top parent frame layouts
                     const localElements = document.querySelectorAll(selector);
                     localElements.forEach(el => el.style.setProperty('display', 'none', 'important'));
 
@@ -129,13 +104,17 @@ def deploy_workspace_security_protocols():
                         try {
                             const topElements = window.top.document.querySelectorAll(selector);
                             topElements.forEach(el => el.style.setProperty('display', 'none', 'important'));
-                        } catch(err) {}
+                        } catch(err) {
+                            // Cross-origin boundaries handled safely
+                        }
                     }
                 });
             }
 
+            // Run execution phase immediately on page lifecycle initialization
             purgeTargetElements();
 
+            // Establish MutationObserver to handle layout modifications dynamically when widgets load asynchronously
             const layoutObserver = new MutationObserver(function(mutations) {
                 purgeTargetElements();
             });
@@ -149,6 +128,7 @@ def deploy_workspace_security_protocols():
                 } catch(e) {}
             }
 
+            // Fallback interval loop protection sequence against unobserved changes
             setInterval(function() {
                 purgeTargetElements();
                 try {
@@ -163,7 +143,7 @@ def deploy_workspace_security_protocols():
     """
     components.html(injected_js, height=0, width=0)
 
-# Deploy runtime observation layer immediately for pre-login layout
+# Deploy all security protocols and block targets on app start
 deploy_workspace_security_protocols()
 
 # --- PROGRAMMATIC LIGHT MODE LOCK ---
@@ -182,6 +162,12 @@ st.markdown("""
     * { 
         font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; 
     }
+    #MainMenu {visibility: hidden !important;}
+    footer {visibility: hidden !important;}
+    header {visibility: hidden !important;}
+    button[title="View source"] {display: none !important;}
+    .stAppDeployButton {display: none !important;}
+    div[data-testid="stStatusWidget"] {display: none !important;}
     
     .block-container {
         padding-top: 1rem !important;
@@ -238,7 +224,7 @@ st.markdown("""
         margin-bottom: 1rem;
     }
     
-    /* Flat clean visibility toggle override */
+    /* Flat clean black-and-white visibility overlay icon framework */
     div[data-testid="stTextInput"] button {
         background: transparent !important;
         border: none !important;
@@ -276,6 +262,9 @@ TARGET_HASH = "6e7dfba0b39da481db37c3263c61cac6"
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
+def check_password(password):
+    return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
+
 if not st.session_state.authenticated:
     r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
     with r1_col2:
@@ -289,10 +278,6 @@ if not st.session_state.authenticated:
             else:
                 st.error("Invalid token string provided.")
     st.stop()
-
-# --- POST-LOGIN RE-ENFORCEMENT ---
-# Re-mount the hidden protective canvas frame because st.rerun cleared the DOM space
-deploy_workspace_security_protocols()
 
 # --- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
@@ -336,7 +321,6 @@ def parse_site_number(site_display_str):
     match = re.match(r"^(\d+)", site_display_str)
     return int(match.group(1)) if match else float('inf')
 
-@st.cache_data(ttl=600, show_spinner=False)
 def generate_trade_area_report(df, trade_area, template_bytes, placeholders):
     ta_data = df[df["TRADE AREA"] == trade_area]
     wb = load_workbook(io.BytesIO(template_bytes))
@@ -599,6 +583,56 @@ HTML_FRAMEWORK = """
             padding-top: 8px !important;
         }
     </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            function checkAndWrapCells() {
+                const dataCells = document.querySelectorAll('.s4, .s9');
+                
+                dataCells.forEach(function(cell) {
+                    if (cell.textContent && cell.textContent.trim().length > 0) {
+                        const contentWidth = cell.scrollWidth;
+                        const columnWidth = cell.offsetWidth;
+                        
+                        if (contentWidth > columnWidth + 5) {
+                            cell.classList.add('wrap-text');
+                        } else {
+                            cell.classList.remove('wrap-text');
+                        }
+                    }
+                });
+                
+                const remarksCell = document.querySelector('.remarks-row td.s5');
+                if (remarksCell) {
+                    remarksCell.style.whiteSpace = 'normal';
+                    remarksCell.style.wordWrap = 'break-word';
+                    remarksCell.style.wordBreak = 'break-word';
+                    remarksCell.style.overflowWrap = 'break-word';
+                    
+                    const parentRow = remarksCell.closest('tr');
+                    if (parentRow) {
+                        parentRow.style.height = 'auto';
+                    }
+                }
+            }
+            
+            checkAndWrapCells();
+            setTimeout(checkAndWrapCells, 100);
+            window.addEventListener('resize', checkAndWrapCells);
+            
+            const observer = new MutationObserver(function(mutations) {
+                checkAndWrapCells();
+            });
+            
+            const tableBody = document.querySelector('.waffle tbody');
+            if (tableBody) {
+                observer.observe(tableBody, { 
+                    childList: true, 
+                    subtree: true, 
+                    characterData: true 
+                });
+            }
+        });
+    </script>
 </head>
 <body>
 <div class="ritz grid-container" dir="ltr">
@@ -721,15 +755,11 @@ HTML_FRAMEWORK = """
         <tr style="height: auto;"><td class="s2">Company Name</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Company Name</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s5" colspan="2">Developer Account Name</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Developer Account Name</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Business Address</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Business Address</td><td class="s9" colspan="5"></td></tr>
-        <tr style="height: auto;"><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td>
-            <td class="s3"></td>
-            <td class="s5" colspan="2">Name of Authorized Representative</td>
-            <td class="s9" colspan="5"></td>
-        </tr>
+        <tr style="height: auto;"><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td><td class="s3"></td><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s5" colspan="2">Residence Address of Authorized Representative</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Residence Address of Authorized Representative</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Contact No.</td><td class="s2"></td><td class="s4" colspan="5">_CONTACT_NUMBER_</td><td class="s3"></td><td class="s5" colspan="2">Contact No.</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">E-mail Address</td><td class="s2"></td><td class="s4" colspan="5">_EMAIL_ADDRESS_</td><td class="s3"></td><td class="s5" colspan="2">E-mail Address</td><td class="s9" colspan="5"></td></tr>
-        <tr style="height: auto;"><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s3"></td><td class="s2"></td><td class="s2"></td><td class="s3" colspan="5"></td></tr>
+        <tr style="height: 9px;"><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s3"></td><td class="s2"></td><td class="s2"></td><td class="s3" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Name of Lessee</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Name of Sub-Lessee</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Position</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Position</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Contact No.</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Contact No.</td><td class="s9" colspan="5"></td></tr>
@@ -826,6 +856,7 @@ with col2:
 
 with col3:
     if selected_ta and selected_ta != "Select Trade Area...":
+        # Native lazy data download payload stream
         st.download_button(
             label="Export",
             data=generate_trade_area_report(df, selected_ta, template_bytes_raw, placeholders),
@@ -885,6 +916,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             components.html(rendered_view, height=850, scrolling=True)
                 
         except Exception as e:
-            st.error(f"Error compiling layout matrix: {str(e)}")
+            st.error(f"Error compiling visual matrix framework: {str(e)}")
 else:
     st.info("Please select a Trade Area and a Site to view the specific report.")
