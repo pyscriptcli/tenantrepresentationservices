@@ -20,12 +20,40 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- SECURITY OUTBOUND REDIRECT GUARD & DOM ELEMENT BLOCKER ---
+# --- INSTANT CSS ELEMENT BLOCKER (PARSED BEFORE SPINNERS RENDER) ---
+st.markdown("""
+<style>
+    /* Aggressive global display blocking to prevent element flickering during loading */
+    ._profilePreview_gzau3_63,
+    ._link_gzau3_10,
+    [class*='_profilePreview'],
+    [class*='_link_gzau3'],
+    a[href*='share.streamlit.io'],
+    a[href*='streamlit.io'],
+    img[src*='avatar'],
+    [class*='avatar'],
+    #MainMenu,
+    footer,
+    header,
+    button[title="View source"],
+    .stAppDeployButton,
+    div[data-testid="stStatusWidget"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        height: 0 !important;
+        width: 0 !important;
+        pointer-events: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
+# --- SECONDARY RUNTIME FRAME PROTECTION ENFORCER ---
 def deploy_workspace_security_protocols():
     """
-    Injects a client-side script that:
-    1. Blocks outbound navigation/redirection to restricted domains.
-    2. Instantly and continuously removes profile previews, logo links, avatars, and specific domains from the UI.
+    Deploys runtime JavaScript observers to handle asynchronously generated 
+    components or external iframe scopes.
     """
     injected_js = """
     <script>
@@ -80,7 +108,7 @@ def deploy_workspace_security_protocols():
                 }
             };
 
-            // --- PROTOCOL 2: DOM ELEMENT BLOCKER ENFORCER ---
+            // --- PROTOCOL 2: RUNTIME DOM SWEEPER ---
             function purgeTargetElements() {
                 const targetSelectors = [
                     "._profilePreview_gzau3_63",
@@ -135,7 +163,7 @@ def deploy_workspace_security_protocols():
     """
     components.html(injected_js, height=0, width=0)
 
-# Deploy security protocols and block elements immediately on startup
+# Deploy runtime observation layer
 deploy_workspace_security_protocols()
 
 # --- PROGRAMMATIC LIGHT MODE LOCK ---
@@ -154,12 +182,6 @@ st.markdown("""
     * { 
         font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; 
     }
-    #MainMenu {visibility: hidden !important;}
-    footer {visibility: hidden !important;}
-    header {visibility: hidden !important;}
-    button[title="View source"] {display: none !important;}
-    .stAppDeployButton {display: none !important;}
-    div[data-testid="stStatusWidget"] {display: none !important;}
     
     .block-container {
         padding-top: 1rem !important;
@@ -216,7 +238,7 @@ st.markdown("""
         margin-bottom: 1rem;
     }
     
-    /* Flat clean black-and-white visibility overlay icon framework */
+    /* Flat clean visibility toggle override */
     div[data-testid="stTextInput"] button {
         background: transparent !important;
         border: none !important;
@@ -313,10 +335,8 @@ def parse_site_number(site_display_str):
     match = re.match(r"^(\d+)", site_display_str)
     return int(match.group(1)) if match else float('inf')
 
-# Caching this computationally heavy operation solves the page layout refresh lagging
 @st.cache_data(ttl=600, show_spinner=False)
 def generate_trade_area_report(df, trade_area, template_bytes, placeholders):
-    """Generates multi-tab Excel package, optimized with openpyxl and strict sheet purging rules."""
     ta_data = df[df["TRADE AREA"] == trade_area]
     wb = load_workbook(io.BytesIO(template_bytes))
     
@@ -851,7 +871,7 @@ with col2:
 
 with col3:
     if selected_ta and selected_ta != "Select Trade Area...":
-        # Native, single-click instant download stream using the optimized cache hook
+        # Cached, fast single-click spreadsheet package generation download response
         st.download_button(
             label="Export",
             data=generate_trade_area_report(df, selected_ta, template_bytes_raw, placeholders),
