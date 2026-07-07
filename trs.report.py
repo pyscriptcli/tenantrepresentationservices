@@ -20,6 +20,113 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# --- URL BLOCKER FUNCTION ---
+def block_redirect_urls():
+    """Inject JavaScript to block navigation to specific URLs"""
+    block_script = """
+    <script>
+        (function() {
+            // List of URLs to block
+            const blockedUrls = [
+                'https://share.streamlit.io/user/pyscriptcli',
+                'https://streamlit.io/cloud'
+            ];
+            
+            // Function to check if URL is blocked
+            function isUrlBlocked(url) {
+                return blockedUrls.some(blockedUrl => url.includes(blockedUrl));
+            }
+            
+            // Override the click event on all links
+            document.addEventListener('click', function(e) {
+                let target = e.target;
+                // Find the closest anchor tag
+                while (target && target.tagName !== 'A') {
+                    target = target.parentElement;
+                }
+                
+                if (target && target.tagName === 'A') {
+                    const href = target.getAttribute('href');
+                    if (href && isUrlBlocked(href)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Blocked navigation to: ' + href);
+                        return false;
+                    }
+                }
+            }, true);
+            
+            // Monitor for dynamically added links
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    mutation.addedNodes.forEach(function(node) {
+                        if (node.tagName === 'A') {
+                            const href = node.getAttribute('href');
+                            if (href && isUrlBlocked(href)) {
+                                node.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    console.log('Blocked navigation to: ' + href);
+                                    return false;
+                                }, true);
+                            }
+                        }
+                        // Check for links inside added nodes
+                        if (node.querySelectorAll) {
+                            const links = node.querySelectorAll('a');
+                            links.forEach(function(link) {
+                                const href = link.getAttribute('href');
+                                if (href && isUrlBlocked(href)) {
+                                    link.addEventListener('click', function(e) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        console.log('Blocked navigation to: ' + href);
+                                        return false;
+                                    }, true);
+                                }
+                            });
+                        }
+                    });
+                });
+            });
+            
+            // Start observing the document
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+            
+            // Also block any attempts to change window.location
+            const originalLocationSetter = Object.getOwnPropertyDescriptor(window, 'location').set;
+            Object.defineProperty(window, 'location', {
+                set: function(url) {
+                    if (isUrlBlocked(url)) {
+                        console.log('Blocked location change to: ' + url);
+                        return;
+                    }
+                    originalLocationSetter.call(this, url);
+                },
+                get: function() {
+                    return originalLocationSetter;
+                }
+            });
+            
+            // Block window.open
+            const originalOpen = window.open;
+            window.open = function(url, name, specs, replace) {
+                if (isUrlBlocked(url)) {
+                    console.log('Blocked window.open to: ' + url);
+                    return null;
+                }
+                return originalOpen.call(this, url, name, specs, replace);
+            };
+            
+            console.log('URL blocker activated for: ' + blockedUrls.join(', '));
+        })();
+    </script>
+    """
+    st.components.v1.html(block_script, height=0)
+
 # --- PROGRAMMATIC LIGHT MODE LOCK ---
 _config_dir = ".streamlit"
 _config_file = os.path.join(_config_dir, "config.toml")
@@ -727,6 +834,9 @@ with st.spinner("Loading Data Assets..."):
 if df is None or template_bytes_raw is None:
     st.error("Failed to load data. Please check connection profiles.")
     st.stop()
+
+# --- ACTIVATE URL BLOCKER ---
+block_redirect_urls()
 
 # --- CONTROLS ROW ---
 trade_areas = ["Select Trade Area..."] + sorted(df["TRADE AREA"].dropna().unique().tolist())
