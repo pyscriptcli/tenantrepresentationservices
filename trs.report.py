@@ -23,7 +23,7 @@ st.set_page_config(
 # --- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & ZERO PADDING GHOSTS) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght=400;500;700&family=Roboto:wght=300;400;500;700&display=swap');
     
     * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
 
@@ -278,8 +278,6 @@ if not st.session_state.authenticated:
 deploy_workspace_security_protocols()
 
 # --- CONFIGURATION ---
-# IMPORTANT: Switching SOURCE_URL to pull the raw .xlsx layout instead of .csv format
-# This ensures that =IMAGE("...") functional definitions are kept safely inside openpyxl instead of being discarded as empty text cells!
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
@@ -292,17 +290,30 @@ def download_file(url):
     except:
         return None
 
-def extract_google_drive_id(text_value):
-    """Extracts the unique file ID from various Google Drive formats or formula strings."""
-    if not text_value:
+def clean_and_extract_url(cell_value):
+    """Bypasses formula blocks like =IMAGE("url") to get the clean direct link string."""
+    if cell_value is None:
+        return ""
+    val_str = str(cell_value).strip()
+    
+    # Check if nested inside an IMAGE formula layout
+    formula_match = re.search(r'IMAGE\s*\(\s*["\'](https?://[^"\']+)["\']', val_str, re.IGNORECASE)
+    if formula_match:
+        return formula_match.group(1)
+        
+    # Standard URL match fallback
+    url_match = re.search(r'(https?://[^\s"\']+)', val_str)
+    if url_match:
+        return url_match.group(1)
+        
+    return val_str
+
+def extract_google_drive_id(clean_url):
+    """Extracts unique file ID from verified URL strings."""
+    if not clean_url:
         return None
-    try:
-        match = re.search(r'(?:id=|/d/|/uc\?.*?id=)([a-zA-Z0-9_-]{25,})', str(text_value))
-        if match:
-            return match.group(1)
-    except:
-        pass
-    return None
+    match = re.search(r'(?:id=|/d/|/uc\?.*?id=)([a-zA-Z0-9_-]{25,})', clean_url)
+    return match.group(1) if match else None
 
 def get_placeholders(sheet):
     placeholders = set()
@@ -663,11 +674,10 @@ def load_data():
     if source_bytes is None or template_data is None: 
         return None, None, None
     
-    # Using openpyxl to dynamically read the spreadsheet with formula contents preserved!
+    # Ingest openpyxl layout with direct cells intact
     src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
     src_ws = src_wb.active
     
-    # Parse rows cleanly out of raw workbook cells
     raw_rows = list(src_ws.iter_rows(values_only=False))
     header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
     
@@ -677,24 +687,29 @@ def load_data():
         has_val = False
         for idx, cell in enumerate(r):
             if idx < len(header_row) and header_row[idx]:
-                val = cell.value
-                row_dict[header_row[idx]] = val
-                if val is not None and str(val).strip() != "":
+                # Workaround: Intercept cell expressions right away and clean them up
+                cleaned_val = clean_and_extract_url(cell.value)
+                row_dict[header_row[idx]] = cleaned_val
+                if cleaned_val != "":
                     has_val = True
         if has_val:
             parsed_data_list.append(row_dict)
             
     df = pd.DataFrame(parsed_data_list)
-    
-    # Re-verify and clear out completely empty column fields safely
     df = df.loc[:, ~df.columns.str.contains('^$')]
     
-    df["SITE_DISPLAY"] = df.apply(
-        lambda row: f"{int(row['SITE NO'])} - {row['SITE NAME']}" 
-        if pd.notna(row.get('SITE NO')) and isinstance(row.get('SITE NO'), (int, float)) 
-        else f"{row.get('SITE NO', '')} - {row.get('SITE NAME', '')}".strip(" -"), 
-        axis=1
-    )
+    # Synthesize standard high-density dropdown label matrix entries
+    def create_site_display(row):
+        site_no = row.get('SITE NO', '')
+        site_name = row.get('SITE NAME', '')
+        if pd.notna(site_no) and site_no != '':
+            try:
+                return f"{int(float(str(site_no)))} - {site_name}"
+            except:
+                return f"{site_no} - {site_name}"
+        return str(site_name)
+
+    df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
     
     temp_wb = load_workbook(template_data)
     placeholders = get_placeholders(temp_wb.active)
@@ -705,7 +720,7 @@ with st.spinner("Loading Data Assets..."):
     df, placeholders, template_bytes_raw = load_data()
 
 if df is None or template_bytes_raw is None:
-    st.error("Failed to load data assets. Please verify data configuration profiles.")
+    st.error("Failed to load data assets. Please verify link paths.")
     st.stop()
 
 deploy_workspace_security_protocols()
@@ -749,18 +764,12 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             "DOCS"
         ])
         
-        # --- TAB 1: SITE INFORMATION REPORT (HTML MATRIX ENFORCER) ---
+        # --- TAB 1: SITE INFORMATION REPORT ---
         with tab_report:
             try:
                 def process_val(key_string):
                     val = site_row_data.get(key_string.upper(), "")
                     if pd.isna(val) or val is None: return ""
-                    # Handle structural formula syntax formatting cleanout
-                    if isinstance(val, str) and val.startswith("="):
-                        extracted_id = extract_google_drive_id(val)
-                        if extracted_id: return f"Drive Asset: {extracted_id}"
-                    if isinstance(val, float) and val.is_integer(): return str(int(val))
-                    if hasattr(val, 'strftime'): return val.strftime('%B %d, %Y')
                     return str(val).strip()
 
                 rendered_view = HTML_FRAMEWORK
@@ -803,64 +812,55 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (FORMULA DYNAMIC PARSER) ---
+        # --- TAB 2: PROPERTY PHOTOS (NATIVE ACTION TILES - ROBUST FALLBACK) ---
         with tab_photos:
             photo_cols = ["PROPERTY PHOTOS 1", "PROPERTY PHOTOS 2", "PROPERTY PHOTOS 3", "PROPERTY PHOTOS 4", "PROPERTY PHOTOS 5"]
-            valid_photos = []
+            found_any_photo = False
             
-            for col in photo_cols:
-                raw_img_val = site_row_data.get(col, "")
-                if pd.notna(raw_img_val) and str(raw_img_val).strip() != "":
-                    val_str = str(raw_img_val).strip()
-                    file_id = extract_google_drive_id(val_str)
+            # Simple, Creative dashboard cards layout using Streamlit metrics layout
+            st.markdown("<p style='font-size:0.85rem; font-weight:500; color:#5f6368; padding-bottom:10px;'>Select any discovered asset link tile below to open the property images:</p>", unsafe_allow_html=True)
+            
+            cols = st.columns(len(photo_cols))
+            for idx, col_name in enumerate(photo_cols):
+                raw_val = site_row_data.get(col_name, "")
+                if raw_val and str(raw_val).strip() != "":
+                    url_target = str(raw_val).strip()
+                    found_any_photo = True
                     
-                    if file_id:
-                        preview_url = f"https://drive.google.com/file/d/{file_id}/preview"
-                        fallback_direct_url = f"https://drive.google.com/uc?export=view&id={file_id}"
-                        valid_photos.append((col, preview_url, fallback_direct_url))
-            
-            if valid_photos:
-                cols = st.columns(len(valid_photos))
-                for i, (label, iframe_url, direct_url) in enumerate(valid_photos):
-                    with cols[i]:
-                        st.markdown(f"<p style='font-size:0.75rem; font-weight:700; color:#0b57d0; margin:0;'>📸 {label}</p>", unsafe_allow_html=True)
-                        st.markdown(f'''
-                            <iframe src="{iframe_url}" 
-                                    style="width:100%; height:280px; border-radius:6px; margin-top:5px; border:1px solid #dadce0;" 
-                                    allow="autoplay">
-                            </iframe>
-                        ''', unsafe_allow_html=True)
-                        st.markdown(f"<a href='{direct_url}' target='_blank' style='font-size:0.7rem;'>Open Image Window</a>", unsafe_allow_html=True)
-            else:
-                st.info("No photos configured or found for this property record selection.")
+                    with cols[idx]:
+                        st.markdown(f"""
+                        <div style="background-color:#f8f9fa; border:1px solid #e0e0e0; border-radius:8px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                            <span style="font-size:1.5rem;">🖼️</span>
+                            <p style="font-size:0.75rem; font-weight:700; color:#1f2937; margin:6px 0 12px 0; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">{col_name}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.link_button("View Photo 🔗", url=url_target, use_container_width=True)
+                        
+            if not found_any_photo:
+                st.info("No photo links configured for this property record selection.")
 
-        # --- TAB 3: PROPERTY DOCS (FORMULA DYNAMIC PARSER) ---
+        # --- TAB 3: PROPERTY DOCS (NATIVE ACTION TILES - ROBUST FALLBACK) ---
         with tab_docs:
             doc_cols = ["TCT", "LOT PLAN", "BLDG PLAN", "TAX MAP"]
-            valid_docs = []
+            found_any_doc = False
             
-            for col in doc_cols:
-                raw_doc_val = site_row_data.get(col, "")
-                if pd.notna(raw_doc_val) and str(raw_doc_val).strip() != "":
-                    val_str = str(raw_doc_val).strip()
-                    file_id = extract_google_drive_id(val_str)
+            st.markdown("<p style='font-size:0.85rem; font-weight:500; color:#5f6368; padding-bottom:10px;'>Select any legal schematic asset link tile below to view the secure blueprint documentation:</p>", unsafe_allow_html=True)
+            
+            cols = st.columns(len(doc_cols))
+            for idx, col_name in enumerate(doc_cols):
+                raw_val = site_row_data.get(col_name, "")
+                if raw_val and str(raw_val).strip() != "":
+                    url_target = str(raw_val).strip()
+                    found_any_doc = True
                     
-                    if file_id:
-                        preview_url = f"https://drive.google.com/file/d/{file_id}/preview"
-                        fallback_direct_url = f"https://drive.google.com/uc?export=view&id={file_id}"
-                        valid_docs.append((col, preview_url, fallback_direct_url))
-            
-            if valid_docs:
-                cols = st.columns(len(valid_docs))
-                for i, (label, iframe_url, direct_url) in enumerate(valid_docs):
-                    with cols[i]:
-                        st.markdown(f"<p style='font-size:0.75rem; font-weight:700; color:#0b57d0; margin:0;'>📄 {label}</p>", unsafe_allow_html=True)
-                        st.markdown(f'''
-                            <iframe src="{iframe_url}" 
-                                    style="width:100%; height:320px; border-radius:6px; margin-top:5px; border:1px solid #dadce0;" 
-                                    allow="autoplay">
-                            </iframe>
-                        ''', unsafe_allow_html=True)
-                        st.markdown(f"<a href='{direct_url}' target='_blank' style='font-size:0.7rem;'>View Full Document</a>", unsafe_allow_html=True)
-            else:
-                st.info("No source documents configured or found for this property record selection.")
+                    with cols[idx]:
+                        st.markdown(f"""
+                        <div style="background-color:#f8f9fa; border:1px solid #e0e0e0; border-radius:8px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                            <span style="font-size:1.5rem;">📄</span>
+                            <p style="font-size:0.75rem; font-weight:700; color:#1f2937; margin:6px 0 12px 0; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">{col_name}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.link_button("Open Document 🔗", url=url_target, use_container_width=True)
+                        
+            if not found_any_doc:
+                st.info("No layout documents configured for this property record selection.")
