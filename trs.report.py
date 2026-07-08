@@ -71,8 +71,8 @@ div[data-testid="stDecoration"] {
 .main .block-container {
     margin-left: -3rem !important;
     margin-right: -3rem !important;
-    margin-top: -1rem !important;
-    margin-bottom: -50rem !important;
+    margin-top: -50rem !important;
+    margin-bottom: -500rem !important;
     width: calc(100% + 6rem) !important;
     max-width: calc(100% + 6rem) !important;
     padding: 0px !important;
