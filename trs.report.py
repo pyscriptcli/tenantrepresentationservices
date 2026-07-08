@@ -12,10 +12,6 @@ import hashlib
 from openpyxl import load_workbook
 import streamlit.components.v1 as components
 import base64
-from PIL import Image
-from io import BytesIO
-import tempfile
-import time
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -24,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- LINE 1 GLOBAL STYLESHEET ENFORCER (KILL WHITE SPACE & PARENT SCROLLBARS) ---
+# --- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & ZERO PADDING GHOSTS) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
@@ -53,18 +49,18 @@ st.markdown("""
         opacity: 0 !important;
     }
 
-    /* 3. ZERO-OUT PADDING ON ALL MAIN CONTAINERS */
+    /* 3. ZERO-OUT PADDING ON ALL MAIN CONTAINERS TO MAXIMIZE SCREEN REAL ESTATE */
     .appview-container, 
     .main, 
     [data-testid="stAppViewContainer"], 
     [data-testid="stMain"],
     .block-container, 
     [data-testid="stMainBlockContainer"] {
-        padding-top: 0px !important;
+        padding-top: 0.2rem !important;
         margin-top: 0px !important;
         padding-bottom: 0px !important;
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
+        padding-left: 0.4rem !important;
+        padding-right: 0.4rem !important;
         overflow: hidden !important;
         height: 100vh !important;
         max-height: 100vh !important;
@@ -79,12 +75,23 @@ st.markdown("""
         padding: 0px !important;
     }
 
-    /* 4. DYNAMIC REPORT VIEWER SIZING */
+    /* 4. MAXIMUM DYNAMIC REPORT VIEWER REAL ESTATE */
     iframe[title="streamlit_components.components.html"] {
-        height: calc(100vh - 45px) !important;
-        max-height: calc(100vh - 45px) !important;
+        height: calc(100vh - 90px) !important;
+        max-height: calc(100vh - 90px) !important;
         border: none !important;
         margin-bottom: 0px !important;
+    }
+    
+    /* Optimize Tab Headers Matrix for High Density Views */
+    button[data-baseweb="tab"] {
+        padding-top: 0.1rem !important;
+        padding-bottom: 0.1rem !important;
+        font-size: 0.85rem !important;
+    }
+    
+    div[data-testid="stTabs"] {
+        margin-top: -5px !important;
     }
     
     /* 5. Ultra-Compact Control Bar layout matrix definitions */
@@ -130,64 +137,7 @@ st.markdown("""
     }
     .stButton > button:hover, .stDownloadButton > button:hover { background-color: #0b4cb4 !important; }
     
-    /* Tab styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2px;
-        background-color: #f0f4f9;
-        border-radius: 8px;
-        padding: 4px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 6px;
-        padding: 8px 16px;
-        font-weight: 500;
-        font-size: 0.9rem;
-    }
-    .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background-color: #ffffff;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    
-    /* Photo gallery styling */
-    .photo-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 15px;
-        padding: 10px 0;
-    }
-    .photo-card {
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 10px;
-        background: white;
-        text-align: center;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        transition: transform 0.2s;
-    }
-    .photo-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    .photo-card img {
-        width: 100%;
-        height: 180px;
-        object-fit: cover;
-        border-radius: 4px;
-    }
-    .photo-card .label {
-        font-size: 11px;
-        color: #666;
-        margin-top: 5px;
-        font-weight: 500;
-    }
-    .photo-card .filename {
-        font-size: 10px;
-        color: #999;
-        margin-top: 2px;
-        word-break: break-all;
-    }
-    
-    /* Instant CSS blocking engine */
+    /* CSS Blocking Engine to Hide Deployment Watermarks */
     ._profilePreview_gzau3_63,
     ._link_gzau3_10,
     [class*='_profilePreview'],
@@ -212,7 +162,6 @@ st.markdown("""
 
 # --- RUNTIME WORKSPACE SECURITY OBSERVERS ---
 def deploy_workspace_security_protocols():
-    """Manages active navigation hooks and runtime layout observation frames."""
     injected_js = """
     <script>
         (function() {
@@ -332,12 +281,6 @@ deploy_workspace_security_protocols()
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=csv"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
-# Google Drive Folder ID for photos (shared publicly)
-DRIVE_FOLDER_ID = "13sLmXzxQvV12_ypTBRG2QW1yVIHaanba"
-
-# Photo columns in your data
-PHOTO_COLUMNS = ['PROPERTY PHOTOS 1', 'PROPERTY PHOTOS 2', 'PROPERTY PHOTOS 3', 'PROPERTY PHOTOS 4', 'PROPERTY PHOTOS 5']
-
 # --- HELPER FUNCTIONS ---
 @st.cache_data(ttl=3600)
 def download_file(url):
@@ -347,69 +290,16 @@ def download_file(url):
     except:
         return None
 
-@st.cache_data(ttl=3600)
-def get_image_from_drive(filename):
-    """Fetch image from Google Drive using direct URL (publicly shared)"""
-    try:
-        # Since the folder is shared with "Anyone with the link can view"
-        # We can use the direct download URL format
-        # First, try to find the file ID using a search (we'll use the folder ID)
-        
-        # Construct the Google Drive direct download URL
-        # Format: https://drive.google.com/uc?export=view&id=FILE_ID
-        
-        # For now, we'll use a search approach since we have the folder ID
-        # This requires the file to be in the shared folder
-        
-        # Build a Google Drive search URL (this is a workaround)
-        # Actually, since the folder is public, we can construct URLs differently
-        
-        # Try multiple URL formats
-        url_formats = [
-            f"https://drive.google.com/uc?export=view&id={DRIVE_FOLDER_ID}&filename={filename}",
-            f"https://drive.google.com/uc?export=download&id={DRIVE_FOLDER_ID}&filename={filename}",
-        ]
-        
-        for url in url_formats:
-            try:
-                response = requests.get(url, timeout=10)
-                if response.status_code == 200:
-                    # Check if it's actually an image
-                    content_type = response.headers.get('content-type', '')
-                    if 'image' in content_type:
-                        return Image.open(BytesIO(response.content))
-            except:
-                continue
-        
-        # If direct URLs don't work, try using the file ID if we can find it
-        # This is a simplified approach - in production, use Drive API
-        return None
-        
-    except Exception as e:
-        st.warning(f"Could not fetch image {filename}: {str(e)}")
-        return None
-
+# Bypasses the 403 error of Google Drive URLs within direct st.image components
 @st.cache_data(ttl=600)
-def get_photo_data(photo_path):
-    """Extract filename and fetch image from path"""
-    if not photo_path or pd.isna(photo_path):
-        return None
-    
-    photo_path = str(photo_path).strip()
-    if not photo_path:
-        return None
-    
-    # Extract filename from path
-    filename = photo_path.split('/')[-1].split('\\')[-1]
-    
-    # Try to fetch image
-    image = get_image_from_drive(filename)
-    
-    return {
-        'filename': filename,
-        'path': photo_path,
-        'image': image
-    }
+def fetch_drive_image_bytes(url):
+    try:
+        res = requests.get(url, timeout=15)
+        if res.status_code == 200:
+            return res.content
+    except:
+        pass
+    return None
 
 def get_placeholders(sheet):
     placeholders = set()
@@ -679,18 +569,18 @@ HTML_FRAMEWORK = """
         </tr>
         <tr style="height: auto;"><td class="s2">Frontage (in m)</td><td class="s2"></td><td class="s4" colspan="5">_FRONTAGE_</td><td class="s3"></td><td class="s6"></td><td class="s6"></td><td class="s6"></td><td class="s6"></td><td class="s6"></td><td class="s6"></td><td class="s7"></td></tr>
         <tr style="height: auto;"><td class="s2">Depth (in m)</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s1" colspan="7">Provisions</td></tr>
-        <tr style="height: 19px;"><td class="s5" colspan="2">Floor to Slab Height (in m) - if Bldg</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s2" colspan="7"></td></tr>
-        <tr style="height: 19px;"><td class="s5" colspan="2">No. of Storeys (If Bldg Lessee)</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Tenant is the Owner</td><td class="s9" colspan="5"></td></tr>
-        <tr style="height: 19px;"><td class="s5" colspan="2">Type of Structure(if Bldg Lessee)</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Lease Type</td><td class="s9" colspan="5">_LEASE_TYPE_</td></tr>
-        <tr style="height: 19px;"><td class="s2">Soil Profile</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Principal COL</td><td class="s9" colspan="5"></td></tr>
+        <tr style="height: auto;"><td class="s5" colspan="2">Floor to Slab Height (in m) - if Bldg</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s2" colspan="7"></td></tr>
+        <tr style="height: auto;"><td class="s5" colspan="2">No. of Storeys (If Bldg Lessee)</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Tenant is the Owner</td><td class="s9" colspan="5"></td></tr>
+        <tr style="height: auto;"><td class="s5" colspan="2">Type of Structure(if Bldg Lessee)</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Lease Type</td><td class="s9" colspan="5">_LEASE_TYPE_</td></tr>
+        <tr style="height: auto;"><td class="s2">Soil Profile</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Principal COL</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;">
             <td class="s2">Supply Access:</td><td class="s2"></td><td class="s2" colspan="5"></td>
             <td class="s3"></td>
             <td class="s5" colspan="2">Sub-Lease Provision</td>
             <td class="s9" colspan="5"></td>
         </tr>
-        <tr style="height: 19px;"><td class="s2">Power</td><td class="s10"></td><td class="s2">Aircon</td><td class="s10"></td><td class="s5" colspan="2">LPG Fire Pro</td><td class="s10"></td><td class="s3"></td><td class="s5" colspan="2">Pre-Term/Partial Term</td><td class="s9" colspan="5"></td></tr>
-        <tr style="height: 19px;"><td class="s2">Water</td><td class="s10"></td><td class="s2">Exhaust</td><td class="s10"></td><td class="s5" colspan="2">Drainage TP</td><td class="s10"></td><td class="s3"></td><td class="s5" colspan="2">Tripartite Agreement</td><td class="s9" colspan="5"></td></tr>
+        <tr style="height: auto;"><td class="s2">Power</td><td class="s10"></td><td class="s2">Aircon</td><td class="s10"></td><td class="s5" colspan="2">LPG Fire Pro</td><td class="s10"></td><td class="s3"></td><td class="s5" colspan="2">Pre-Term/Partial Term</td><td class="s9" colspan="5"></td></tr>
+        <tr style="height: auto;"><td class="s2">Water</td><td class="s10"></td><td class="s2">Exhaust</td><td class="s10"></td><td class="s5" colspan="2">Drainage TP</td><td class="s10"></td><td class="s3"></td><td class="s5" colspan="2">Tripartite Agreement</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: 9px;"><td class="s6"></td><td class="s6"></td><td class="s6"></td><td class="s6"></td><td class="s6"></td><td class="s6"></td><td class="s6"></td><td class="s3"></td><td class="s6"></td><td class="s6"></td><td class="s6"></td><td class="s6"></td><td class="s6"></td><td class="s6"></td><td class="s7"></td></tr>
         <tr style="height: 19px;"><td class="s1" colspan="7">Lessor and Tenant Details</td><td class="s3"></td><td class="s1" colspan="7">If with Sub-Lessor/ Sub-Lessee</td></tr>
         <tr style="height: 9px;"><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s3"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s2"></td><td class="s3"></td></tr>
@@ -792,114 +682,9 @@ if df is None or template_bytes_raw is None:
     st.error("Failed to load data. Please check connection profiles.")
     st.stop()
 
-# --- POST-LOGIN SECURITY PROTOCOLS RE-ENFORCEMENT ---
 deploy_workspace_security_protocols()
 
-# --- PHOTO DISPLAY FUNCTION ---
-def get_photo_direct_url(file_id):
-    """Get direct URL for a Google Drive image"""
-    return f"https://drive.google.com/uc?export=view&id={file_id}"
-
-def get_file_id_from_drive(filename):
-    """Get file ID from Google Drive using direct URL search"""
-    # Since the folder is publicly shared, we can try to construct the URL
-    # This is a simplified approach - in production, use Drive API
-    try:
-        # Try to search for the file using Google's public search
-        # This might not work for all cases, but it's a start
-        search_url = f"https://www.googleapis.com/drive/v3/files?q=name='{filename}' and '{DRIVE_FOLDER_ID}' in parents&fields=files(id,name)&key=AIzaSyCPVoj1E5HhQ-4PxR2-syjf5lY8Oo8KZ38"  # Public API key
-        response = requests.get(search_url, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            files = data.get('files', [])
-            if files:
-                return files[0]['id']
-    except:
-        pass
-    return None
-
-def display_site_photos(site_data):
-    """Display photos for a site in Streamlit with photo grid"""
-    st.markdown("### 📸 Property Photos")
-    
-    # Get photo data from the site row
-    photo_data = []
-    for col in PHOTO_COLUMNS:
-        if col in site_data.index:
-            photo_path = site_data[col]
-            if photo_path and str(photo_path).strip():
-                filename = str(photo_path).split('/')[-1].split('\\')[-1]
-                photo_data.append({
-                    'filename': filename,
-                    'path': photo_path,
-                    'column': col
-                })
-    
-    if not photo_data:
-        st.info("No photos available for this site.")
-        return
-    
-    # Display photos in a grid using columns
-    cols_per_row = 3
-    rows = (len(photo_data) + cols_per_row - 1) // cols_per_row
-    
-    for row in range(rows):
-        row_cols = st.columns(cols_per_row)
-        for col_idx in range(cols_per_row):
-            idx = row * cols_per_row + col_idx
-            if idx < len(photo_data):
-                with row_cols[col_idx]:
-                    photo = photo_data[idx]
-                    # Use a placeholder image since we can't reliably get file IDs
-                    # The actual images would need Drive API access
-                    st.markdown(f"""
-                    <div class="photo-card">
-                        <div style="background: #f0f4f9; border-radius: 4px; height: 180px; display: flex; align-items: center; justify-content: center; flex-direction: column;">
-                            <div style="font-size: 48px; margin-bottom: 10px;">🖼️</div>
-                            <div style="font-size: 12px; color: #666; text-align: center; padding: 0 10px;">
-                                {photo['column'].replace('PROPERTY PHOTOS ', 'Photo ')}
-                            </div>
-                        </div>
-                        <div class="label">{photo['column']}</div>
-                        <div class="filename">{photo['filename'][:30]}{'...' if len(photo['filename']) > 30 else ''}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-def display_site_docs(site_data):
-    """Display documents for a site"""
-    st.markdown("### 📄 Documents")
-    
-    # Check for document columns - you can customize these
-    doc_columns = ['TCT', 'LOT PLAN', 'BLDG PLAN', 'TAX MAP']
-    
-    docs_found = False
-    for col in doc_columns:
-        if col in site_data.index:
-            doc_value = site_data[col]
-            if doc_value and str(doc_value).strip():
-                docs_found = True
-                st.markdown(f"""
-                <div style="
-                    border: 1px solid #e0e0e0;
-                    border-radius: 8px;
-                    padding: 15px;
-                    margin-bottom: 10px;
-                    background: white;
-                ">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 24px;">📎</span>
-                        <div>
-                            <div style="font-weight: 500;">{col}</div>
-                            <div style="font-size: 12px; color: #666;">{str(doc_value)[:100]}{'...' if len(str(doc_value)) > 100 else ''}</div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-    
-    if not docs_found:
-        st.info("No documents available for this site.")
-
-# --- ROW 1: CONTROLS ROW ---
+# --- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
 trade_areas = ["Select Trade Area..."] + sorted(df["TRADE AREA"].dropna().unique().tolist())
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
 
@@ -918,24 +703,28 @@ with col2:
 with col3:
     if selected_ta and selected_ta != "Select Trade Area...":
         st.download_button(
-            label="📊 Export Report",
+            label="Export",
             data=generate_trade_area_report(selected_ta),
             file_name=f"{selected_ta}_Full_Report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
 
-# --- ROW 2: TABS SECTION ---
+# --- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta != "Select Trade Area..." and selected_site_display != "Select Site...":
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     if not site_data.empty:
         site_row_data = site_data.iloc[0]
         
-        # Create tabs
-        tab1, tab2, tab3 = st.tabs(["📋 INFORMATION", "📸 PHOTOS", "📄 DOCS"])
+        # Instantiate Workspace Tabs (All emojis fully stripped out)
+        tab_report, tab_photos, tab_docs = st.tabs([
+            "INFORMATION", 
+            "PHOTOS", 
+            "DOCS"
+        ])
         
-        with tab1:
-            # INFORMATION TAB - Display the HTML report
+        # --- TAB 1: SITE INFORMATION REPORT (HTML MATRIX ENFORCER) ---
+        with tab_report:
             try:
                 def process_val(key_string):
                     val = site_row_data.get(key_string.upper(), "")
@@ -979,39 +768,64 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
                 
-                components.html(rendered_view, height=600, scrolling=True)
+                components.html(rendered_view, height=800, scrolling=True)
                     
             except Exception as e:
-                st.error(f"Error displaying information: {str(e)}")
-        
-        with tab2:
-            # PHOTOS TAB
-            display_site_photos(site_row_data)
-        
-        with tab3:
-            # DOCS TAB
-            display_site_docs(site_row_data)
+                st.error(f"Error compiling visual matrix framework: {str(e)}")
+
+        # --- TAB 2: PROPERTY PHOTOS (SECURE GOOGLE DRIVE IMAGE DATA STREAM) ---
+        with tab_photos:
+            st.markdown("<h4 style='margin-bottom:15px; color:#1f2937;'>Property Photos</h4>", unsafe_allow_html=True)
+            photo_cols = ["PROPERTY PHOTOS 1", "PROPERTY PHOTOS 2", "PROPERTY PHOTOS 3", "PROPERTY PHOTOS 4", "PROPERTY PHOTOS 5"]
+            valid_photos = []
+            
+            for col in photo_cols:
+                raw_img_val = site_row_data.get(col, "")
+                if pd.notna(raw_img_val) and str(raw_img_val).strip() != "":
+                    match = re.search(r'="?([^"]+)"?', str(raw_img_val))
+                    img_url = match.group(1) if match else str(raw_img_val).strip()
+                    valid_photos.append((col, img_url))
+            
+            if valid_photos:
+                p_cols = st.columns(len(valid_photos))
+                for i, (label, url) in enumerate(valid_photos):
+                    with p_cols[i]:
+                        st.markdown(f"<p style='font-size:0.8rem; font-weight:600; margin-bottom:4px; color:#4b5563;'>{label}</p>", unsafe_allow_html=True)
+                        with st.spinner("Streaming map element..."):
+                            img_bytes = fetch_drive_image_bytes(url)
+                        if img_bytes:
+                            st.image(img_bytes, use_container_width=True)
+                        else:
+                            st.error("Preview Unavailable (Check Access configuration permissions)")
+            else:
+                st.info("No property photos attached to this site ledger entry.")
+
+        # --- TAB 3: PROPERTY DOCS (IMAGE MAP STREAM ENFORCER) ---
+        with tab_docs:
+            st.markdown("<h4 style='margin-bottom:15px; color:#1f2937;'>Property Documents</h4>", unsafe_allow_html=True)
+            doc_cols = ["TCT", "LOT PLAN", "BLDG PLAN", "TAX MAP"]
+            valid_docs = []
+            
+            for col in doc_cols:
+                raw_doc_val = site_row_data.get(col, "")
+                if pd.notna(raw_doc_val) and str(raw_doc_val).strip() != "":
+                    match = re.search(r'="?([^"]+)"?', str(raw_doc_val))
+                    doc_url = match.group(1) if match else str(raw_doc_val).strip()
+                    valid_docs.append((col, doc_url))
+            
+            if valid_docs:
+                d_cols = st.columns(len(valid_docs))
+                for i, (label, url) in enumerate(valid_docs):
+                    with d_cols[i]:
+                        st.markdown(f"<p style='font-size:0.8rem; font-weight:600; margin-bottom:4px; color:#4b5563;'>{label}</p>", unsafe_allow_html=True)
+                        with st.spinner("Streaming structural plan..."):
+                            doc_bytes = fetch_drive_image_bytes(url)
+                        if doc_bytes:
+                            st.image(doc_bytes, use_container_width=True)
+                            st.markdown(f"<a href='{url}' target='_blank'><button style='width:100%; border:1px solid #747775; background:white; color:#0b57d0; border-radius:4px; font-size:0.75rem; cursor:pointer; height:24px; margin-top:4px;'>Open Original File</button></a>", unsafe_allow_html=True)
+                        else:
+                            st.error("Preview Unavailable")
+            else:
+                st.info("No formal property documents linked to this site profile record.")
 else:
     st.info("Please select a Trade Area and a Site to view the specific report.")
-
-# --- FOOTER ---
-st.markdown("""
-<style>
-    .footer {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: #f8f9fa;
-        padding: 5px 10px;
-        font-size: 10px;
-        color: #666;
-        text-align: center;
-        border-top: 1px solid #e0e0e0;
-        z-index: 999;
-    }
-</style>
-<div class="footer">
-    trs.sitesourcing.viewer v1.0 | Data sourced from Google Sheets
-</div>
-""", unsafe_allow_html=True)
