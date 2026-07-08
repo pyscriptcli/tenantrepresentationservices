@@ -49,22 +49,23 @@ st.markdown("""
         opacity: 0 !important;
     }
 
-    /* 3. MINIMAL PADDING - 1rem top, 1px bottom, 1rem sides */
+    /* 3. FIXED: ALLOW SCROLLING WITH AUTO HEIGHT - AGGRESSIVE PADDING REMOVAL */
     .appview-container, 
     .main, 
     [data-testid="stAppViewContainer"], 
     [data-testid="stMain"],
     .block-container, 
     [data-testid="stMainBlockContainer"] {
-        padding-top: 1rem !important;  /* MINIMAL: 1rem top padding */
+        padding-top: 0px !important;
         margin-top: 0px !important;
-        padding-bottom: 1px !important;  /* MINIMAL: 1px bottom padding */
-        padding-left: 1rem !important;  /* MINIMAL: 1rem side padding */
-        padding-right: 1rem !important;  /* MINIMAL: 1rem side padding */
+        padding-bottom: 0px !important;
+        padding-left: 0px !important;
+        padding-right: 0px !important;
         overflow: auto !important;
         height: auto !important;
         max-height: none !important;
         min-height: 100vh !important;
+        gap: 0px !important;
     }
 
     /* Catch and crush any empty layout blocks */
@@ -76,15 +77,14 @@ st.markdown("""
         padding: 0px !important;
     }
 
-    /* 4. REPORT VIEWER WITH MAXIMIZED HEIGHT */
+    /* 4. FIXED: REPORT VIEWER WITH PROPER SCROLLING */
     iframe[title="streamlit_components.components.html"] {
-        height: calc(100vh - 200px) !important;  /* DYNAMIC: fills remaining screen height */
-        min-height: 400px !important;
+        height: 600px !important;
+        max-height: 600px !important;
         border: none !important;
         margin-bottom: 0px !important;
         margin-top: 0px !important;
         width: 100% !important;
-        flex: 1 !important;
     }
     
     /* Optimize Tab Headers Matrix for High Density Views */
@@ -97,50 +97,20 @@ st.markdown("""
     div[data-testid="stTabs"] {
         margin-top: 0px !important;
         margin-bottom: 0px !important;
-        height: 100% !important;
-        display: flex !important;
-        flex-direction: column !important;
+        padding: 0px !important;
     }
-    
-    /* TAB CONTENT - MAXIMIZE REAL ESTATE */
-    div[data-testid="stTabContent"] {
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-        flex: 1 !important;
-        height: calc(100vh - 220px) !important;  /* DYNAMIC: fills remaining space */
-        min-height: 300px !important;
-        overflow: auto !important;
-    }
-    
-    /* TAB PANELS - FULL HEIGHT */
+
+    /* DIRECTIVE: TO ADJUST TAB CONTENT PADDING, MODIFY THESE VALUES */
+    /* Tab container padding control */
     div[role="tabpanel"] {
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-        height: 100% !important;
-        overflow: auto !important;
+        padding: 0px !important;
+        margin: 0px !important;
     }
-    
-    /* VERTICAL BLOCKS INSIDE TABS - MINIMAL GAP */
-    div[data-testid="stVerticalBlock"] {
-        gap: 0.25rem !important;  /* MINIMAL: small gap between elements */
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-        height: 100% !important;
-    }
-    
-    /* MAIN BLOCK CONTAINER - MINIMAL PADDING */
-    .main .block-container {
-        padding-top: 1rem !important;  /* MINIMAL: 1rem top */
-        padding-bottom: 1px !important;  /* MINIMAL: 1px bottom */
-        margin-top: 0rem !important;
-        margin-bottom: 0rem !important;
-        max-width: 100% !important;
+
+    /* Tab content wrapper padding */
+    div[data-testid="stTabBar"] ~ div {
+        padding: 0px !important;
+        margin: 0px !important;
     }
     
     /* 5. Ultra-Compact Control Bar layout matrix definitions */
@@ -151,7 +121,7 @@ st.markdown("""
         padding: 0.2rem 0.5rem !important; 
         border-radius: 8px;
         margin-top: 0px !important; 
-        margin-bottom: 0.5rem !important;  /* MINIMAL: small gap after control bar */
+        margin-bottom: 0px !important;
     }
     
     .stSelectbox label { display: none !important; } 
@@ -845,7 +815,7 @@ with col3:
             use_container_width=True
         )
 
-# --- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME (MAXIMIZED) ---
+# --- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta != "Select Trade Area..." and selected_site_display != "Select Site...":
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     if not site_data.empty:
@@ -915,14 +885,123 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
                 
-                # MAXIMIZED: Use full available height for the report
                 components.html(rendered_view, height=600, scrolling=True)
                     
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (3x3 LAYOUT WITH FULLSCREEN CLICK) ---
+        # --- TAB 2: PROPERTY PHOTOS (3x3 LAYOUT WITH FULLSCREEN) ---
         with tab_photos:
+            # Fullscreen Modal HTML/CSS/JS
+            fullscreen_modal_html = """
+            <style>
+                /* FULLSCREEN IMAGE MODAL STYLING */
+                .fullscreen-modal {
+                    display: none;
+                    position: fixed;
+                    z-index: 9999;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0, 0, 0, 0.95);
+                    padding: 0;
+                    margin: 0;
+                }
+                
+                .fullscreen-modal.active {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                
+                .fullscreen-modal-content {
+                    position: relative;
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-direction: column;
+                }
+                
+                .fullscreen-modal-content img {
+                    max-width: 90vw;
+                    max-height: 90vh;
+                    object-fit: contain;
+                    width: auto;
+                    height: auto;
+                }
+                
+                .fullscreen-close-btn {
+                    position: absolute;
+                    top: 20px;
+                    right: 40px;
+                    font-size: 40px;
+                    font-weight: bold;
+                    color: white;
+                    cursor: pointer;
+                    background: none;
+                    border: none;
+                    padding: 0;
+                    margin: 0;
+                    z-index: 10000;
+                }
+                
+                .fullscreen-close-btn:hover {
+                    color: #ccc;
+                }
+                
+                .fullscreen-title {
+                    color: white;
+                    text-align: center;
+                    margin-top: 20px;
+                    font-size: 16px;
+                    font-weight: 600;
+                }
+            </style>
+            
+            <div id="fullscreenModal" class="fullscreen-modal">
+                <button class="fullscreen-close-btn" onclick="closeFullscreen()">&times;</button>
+                <div class="fullscreen-modal-content">
+                    <img id="fullscreenImage" src="" alt="Fullscreen Image">
+                    <div class="fullscreen-title" id="fullscreenTitle"></div>
+                </div>
+            </div>
+            
+            <script>
+                function openFullscreen(imageSrc, title) {
+                    const modal = document.getElementById('fullscreenModal');
+                    const img = document.getElementById('fullscreenImage');
+                    const titleEl = document.getElementById('fullscreenTitle');
+                    img.src = imageSrc;
+                    titleEl.textContent = title;
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                }
+                
+                function closeFullscreen() {
+                    const modal = document.getElementById('fullscreenModal');
+                    modal.classList.remove('active');
+                    document.body.style.overflow = 'auto';
+                }
+                
+                // Close on ESC key
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape') {
+                        closeFullscreen();
+                    }
+                });
+                
+                // Close on background click
+                document.getElementById('fullscreenModal').addEventListener('click', function(event) {
+                    if (event.target === this) {
+                        closeFullscreen();
+                    }
+                });
+            </script>
+            """
+            
             direct_photo_mapping = {
                 "PROPERTY PHOTOS 1": "__DIRECT_PHOTO_1",
                 "PROPERTY PHOTOS 2": "__DIRECT_PHOTO_2",
@@ -947,8 +1026,8 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_photos.append((label, thumb_url, full_url))
             
             if valid_photos:
-                # Build HTML grid with fullscreen lightbox on click (not opening new tab)
-                grid_html = '''
+                # Build HTML grid with 3x3 layout and fullscreen capability
+                grid_html = fullscreen_modal_html + '''
                 <style>
                     .image-grid-3x3 {
                         display: grid;
@@ -956,16 +1035,13 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         gap: 15px;
                         padding: 10px 0;
                         max-width: 100%;
-                        height: 100%;
-                        min-height: 400px;
-                        align-content: start;
                     }
                     .image-grid-item {
                         border: 1px solid #dadce0;
                         border-radius: 8px;
                         overflow: hidden;
                         background: #f8f9fa;
-                        transition: transform 0.2s;
+                        transition: transform 0.2s, box-shadow 0.2s;
                         aspect-ratio: 4/3;
                         display: flex;
                         flex-direction: column;
@@ -981,7 +1057,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         object-fit: cover;
                         display: block;
                         flex: 1;
-                        pointer-events: none;
                     }
                     .image-grid-item .label {
                         padding: 6px 8px;
@@ -992,52 +1067,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         text-align: center;
                         border-top: 1px solid #dadce0;
                         flex-shrink: 0;
-                        pointer-events: none;
                     }
-                    
-                    /* LIGHTBOX STYLES */
-                    .lightbox-overlay {
-                        display: none;
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 100%;
-                        background: rgba(0,0,0,0.9);
-                        z-index: 9999;
-                        cursor: pointer;
-                        align-items: center;
-                        justify-content: center;
-                        padding: 20px;
-                        box-sizing: border-box;
-                    }
-                    .lightbox-overlay.active {
-                        display: flex;
-                    }
-                    .lightbox-overlay img {
-                        max-width: 95%;
-                        max-height: 95%;
-                        object-fit: contain;
-                        border-radius: 4px;
-                        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-                        pointer-events: none;
-                    }
-                    .lightbox-close {
-                        position: absolute;
-                        top: 20px;
-                        right: 30px;
-                        color: #fff;
-                        font-size: 40px;
-                        font-weight: bold;
-                        cursor: pointer;
-                        z-index: 10000;
-                        font-family: Arial, sans-serif;
-                        transition: transform 0.2s;
-                    }
-                    .lightbox-close:hover {
-                        transform: scale(1.2);
-                    }
-                    
                     @media (max-width: 768px) {
                         .image-grid-3x3 {
                             grid-template-columns: repeat(2, 1fr);
@@ -1049,50 +1079,132 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         }
                     }
                 </style>
-                
-                <!-- LIGHTBOX CONTAINER -->
-                <div id="lightbox" class="lightbox-overlay" onclick="closeLightbox()">
-                    <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
-                    <img id="lightbox-img" src="" alt="Full size image">
-                </div>
-                
                 <div class="image-grid-3x3">
                 '''
-                for idx, (label, thumb_url, full_url) in enumerate(valid_photos):
+                for label, thumb_url, full_url in valid_photos:
                     grid_html += f'''
-                        <div class="image-grid-item" onclick="openLightbox('{full_url.replace("'", "\\'")}')">
+                        <div class="image-grid-item" onclick="openFullscreen('{full_url}', '{label}')">
                             <img src="{thumb_url}" alt="{label}" loading="lazy">
                             <div class="label">{label}</div>
                         </div>
                     '''
-                grid_html += '''
-                </div>
-                
-                <script>
-                    function openLightbox(imageUrl) {
-                        document.getElementById('lightbox-img').src = imageUrl;
-                        document.getElementById('lightbox').classList.add('active');
-                        document.body.style.overflow = 'hidden';
-                    }
-                    function closeLightbox() {
-                        document.getElementById('lightbox').classList.remove('active');
-                        document.body.style.overflow = '';
-                    }
-                    // Close on Escape key
-                    document.addEventListener('keydown', function(e) {
-                        if (e.key === 'Escape') {
-                            closeLightbox();
-                        }
-                    });
-                </script>
-                '''
-                # MAXIMIZED: Use full available height for the grid
-                components.html(grid_html, height=550, scrolling=True)
+                grid_html += '</div>'
+                components.html(grid_html, height=500, scrolling=True)
             else:
                 st.info("No photo links configured for this property record selection.")
 
-        # --- TAB 3: PROPERTY DOCS (3x3 LAYOUT WITH FULLSCREEN CLICK) ---
+        # --- TAB 3: PROPERTY DOCS (3x3 LAYOUT WITH FULLSCREEN) ---
         with tab_docs:
+            # Fullscreen Modal HTML/CSS/JS
+            fullscreen_modal_html = """
+            <style>
+                /* FULLSCREEN IMAGE MODAL STYLING */
+                .fullscreen-modal {
+                    display: none;
+                    position: fixed;
+                    z-index: 9999;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0, 0, 0, 0.95);
+                    padding: 0;
+                    margin: 0;
+                }
+                
+                .fullscreen-modal.active {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                
+                .fullscreen-modal-content {
+                    position: relative;
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    flex-direction: column;
+                }
+                
+                .fullscreen-modal-content img {
+                    max-width: 90vw;
+                    max-height: 90vh;
+                    object-fit: contain;
+                    width: auto;
+                    height: auto;
+                }
+                
+                .fullscreen-close-btn {
+                    position: absolute;
+                    top: 20px;
+                    right: 40px;
+                    font-size: 40px;
+                    font-weight: bold;
+                    color: white;
+                    cursor: pointer;
+                    background: none;
+                    border: none;
+                    padding: 0;
+                    margin: 0;
+                    z-index: 10000;
+                }
+                
+                .fullscreen-close-btn:hover {
+                    color: #ccc;
+                }
+                
+                .fullscreen-title {
+                    color: white;
+                    text-align: center;
+                    margin-top: 20px;
+                    font-size: 16px;
+                    font-weight: 600;
+                }
+            </style>
+            
+            <div id="fullscreenModal" class="fullscreen-modal">
+                <button class="fullscreen-close-btn" onclick="closeFullscreen()">&times;</button>
+                <div class="fullscreen-modal-content">
+                    <img id="fullscreenImage" src="" alt="Fullscreen Image">
+                    <div class="fullscreen-title" id="fullscreenTitle"></div>
+                </div>
+            </div>
+            
+            <script>
+                function openFullscreen(imageSrc, title) {
+                    const modal = document.getElementById('fullscreenModal');
+                    const img = document.getElementById('fullscreenImage');
+                    const titleEl = document.getElementById('fullscreenTitle');
+                    img.src = imageSrc;
+                    titleEl.textContent = title;
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                }
+                
+                function closeFullscreen() {
+                    const modal = document.getElementById('fullscreenModal');
+                    modal.classList.remove('active');
+                    document.body.style.overflow = 'auto';
+                }
+                
+                // Close on ESC key
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape') {
+                        closeFullscreen();
+                    }
+                });
+                
+                // Close on background click
+                document.getElementById('fullscreenModal').addEventListener('click', function(event) {
+                    if (event.target === this) {
+                        closeFullscreen();
+                    }
+                });
+            </script>
+            """
+            
             direct_doc_mapping = {
                 "TCT": "__DIRECT_TCT",
                 "LOT PLAN": "__DIRECT_LOT_PLAN",
@@ -1116,8 +1228,8 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_docs.append((label, thumb_url, full_url))
             
             if valid_docs:
-                # Build HTML grid with fullscreen lightbox on click
-                grid_html = '''
+                # Build HTML grid with 3x3 layout and fullscreen capability
+                grid_html = fullscreen_modal_html + '''
                 <style>
                     .image-grid-3x3 {
                         display: grid;
@@ -1125,16 +1237,13 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         gap: 15px;
                         padding: 10px 0;
                         max-width: 100%;
-                        height: 100%;
-                        min-height: 400px;
-                        align-content: start;
                     }
                     .image-grid-item {
                         border: 1px solid #dadce0;
                         border-radius: 8px;
                         overflow: hidden;
                         background: #f8f9fa;
-                        transition: transform 0.2s;
+                        transition: transform 0.2s, box-shadow 0.2s;
                         aspect-ratio: 4/3;
                         display: flex;
                         flex-direction: column;
@@ -1150,7 +1259,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         object-fit: cover;
                         display: block;
                         flex: 1;
-                        pointer-events: none;
                     }
                     .image-grid-item .label {
                         padding: 6px 8px;
@@ -1161,52 +1269,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         text-align: center;
                         border-top: 1px solid #dadce0;
                         flex-shrink: 0;
-                        pointer-events: none;
                     }
-                    
-                    /* LIGHTBOX STYLES */
-                    .lightbox-overlay {
-                        display: none;
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 100%;
-                        background: rgba(0,0,0,0.9);
-                        z-index: 9999;
-                        cursor: pointer;
-                        align-items: center;
-                        justify-content: center;
-                        padding: 20px;
-                        box-sizing: border-box;
-                    }
-                    .lightbox-overlay.active {
-                        display: flex;
-                    }
-                    .lightbox-overlay img {
-                        max-width: 95%;
-                        max-height: 95%;
-                        object-fit: contain;
-                        border-radius: 4px;
-                        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-                        pointer-events: none;
-                    }
-                    .lightbox-close {
-                        position: absolute;
-                        top: 20px;
-                        right: 30px;
-                        color: #fff;
-                        font-size: 40px;
-                        font-weight: bold;
-                        cursor: pointer;
-                        z-index: 10000;
-                        font-family: Arial, sans-serif;
-                        transition: transform 0.2s;
-                    }
-                    .lightbox-close:hover {
-                        transform: scale(1.2);
-                    }
-                    
                     @media (max-width: 768px) {
                         .image-grid-3x3 {
                             grid-template-columns: repeat(2, 1fr);
@@ -1218,44 +1281,16 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         }
                     }
                 </style>
-                
-                <!-- LIGHTBOX CONTAINER -->
-                <div id="lightbox" class="lightbox-overlay" onclick="closeLightbox()">
-                    <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
-                    <img id="lightbox-img" src="" alt="Full size image">
-                </div>
-                
                 <div class="image-grid-3x3">
                 '''
-                for idx, (label, thumb_url, full_url) in enumerate(valid_docs):
+                for label, thumb_url, full_url in valid_docs:
                     grid_html += f'''
-                        <div class="image-grid-item" onclick="openLightbox('{full_url.replace("'", "\\'")}')">
+                        <div class="image-grid-item" onclick="openFullscreen('{full_url}', '{label}')">
                             <img src="{thumb_url}" alt="{label}" loading="lazy">
                             <div class="label">{label}</div>
                         </div>
                     '''
-                grid_html += '''
-                </div>
-                
-                <script>
-                    function openLightbox(imageUrl) {
-                        document.getElementById('lightbox-img').src = imageUrl;
-                        document.getElementById('lightbox').classList.add('active');
-                        document.body.style.overflow = 'hidden';
-                    }
-                    function closeLightbox() {
-                        document.getElementById('lightbox').classList.remove('active');
-                        document.body.style.overflow = '';
-                    }
-                    // Close on Escape key
-                    document.addEventListener('keydown', function(e) {
-                        if (e.key === 'Escape') {
-                            closeLightbox();
-                        }
-                    });
-                </script>
-                '''
-                # MAXIMIZED: Use full available height for the grid
-                components.html(grid_html, height=550, scrolling=True)
+                grid_html += '</div>'
+                components.html(grid_html, height=500, scrolling=True)
             else:
                 st.info("No layout documents configured for this property record selection.")
