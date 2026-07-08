@@ -290,28 +290,16 @@ def download_file(url):
     except:
         return None
 
-# FIXED: Bypasses Google Drive structural blocks and pulls images smoothly via Thumbnail Engine
-@st.cache_data(ttl=600)
-def fetch_drive_image_bytes(url):
+# Converts any google drive viewing link into a frontend-renderable public thumbnail endpoint
+def transform_to_renderable_url(url):
     try:
-        # Extract the file ID from any standard Google Drive format
         file_id_match = re.search(r'(?:id=|/d/|/uc\?.*?id=)([a-zA-Z0-9_-]{25,})', url)
         if file_id_match:
             file_id = file_id_match.group(1)
-            # Route requests into the optimized preview endpoint
-            optimized_url = f"https://drive.google.com/thumbnail?sz=w1200&id={file_id}"
-        else:
-            optimized_url = url
-
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        }
-        res = requests.get(optimized_url, headers=headers, timeout=15)
-        if res.status_code == 200:
-            return res.content
+            return f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
     except:
         pass
-    return None
+    return url
 
 def get_placeholders(sheet):
     placeholders = set()
@@ -728,7 +716,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
     if not site_data.empty:
         site_row_data = site_data.iloc[0]
         
-        # Instantiate Workspace Tabs (All emojis fully stripped out)
+        # Instantiate Workspace Tabs
         tab_report, tab_photos, tab_docs = st.tabs([
             "INFORMATION", 
             "PHOTOS", 
@@ -785,7 +773,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (SECURE GOOGLE DRIVE IMAGE DATA STREAM) ---
+        # --- TAB 2: PROPERTY PHOTOS (NATIVE FRONTEND ROUTING) ---
         with tab_photos:
             photo_cols = ["PROPERTY PHOTOS 1", "PROPERTY PHOTOS 2", "PROPERTY PHOTOS 3", "PROPERTY PHOTOS 4", "PROPERTY PHOTOS 5"]
             valid_photos = []
@@ -802,15 +790,12 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 for i, (label, url) in enumerate(valid_photos):
                     with p_cols[i]:
                         st.markdown(f"<p style='font-size:0.8rem; font-weight:600; margin-bottom:4px; color:#4b5563;'>{label}</p>", unsafe_allow_html=True)
-                        img_bytes = fetch_drive_image_bytes(url)
-                        if img_bytes:
-                            st.image(img_bytes, use_container_width=True)
-                        else:
-                            st.error("Preview Unavailable")
+                        renderable_url = transform_to_renderable_url(url)
+                        st.image(renderable_url, use_container_width=True)
             else:
                 st.info("No property photos attached to this site ledger entry.")
 
-        # --- TAB 3: PROPERTY DOCS (IMAGE MAP STREAM ENFORCER) ---
+        # --- TAB 3: PROPERTY DOCS (NATIVE FRONTEND ROUTING) ---
         with tab_docs:
             doc_cols = ["TCT", "LOT PLAN", "BLDG PLAN", "TAX MAP"]
             valid_docs = []
@@ -827,12 +812,9 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 for i, (label, url) in enumerate(valid_docs):
                     with d_cols[i]:
                         st.markdown(f"<p style='font-size:0.8rem; font-weight:600; margin-bottom:4px; color:#4b5563;'>{label}</p>", unsafe_allow_html=True)
-                        doc_bytes = fetch_drive_image_bytes(url)
-                        if doc_bytes:
-                            st.image(doc_bytes, use_container_width=True)
-                            st.markdown(f"<a href='{url}' target='_blank'><button style='width:100%; border:1px solid #747775; background:white; color:#0b57d0; border-radius:4px; font-size:0.75rem; cursor:pointer; height:24px; margin-top:4px;'>Open Original File</button></a>", unsafe_allow_html=True)
-                        else:
-                            st.error("Preview Unavailable")
+                        renderable_url = transform_to_renderable_url(url)
+                        st.image(renderable_url, use_container_width=True)
+                        st.markdown(f"<a href='{url}' target='_blank'><button style='width:100%; border:1px solid #747775; background:white; color:#0b57d0; border-radius:4px; font-size:0.75rem; cursor:pointer; height:24px; margin-top:4px;'>Open Original File</button></a>", unsafe_allow_html=True)
             else:
                 st.info("No formal property documents linked to this site profile record.")
 else:
