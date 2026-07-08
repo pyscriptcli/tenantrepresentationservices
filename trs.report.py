@@ -49,14 +49,14 @@ st.markdown("""
         opacity: 0 !important;
     }
 
-    /* 3. FIXED: ALLOW SCROLLING WITH AUTO HEIGHT - REMOVED PADDING */
+    /* 3. FIXED: ALLOW SCROLLING WITH AUTO HEIGHT */
     .appview-container, 
     .main, 
     [data-testid="stAppViewContainer"], 
     [data-testid="stMain"],
     .block-container, 
     [data-testid="stMainBlockContainer"] {
-        padding-top: 0px !important;
+        padding-top: 0.2rem !important;
         margin-top: 0px !important;
         padding-bottom: 0px !important;
         padding-left: 0.4rem !important;
@@ -65,29 +65,6 @@ st.markdown("""
         height: auto !important;
         max-height: none !important;
         min-height: 100vh !important;
-    }
-
-    /* Remove tab content padding */
-    div[data-testid="stTabContent"] {
-        padding: 0px !important;
-        margin: 0px !important;
-    }
-    
-    div[data-testid="stTabs"] {
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-        padding: 0px !important;
-    }
-    
-    /* Remove extra spacing in tab panels */
-    .stTab {
-        padding: 0px !important;
-        margin: 0px !important;
-    }
-    
-    [role="tabpanel"] {
-        padding: 0px !important;
-        margin: 0px !important;
     }
 
     /* Catch and crush any empty layout blocks */
@@ -104,8 +81,7 @@ st.markdown("""
         height: 600px !important;
         max-height: 600px !important;
         border: none !important;
-        margin-bottom: 0px !important;
-        margin-top: 0px !important;
+        margin-bottom: 10px !important;
         width: 100% !important;
     }
     
@@ -114,6 +90,10 @@ st.markdown("""
         padding-top: 0.1rem !important;
         padding-bottom: 0.1rem !important;
         font-size: 0.85rem !important;
+    }
+    
+    div[data-testid="stTabs"] {
+        margin-top: -5px !important;
     }
     
     /* 5. Ultra-Compact Control Bar layout matrix definitions */
@@ -919,7 +899,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_photos.append((label, thumb_url, full_url))
             
             if valid_photos:
-                # Build HTML grid with 3x3 layout using components.html - now with fullscreen on click
+                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
@@ -938,7 +918,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         aspect-ratio: 4/3;
                         display: flex;
                         flex-direction: column;
-                        cursor: pointer;
                     }
                     .image-grid-item:hover {
                         transform: scale(1.02);
@@ -961,36 +940,12 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         border-top: 1px solid #dadce0;
                         flex-shrink: 0;
                     }
-                    .fullscreen-overlay {
-                        display: none;
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 100%;
-                        background: rgba(0,0,0,0.9);
-                        z-index: 9999;
-                        justify-content: center;
-                        align-items: center;
-                        cursor: pointer;
-                    }
-                    .fullscreen-overlay.active {
+                    .image-grid-item a {
+                        text-decoration: none;
+                        color: inherit;
                         display: flex;
-                    }
-                    .fullscreen-overlay img {
-                        max-width: 90%;
-                        max-height: 90%;
-                        object-fit: contain;
-                    }
-                    .fullscreen-overlay .close-btn {
-                        position: absolute;
-                        top: 20px;
-                        right: 30px;
-                        color: white;
-                        font-size: 40px;
-                        font-weight: bold;
-                        cursor: pointer;
-                        z-index: 10000;
+                        flex-direction: column;
+                        height: 100%;
                     }
                     @media (max-width: 768px) {
                         .image-grid-3x3 {
@@ -1005,69 +960,16 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 </style>
                 <div class="image-grid-3x3">
                 '''
-                for idx, (label, thumb_url, full_url) in enumerate(valid_photos):
+                for label, thumb_url, full_url in valid_photos:
                     grid_html += f'''
-                        <div class="image-grid-item" onclick="openFullscreen('fullscreen-img-{idx}')">
-                            <img src="{thumb_url}" alt="{label}" loading="lazy">
-                            <div class="label">{label}</div>
+                        <div class="image-grid-item">
+                            <a href="{full_url}" target="_blank">
+                                <img src="{thumb_url}" alt="{label}" loading="lazy">
+                                <div class="label">{label}</div>
+                            </a>
                         </div>
                     '''
-                
-                # Add fullscreen overlay
-                grid_html += '''
-                </div>
-                <div id="fullscreenOverlay" class="fullscreen-overlay" onclick="closeFullscreen()">
-                    <span class="close-btn">&times;</span>
-                    <img id="fullscreenImage" src="" alt="Fullscreen view">
-                </div>
-                <script>
-                    function openFullscreen(imgId) {
-                        const img = document.getElementById(imgId);
-                        if (img) {
-                            const overlay = document.getElementById('fullscreenOverlay');
-                            const fullImg = document.getElementById('fullscreenImage');
-                            fullImg.src = img.src;
-                            overlay.classList.add('active');
-                            document.body.style.overflow = 'hidden';
-                        }
-                    }
-                    function closeFullscreen() {
-                        const overlay = document.getElementById('fullscreenOverlay');
-                        overlay.classList.remove('active');
-                        document.body.style.overflow = 'auto';
-                    }
-                    document.addEventListener('keydown', function(e) {
-                        if (e.key === 'Escape') {
-                            closeFullscreen();
-                        }
-                    });
-                </script>
-                '''
-                
-                # Add the img elements with IDs
-                for idx, (label, thumb_url, full_url) in enumerate(valid_photos):
-                    grid_html = grid_html.replace(f'onclick="openFullscreen(\'fullscreen-img-{idx}\')"', 
-                        f'onclick="openFullscreen(\'fullscreen-img-{idx}\')" data-fullsrc="{full_url}"')
-                
-                # Fix the script to use data-fullsrc for full resolution
-                grid_html += '''
-                <script>
-                    // Override the openFullscreen function to use data-fullsrc
-                    const originalOpenFullscreen = window.openFullscreen;
-                    window.openFullscreen = function(imgId) {
-                        const img = document.getElementById(imgId);
-                        if (img) {
-                            const overlay = document.getElementById('fullscreenOverlay');
-                            const fullImg = document.getElementById('fullscreenImage');
-                            const fullSrc = img.getAttribute('data-fullsrc') || img.src;
-                            fullImg.src = fullSrc;
-                            overlay.classList.add('active');
-                            document.body.style.overflow = 'hidden';
-                        }
-                    };
-                </script>
-                '''
-                
+                grid_html += '</div>'
                 components.html(grid_html, height=500, scrolling=True)
             else:
                 st.info("No photo links configured for this property record selection.")
@@ -1097,7 +999,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_docs.append((label, thumb_url, full_url))
             
             if valid_docs:
-                # Build HTML grid with 3x3 layout using components.html - now with fullscreen on click
+                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
@@ -1116,7 +1018,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         aspect-ratio: 4/3;
                         display: flex;
                         flex-direction: column;
-                        cursor: pointer;
                     }
                     .image-grid-item:hover {
                         transform: scale(1.02);
@@ -1139,36 +1040,12 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         border-top: 1px solid #dadce0;
                         flex-shrink: 0;
                     }
-                    .fullscreen-overlay {
-                        display: none;
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 100%;
-                        background: rgba(0,0,0,0.9);
-                        z-index: 9999;
-                        justify-content: center;
-                        align-items: center;
-                        cursor: pointer;
-                    }
-                    .fullscreen-overlay.active {
+                    .image-grid-item a {
+                        text-decoration: none;
+                        color: inherit;
                         display: flex;
-                    }
-                    .fullscreen-overlay img {
-                        max-width: 90%;
-                        max-height: 90%;
-                        object-fit: contain;
-                    }
-                    .fullscreen-overlay .close-btn {
-                        position: absolute;
-                        top: 20px;
-                        right: 30px;
-                        color: white;
-                        font-size: 40px;
-                        font-weight: bold;
-                        cursor: pointer;
-                        z-index: 10000;
+                        flex-direction: column;
+                        height: 100%;
                     }
                     @media (max-width: 768px) {
                         .image-grid-3x3 {
@@ -1183,47 +1060,16 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 </style>
                 <div class="image-grid-3x3">
                 '''
-                for idx, (label, thumb_url, full_url) in enumerate(valid_docs):
+                for label, thumb_url, full_url in valid_docs:
                     grid_html += f'''
-                        <div class="image-grid-item" onclick="openFullscreen('fullscreen-img-doc-{idx}')" data-fullsrc="{full_url}">
-                            <img id="fullscreen-img-doc-{idx}" src="{thumb_url}" alt="{label}" loading="lazy">
-                            <div class="label">{label}</div>
+                        <div class="image-grid-item">
+                            <a href="{full_url}" target="_blank">
+                                <img src="{thumb_url}" alt="{label}" loading="lazy">
+                                <div class="label">{label}</div>
+                            </a>
                         </div>
                     '''
-                
-                # Add fullscreen overlay
-                grid_html += '''
-                </div>
-                <div id="fullscreenOverlayDocs" class="fullscreen-overlay" onclick="closeFullscreenDocs()">
-                    <span class="close-btn">&times;</span>
-                    <img id="fullscreenImageDocs" src="" alt="Fullscreen view">
-                </div>
-                <script>
-                    function openFullscreen(imgId) {
-                        const img = document.getElementById(imgId);
-                        if (img) {
-                            const overlay = document.getElementById('fullscreenOverlayDocs');
-                            const fullImg = document.getElementById('fullscreenImageDocs');
-                            const parent = img.closest('.image-grid-item');
-                            const fullSrc = parent ? parent.getAttribute('data-fullsrc') : img.src;
-                            fullImg.src = fullSrc;
-                            overlay.classList.add('active');
-                            document.body.style.overflow = 'hidden';
-                        }
-                    }
-                    function closeFullscreenDocs() {
-                        const overlay = document.getElementById('fullscreenOverlayDocs');
-                        overlay.classList.remove('active');
-                        document.body.style.overflow = 'auto';
-                    }
-                    document.addEventListener('keydown', function(e) {
-                        if (e.key === 'Escape') {
-                            closeFullscreenDocs();
-                        }
-                    });
-                </script>
-                '''
-                
+                grid_html += '</div>'
                 components.html(grid_html, height=500, scrolling=True)
             else:
                 st.info("No layout documents configured for this property record selection.")
