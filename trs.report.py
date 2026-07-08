@@ -23,52 +23,110 @@ st.set_page_config(
 # --- LINE 1 GLOBAL STYLESHEET ENFORCER (KILL WHITE SPACE & PARENT SCROLLBARS) ---
 st.markdown("""
 <style>
-    /* Force main document page layer shell to lock to exactly 100% vertical viewport real estate */
-    html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"], .stApp {
+    @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
+    
+    * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
+
+    /* 1. COMPLETELY LOCK MAIN VIEWPORT AND KILL NATIVE SCROLLBARS */
+    html, body {
         overflow: hidden !important;
         height: 100vh !important;
-        max-height: 100vh !important;
         margin: 0px !important;
         padding: 0px !important;
+        background-color: #ffffff !important;
     }
 
-    /* ELIMINATE STREAMLIT MAIN VIEWPORT PADDING BLOCKS COMPLETELY */
-    .block-container, [data-testid="stMainBlockContainer"] {
-        padding-top: 0rem !important; /* Strictly set to 0 to eliminate top gap */
-        padding-bottom: 0rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-        height: 100vh !important;
-        max-height: 100vh !important;
-        display: flex !important;
-        flex-direction: column !important;
-    }
-    
-    /* Hide the invisible containers created by st.markdown CSS injections so they don't stack height */
-    div[data-testid="stVerticalBlock"] > div:has(style) {
-        display: none !important;
-        height: 0px !important;
-        margin: 0px !important;
-        padding: 0px !important;
-    }
-    
-    /* Hard-wipe platform header/footer alignment dimensions completely */
-    header, [data-testid="stHeader"], footer, [data-testid="stFooter"], [data-testid="stDecoration"] {
+    /* 2. NUKE STREAMLIT HEADER & PADDING GHOSTS */
+    header[data-testid="stHeader"], 
+    [data-testid="stHeader"], 
+    .stApp > header,
+    div[data-testid="stDecoration"] {
         display: none !important;
         height: 0px !important;
         min-height: 0px !important;
+        padding: 0px !important;
+        margin: 0px !important;
+        opacity: 0 !important;
+    }
+
+    /* 3. ZERO-OUT PADDING ON ALL MAIN CONTAINERS */
+    .appview-container, 
+    .main, 
+    [data-testid="stAppViewContainer"], 
+    [data-testid="stMain"],
+    .block-container, 
+    [data-testid="stMainBlockContainer"] {
+        padding-top: 0px !important;
+        margin-top: 0px !important;
+        padding-bottom: 0px !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+        overflow: hidden !important; /* KILL PARENT SCROLLBAR */
+        height: 100vh !important;
+        max-height: 100vh !important;
+    }
+
+    /* Catch and crush any empty layout blocks */
+    div[data-testid="stVerticalBlock"] > div:has(style),
+    div[data-testid="stVerticalBlock"] > div:empty {
+        display: none !important;
+        height: 0px !important;
         margin: 0px !important;
         padding: 0px !important;
     }
-    
-    div.stMain {
-        margin-top: 0rem !important;
-        margin-bottom: 0rem !important;
-        height: 100vh !important;
-    }
 
+    /* 4. DYNAMIC REPORT VIEWER SIZING */
+    /* This forces the HTML viewer iframe to fit perfectly inside the screen height without overflowing */
+    iframe[title="streamlit_components.components.html"] {
+        height: calc(100vh - 45px) !important;
+        max-height: calc(100vh - 45px) !important;
+        border: none !important;
+        margin-bottom: 0px !important;
+    }
+    
+    /* 5. Ultra-Compact Control Bar layout matrix definitions */
+    div[data-testid="stHorizontalBlock"] { 
+        gap: 0.5rem !important; 
+        align-items: center !important; 
+        background: #f0f4f9;
+        padding: 0.2rem 0.5rem !important; 
+        border-radius: 8px;
+        margin-top: 0px !important; 
+        margin-bottom: 0px !important;
+    }
+    
+    .stSelectbox label { display: none !important; } 
+    .stSelectbox > div > div {
+        background-color: #fff !important;
+        border: 1px solid #747775 !important;
+        border-radius: 4px !important;
+        min-height: 28px !important;
+        height: 28px !important;
+    }
+    
+    .stSelectbox > div > div > div { 
+        padding-top: 0px !important; 
+        padding-bottom: 0px !important;
+        font-size: 0.8rem !important; 
+        line-height: 26px !important;
+    }
+    
+    .stButton > button, .stDownloadButton > button {
+        background-color: #0b57d0 !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 100px !important;
+        padding: 0.1rem 1rem !important;
+        font-size: 0.8rem !important;
+        font-weight: 500 !important;
+        min-height: 28px !important; 
+        height: 28px !important;
+        width: 100% !important;
+        box-shadow: 0 1px 2px 0 rgba(60,64,67,0.2) !important;
+        line-height: 1 !important;
+    }
+    .stButton > button:hover, .stDownloadButton > button:hover { background-color: #0b4cb4 !important; }
+    
     /* Instant CSS blocking engine to clean deployment elements before loading completes */
     ._profilePreview_gzau3_63,
     ._link_gzau3_10,
@@ -185,66 +243,6 @@ if not os.path.exists(_config_file):
     os.makedirs(_config_dir, exist_ok=True)
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write("[theme]\nbase=\"light\"\n")
-
-# --- ULTRA-COMPACT WORKSPACE HEADER CONTROL RULES ---
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
-    
-    * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
-    
-    /* Ultra-Compact Control Bar layout matrix definitions */
-    div[data-testid="stHorizontalBlock"] { 
-        gap: 0.5rem !important; 
-        align-items: center !important; 
-        background: #f0f4f9;
-        padding: 0.2rem 0.5rem !important; /* Compressed padding */
-        border-radius: 8px;
-        margin-top: 0px !important; /* Strictly set to 0 */
-        margin-bottom: 0.1rem !important;
-    }
-    
-    .stSelectbox label { display: none !important; } 
-    .stSelectbox > div > div {
-        background-color: #fff !important;
-        border: 1px solid #747775 !important;
-        border-radius: 4px !important;
-        min-height: 28px !important; /* Height strictly compressed */
-        height: 28px !important;
-    }
-    /* Vertically align text within the extremely tight bounds */
-    .stSelectbox > div > div > div { 
-        padding-top: 0px !important; 
-        padding-bottom: 0px !important;
-        font-size: 0.8rem !important; 
-        line-height: 26px !important;
-    }
-    
-    .stButton > button, .stDownloadButton > button {
-        background-color: #0b57d0 !important;
-        color: #ffffff !important;
-        border: none !important;
-        border-radius: 100px !important;
-        padding: 0.1rem 1rem !important; /* Reduced vertical padding */
-        font-size: 0.8rem !important;
-        font-weight: 500 !important;
-        min-height: 28px !important; /* Height strictly compressed */
-        height: 28px !important;
-        width: 100% !important;
-        box-shadow: 0 1px 2px 0 rgba(60,64,67,0.2) !important;
-        line-height: 1 !important;
-    }
-    .stButton > button:hover, .stDownloadButton > button:hover { background-color: #0b4cb4 !important; }
-    
-    div[data-testid="stTextInput"] button {
-        background: transparent !important; border: none !important; box-shadow: none !important;
-        min-height: unset !important; height: auto !important; width: auto !important;
-        padding: 2px 4px !important; font-size: 14px !important; color: #5f6368 !important;
-    }
-    div[data-testid="stTextInput"] button span { display: none !important; }
-    div[data-testid="stTextInput"] button::before { content: "\\25C9"; font-size: 14px; color: #1f1f1f; }
-</style>
-""", unsafe_allow_html=True)
 
 # --- LOGIN VERIFICATION LOGIC ---
 TARGET_HASH = "6e7dfba0b39da481db37c3263c61cac6"
@@ -694,7 +692,7 @@ with col3:
             use_container_width=True
         )
 
-# --- ROW 2: DIRECT HTML REPORT VIEWER CONTAINER (SCROLLBAR APPLIED ONLY LOCALLY) ---
+# --- ROW 2: DIRECT HTML REPORT VIEWER CONTAINER ---
 if selected_ta != "Select Trade Area..." and selected_site_display != "Select Site...":
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     if not site_data.empty:
@@ -742,8 +740,9 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             
             rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
             
-            # Use dynamic sizing calc property to automatically fill available remaining view area cleanly
-            components.html(rendered_view, height=950, scrolling=True)
+            # The exact height value here is now bypassed by the CSS 'calc(100vh - 45px)' above,
+            # ensuring the bottom of the iframe hits the bottom of the screen dynamically.
+            components.html(rendered_view, height=800, scrolling=True)
                 
         except Exception as e:
             st.error(f"Error compiling visual matrix framework: {str(e)}")
