@@ -83,6 +83,24 @@ st.markdown("""
         -ms-overflow-style: none !important;
     }
 
+    /* Target the specific element with high padding */
+    div.st-emotion-cache-6px8kg.e15ve43o10 {
+        padding: 0px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+        margin: 0px !important;
+        gap: 0px !important;
+    }
+    
+    /* Also target any similar elements */
+    div[class*="st-emotion-cache"][class*="e15ve43o"] {
+        padding: 0px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+        margin: 0px !important;
+        gap: 0px !important;
+    }
+
     /* Remove ALL extra spacing from containers */
     div[data-testid="stVerticalBlock"] {
         gap: 0px !important;
