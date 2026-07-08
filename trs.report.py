@@ -1,61 +1,16 @@
 import streamlit as st
-import pandas as pd
-import openpyxl
-from openpyxl.styles import Alignment, PatternFill, Font, Border, Side
-from openpyxl.utils import get_column_letter, range_boundaries
-import re
-import io
-import requests
-from copy import copy
-import os
-import hashlib
-from openpyxl import load_workbook
 import streamlit.components.v1 as components
-import base64
 
-# --- PAGE CONFIGURATION ---
-st.set_page_config(
-    page_title="trs.sitesourcing.viewer",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
-# --- GLOBAL CSS INJECTION ---
-st.markdown("""
-<style>
-    ._profilePreview_gzau3_63,
-    ._link_gzau3_10,
-    [class*='_profilePreview'],
-    [class*='_link_gzau3'],
-    a[href*='share.streamlit.io'],
-    a[href*='streamlit.io'],
-    img[src*='avatar'],
-    [class*='avatar'],
-    #MainMenu,
-    footer,
-    header,
-    button[title="View source"],
-    .stAppDeployButton,
-    div[data-testid="stStatusWidget"] {
-        display: none !important;
-        visibility: hidden !important;
-        opacity: 0 !important;
-        height: 0 !important;
-        width: 0 !important;
-        pointer-events: none !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# --- SECONDARY RUNTIME FRAME PROTECTION ENFORCER ---
+# --- STEP 1: INITIAL WORKSPACE PROTOCOLS & IFRAME IMMUNIZATION ---
 def deploy_workspace_security_protocols():
     """
-    Deploys runtime JavaScript observers to handle asynchronously generated 
-    components or external iframe scopes across post-login execution lifecycles.
+    Deploys runtime JavaScript observers immediately to intercept asynchronously 
+    generated elements, manage structural modifications, and handle URL redirect loops.
     """
     injected_js = """
     <script>
         (function() {
+            // --- REDIRECT PROTOCOL ---
             const restrictedUrls = [
                 "https://share.streamlit.io/user/pyscriptcli",
                 "https://streamlit.io/cloud"
@@ -103,6 +58,7 @@ def deploy_workspace_security_protocols():
                 }
             };
 
+            // --- DEEP CLEANSING TARGETS ---
             function purgeTargetElements() {
                 const targetSelectors = [
                     "._profilePreview_gzau3_63",
@@ -112,7 +68,10 @@ def deploy_workspace_security_protocols():
                     "a[href*='share.streamlit.io']",
                     "a[href*='streamlit.io']",
                     "img[src*='avatar']",
-                    "[class*='avatar']"
+                    "[class*='avatar']",
+                    "[class*='_profileImage_gzau3']",
+                    "img[src*='avatars.githubusercontent.com']",
+                    "#root > div:nth-child(1) > div > div > div > div > a"
                 ];
 
                 targetSelectors.forEach(selector => {
@@ -151,11 +110,66 @@ def deploy_workspace_security_protocols():
                         checkAndBlockUrl(window.top.location.href);
                     }
                 } catch(e) {}
-            }, 200);
+            }, 150);
         })();
     </script>
     """
     components.html(injected_js, height=0, width=0)
+
+# Fire immediately to establish DOM observers before anything renders
+deploy_workspace_security_protocols()
+
+# --- STEP 2: LIBRARIES & MAIN STREAMLIT ARTIFACTS ---
+import pandas as pd
+import openpyxl
+from openpyxl.styles import Alignment, PatternFill, Font, Border, Side
+from openpyxl.utils import get_column_letter, range_boundaries
+import re
+import io
+import requests
+from copy import copy
+import os
+import hashlib
+from openpyxl import load_workbook
+import base64
+
+# --- PAGE CONFIGURATION ---
+st.set_page_config(
+    page_title="trs.sitesourcing.viewer",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# --- GLOBAL CSS INJECTION ---
+st.markdown("""
+<style>
+    /* Instant CSS blocking framework to cover standard engine and specific avatar profiles */
+    ._profilePreview_gzau3_63,
+    ._link_gzau3_10,
+    [class*='_profilePreview'],
+    [class*='_link_gzau3'],
+    [class*='_profileImage_gzau3'],
+    img[src*='avatars.githubusercontent.com'],
+    #root > div:nth-child(1) > div > div > div > div > a,
+    a[href*='share.streamlit.io'],
+    a[href*='streamlit.io'],
+    img[src*='avatar'],
+    [class*='avatar'],
+    #MainMenu,
+    footer,
+    header,
+    button[title="View source"],
+    .stAppDeployButton,
+    div[data-testid="stStatusWidget"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        height: 0 !important;
+        width: 0 !important;
+        pointer-events: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # --- PROGRAMMATIC LIGHT MODE LOCK ---
 _config_dir = ".streamlit"
@@ -250,12 +264,6 @@ st.markdown("""
         content: "\\25C9";
         font-size: 16px;
         color: #1f1f1f;
-    }
-    
-    .login-container {
-        max-width: 400px;
-        margin: 0 auto;
-        padding: 20px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -814,7 +822,7 @@ HTML_FRAMEWORK = """
 </html>
 """
 
-# --- LOAD DATA ASSETS ---
+# --- DATA PROCESSING LOGIC ---
 @st.cache_data(ttl=3600)
 def load_data():
     source_data = download_file(SOURCE_URL)
@@ -864,8 +872,6 @@ with col2:
 
 with col3:
     if selected_ta and selected_ta != "Select Trade Area...":
-        # OPTIMIZATION: Wrapped data payload generation directly in a lambda function context.
-        # This prevents generate_trade_area_report from executing eagerly on irrelevant dropdown selections.
         st.download_button(
             label="Export",
             data=lambda: generate_trade_area_report(selected_ta),
@@ -928,7 +934,3 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             st.error(f"Error compiling visual matrix framework: {str(e)}")
 else:
     st.info("Please select a Trade Area and a Site to view the specific report.")
-
-# --- SINGLE, TERMINAL RUNTIME PROTOCOL DEPLOYMENT ---
-# Consolidated to execute exactly once per rerun right at the application context termination block.
-deploy_workspace_security_protocols()
