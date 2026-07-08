@@ -27,7 +27,7 @@ st.markdown("""
     
     * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
 
-    /* 1. MAIN VIEWPORT WITH NATIVE SCROLL */
+    /* 1. FIXED: MAIN VIEWPORT WITH NATIVE SCROLL */
     html, body {
         overflow: auto !important;
         height: 100% !important;
@@ -49,47 +49,22 @@ st.markdown("""
         opacity: 0 !important;
     }
 
-    /* 3. REMOVE ALL PADDING FROM CONTAINERS */
+    /* 3. FIXED: ALLOW SCROLLING WITH AUTO HEIGHT - REDUCED PADDING */
     .appview-container, 
     .main, 
     [data-testid="stAppViewContainer"], 
     [data-testid="stMain"],
     .block-container, 
     [data-testid="stMainBlockContainer"] {
-        padding-top: 0px !important;
+        padding-top: 0rem !important;  /* CHANGED: removed top padding */
         margin-top: 0px !important;
-        padding-bottom: 0px !important;
-        margin-bottom: 0px !important;
+        padding-bottom: 0rem !important;  /* CHANGED: removed bottom padding */
         padding-left: 0.4rem !important;
         padding-right: 0.4rem !important;
         overflow: auto !important;
         height: auto !important;
         max-height: none !important;
         min-height: 100vh !important;
-    }
-
-    /* Remove padding from tab content */
-    div[data-testid="stTabs"] {
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-    }
-    
-    div[data-testid="stTab"] {
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-    }
-
-    /* Remove padding from all vertical blocks */
-    div[data-testid="stVerticalBlock"] {
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-        gap: 0px !important;
     }
 
     /* Catch and crush any empty layout blocks */
@@ -101,13 +76,13 @@ st.markdown("""
         padding: 0px !important;
     }
 
-    /* 4. REPORT VIEWER WITH PROPER SCROLLING */
+    /* 4. FIXED: REPORT VIEWER WITH PROPER SCROLLING - REDUCED MARGIN */
     iframe[title="streamlit_components.components.html"] {
         height: 600px !important;
         max-height: 600px !important;
         border: none !important;
-        margin-bottom: 0px !important;
-        margin-top: 0px !important;
+        margin-bottom: 0px !important;  /* CHANGED: removed bottom margin */
+        margin-top: 0px !important;  /* CHANGED: removed top margin */
         width: 100% !important;
     }
     
@@ -118,6 +93,11 @@ st.markdown("""
         font-size: 0.85rem !important;
     }
     
+    div[data-testid="stTabs"] {
+        margin-top: -5px !important;
+        margin-bottom: 0px !important;  /* CHANGED: removed bottom margin */
+    }
+    
     /* 5. Ultra-Compact Control Bar layout matrix definitions */
     div[data-testid="stHorizontalBlock"] { 
         gap: 0.5rem !important; 
@@ -126,7 +106,7 @@ st.markdown("""
         padding: 0.2rem 0.5rem !important; 
         border-radius: 8px;
         margin-top: 0px !important; 
-        margin-bottom: 5px !important;
+        margin-bottom: 10px !important;
     }
     
     .stSelectbox label { display: none !important; } 
@@ -160,6 +140,39 @@ st.markdown("""
         line-height: 1 !important;
     }
     .stButton > button:hover, .stDownloadButton > button:hover { background-color: #0b4cb4 !important; }
+    
+    /* REMOVED: Tab content padding that was causing thick white space */
+    div[data-testid="stTabContent"] {
+        padding-top: 0px !important;  /* CHANGED: removed top padding from tab content */
+        padding-bottom: 0px !important;  /* CHANGED: removed bottom padding from tab content */
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+    }
+    
+    /* REMOVED: Additional padding from tab panels */
+    div[role="tabpanel"] {
+        padding-top: 0px !important;  /* CHANGED: removed padding from tab panels */
+        padding-bottom: 0px !important;  /* CHANGED: removed padding from tab panels */
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+    }
+    
+    /* REMOVED: Padding from Streamlit's column containers inside tabs */
+    div[data-testid="stVerticalBlock"] {
+        gap: 0rem !important;  /* CHANGED: removed gap between elements */
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+    }
+    
+    /* REMOVED: Extra space from Streamlit's main block container */
+    .main .block-container {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+        margin-top: 0rem !important;
+        margin-bottom: 0rem !important;
+    }
     
     /* CSS Blocking Engine to Hide Deployment Watermarks */
     ._profilePreview_gzau3_63,
@@ -426,7 +439,7 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
-# --- COMPLETE HTML BLUEPRINT (WITH REDUCED PADDING) ---
+# --- COMPLETE HTML BLUEPRINT ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
@@ -444,9 +457,8 @@ HTML_FRAMEWORK = """
         .ritz.grid-container {
             height: auto;
             overflow: visible !important;
-            padding: 5px !important;
+            padding: 10px;
             box-sizing: border-box;
-            margin: 0 !important;
         }
 
         .ritz .waffle a { color: inherit; }
@@ -896,7 +908,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (3x3 LAYOUT WITH FULLSCREEN ON CLICK) ---
+        # --- TAB 2: PROPERTY PHOTOS (3x3 LAYOUT WITH FULLSCREEN CLICK) ---
         with tab_photos:
             direct_photo_mapping = {
                 "PROPERTY PHOTOS 1": "__DIRECT_PHOTO_1",
@@ -922,14 +934,14 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_photos.append((label, thumb_url, full_url))
             
             if valid_photos:
-                # Build HTML grid with 3x3 layout and fullscreen on click
+                # Build HTML grid with fullscreen lightbox on click (not opening new tab)
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
                         display: grid;
                         grid-template-columns: repeat(3, 1fr);
                         gap: 15px;
-                        padding: 5px 0;
+                        padding: 10px 0;
                         max-width: 100%;
                     }
                     .image-grid-item {
@@ -953,9 +965,10 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         object-fit: cover;
                         display: block;
                         flex: 1;
+                        pointer-events: none;
                     }
                     .image-grid-item .label {
-                        padding: 4px 8px;
+                        padding: 6px 8px;
                         font-size: 0.7rem;
                         font-weight: 600;
                         color: #5f6368;
@@ -963,9 +976,11 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         text-align: center;
                         border-top: 1px solid #dadce0;
                         flex-shrink: 0;
+                        pointer-events: none;
                     }
-                    /* Fullscreen overlay */
-                    .fullscreen-overlay {
+                    
+                    /* LIGHTBOX STYLES */
+                    .lightbox-overlay {
                         display: none;
                         position: fixed;
                         top: 0;
@@ -974,28 +989,39 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         height: 100%;
                         background: rgba(0,0,0,0.9);
                         z-index: 9999;
-                        justify-content: center;
-                        align-items: center;
                         cursor: pointer;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 20px;
+                        box-sizing: border-box;
                     }
-                    .fullscreen-overlay.active {
+                    .lightbox-overlay.active {
                         display: flex;
                     }
-                    .fullscreen-overlay img {
-                        max-width: 90%;
-                        max-height: 90%;
+                    .lightbox-overlay img {
+                        max-width: 95%;
+                        max-height: 95%;
                         object-fit: contain;
+                        border-radius: 4px;
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+                        pointer-events: none;
                     }
-                    .fullscreen-overlay .close-btn {
+                    .lightbox-close {
                         position: absolute;
                         top: 20px;
                         right: 30px;
-                        color: white;
+                        color: #fff;
                         font-size: 40px;
                         font-weight: bold;
                         cursor: pointer;
                         z-index: 10000;
+                        font-family: Arial, sans-serif;
+                        transition: transform 0.2s;
                     }
+                    .lightbox-close:hover {
+                        transform: scale(1.2);
+                    }
+                    
                     @media (max-width: 768px) {
                         .image-grid-3x3 {
                             grid-template-columns: repeat(2, 1fr);
@@ -1007,35 +1033,39 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         }
                     }
                 </style>
+                
+                <!-- LIGHTBOX CONTAINER -->
+                <div id="lightbox" class="lightbox-overlay" onclick="closeLightbox()">
+                    <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+                    <img id="lightbox-img" src="" alt="Full size image">
+                </div>
+                
                 <div class="image-grid-3x3">
                 '''
                 for idx, (label, thumb_url, full_url) in enumerate(valid_photos):
                     grid_html += f'''
-                        <div class="image-grid-item" onclick="openFullscreen('{full_url}', {idx})">
+                        <div class="image-grid-item" onclick="openLightbox('{full_url.replace("'", "\\'")}')">
                             <img src="{thumb_url}" alt="{label}" loading="lazy">
                             <div class="label">{label}</div>
                         </div>
                     '''
                 grid_html += '''
                 </div>
-                <div id="fullscreenOverlay" class="fullscreen-overlay" onclick="closeFullscreen()">
-                    <span class="close-btn">&times;</span>
-                    <img id="fullscreenImage" src="" alt="Fullscreen">
-                </div>
+                
                 <script>
-                    function openFullscreen(url, idx) {
-                        document.getElementById('fullscreenImage').src = url;
-                        document.getElementById('fullscreenOverlay').classList.add('active');
+                    function openLightbox(imageUrl) {
+                        document.getElementById('lightbox-img').src = imageUrl;
+                        document.getElementById('lightbox').classList.add('active');
                         document.body.style.overflow = 'hidden';
                     }
-                    function closeFullscreen() {
-                        document.getElementById('fullscreenOverlay').classList.remove('active');
-                        document.body.style.overflow = 'auto';
+                    function closeLightbox() {
+                        document.getElementById('lightbox').classList.remove('active');
+                        document.body.style.overflow = '';
                     }
                     // Close on Escape key
                     document.addEventListener('keydown', function(e) {
                         if (e.key === 'Escape') {
-                            closeFullscreen();
+                            closeLightbox();
                         }
                     });
                 </script>
@@ -1044,7 +1074,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             else:
                 st.info("No photo links configured for this property record selection.")
 
-        # --- TAB 3: PROPERTY DOCS (3x3 LAYOUT WITH FULLSCREEN ON CLICK) ---
+        # --- TAB 3: PROPERTY DOCS (3x3 LAYOUT WITH FULLSCREEN CLICK) ---
         with tab_docs:
             direct_doc_mapping = {
                 "TCT": "__DIRECT_TCT",
@@ -1069,14 +1099,14 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_docs.append((label, thumb_url, full_url))
             
             if valid_docs:
-                # Build HTML grid with 3x3 layout and fullscreen on click
+                # Build HTML grid with fullscreen lightbox on click
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
                         display: grid;
                         grid-template-columns: repeat(3, 1fr);
                         gap: 15px;
-                        padding: 5px 0;
+                        padding: 10px 0;
                         max-width: 100%;
                     }
                     .image-grid-item {
@@ -1100,9 +1130,10 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         object-fit: cover;
                         display: block;
                         flex: 1;
+                        pointer-events: none;
                     }
                     .image-grid-item .label {
-                        padding: 4px 8px;
+                        padding: 6px 8px;
                         font-size: 0.7rem;
                         font-weight: 600;
                         color: #5f6368;
@@ -1110,8 +1141,11 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         text-align: center;
                         border-top: 1px solid #dadce0;
                         flex-shrink: 0;
+                        pointer-events: none;
                     }
-                    .fullscreen-overlay {
+                    
+                    /* LIGHTBOX STYLES */
+                    .lightbox-overlay {
                         display: none;
                         position: fixed;
                         top: 0;
@@ -1120,28 +1154,39 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         height: 100%;
                         background: rgba(0,0,0,0.9);
                         z-index: 9999;
-                        justify-content: center;
-                        align-items: center;
                         cursor: pointer;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 20px;
+                        box-sizing: border-box;
                     }
-                    .fullscreen-overlay.active {
+                    .lightbox-overlay.active {
                         display: flex;
                     }
-                    .fullscreen-overlay img {
-                        max-width: 90%;
-                        max-height: 90%;
+                    .lightbox-overlay img {
+                        max-width: 95%;
+                        max-height: 95%;
                         object-fit: contain;
+                        border-radius: 4px;
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+                        pointer-events: none;
                     }
-                    .fullscreen-overlay .close-btn {
+                    .lightbox-close {
                         position: absolute;
                         top: 20px;
                         right: 30px;
-                        color: white;
+                        color: #fff;
                         font-size: 40px;
                         font-weight: bold;
                         cursor: pointer;
                         z-index: 10000;
+                        font-family: Arial, sans-serif;
+                        transition: transform 0.2s;
                     }
+                    .lightbox-close:hover {
+                        transform: scale(1.2);
+                    }
+                    
                     @media (max-width: 768px) {
                         .image-grid-3x3 {
                             grid-template-columns: repeat(2, 1fr);
@@ -1153,34 +1198,39 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         }
                     }
                 </style>
+                
+                <!-- LIGHTBOX CONTAINER -->
+                <div id="lightbox" class="lightbox-overlay" onclick="closeLightbox()">
+                    <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+                    <img id="lightbox-img" src="" alt="Full size image">
+                </div>
+                
                 <div class="image-grid-3x3">
                 '''
                 for idx, (label, thumb_url, full_url) in enumerate(valid_docs):
                     grid_html += f'''
-                        <div class="image-grid-item" onclick="openFullscreen('{full_url}', {idx})">
+                        <div class="image-grid-item" onclick="openLightbox('{full_url.replace("'", "\\'")}')">
                             <img src="{thumb_url}" alt="{label}" loading="lazy">
                             <div class="label">{label}</div>
                         </div>
                     '''
                 grid_html += '''
                 </div>
-                <div id="fullscreenOverlay" class="fullscreen-overlay" onclick="closeFullscreen()">
-                    <span class="close-btn">&times;</span>
-                    <img id="fullscreenImage" src="" alt="Fullscreen">
-                </div>
+                
                 <script>
-                    function openFullscreen(url, idx) {
-                        document.getElementById('fullscreenImage').src = url;
-                        document.getElementById('fullscreenOverlay').classList.add('active');
+                    function openLightbox(imageUrl) {
+                        document.getElementById('lightbox-img').src = imageUrl;
+                        document.getElementById('lightbox').classList.add('active');
                         document.body.style.overflow = 'hidden';
                     }
-                    function closeFullscreen() {
-                        document.getElementById('fullscreenOverlay').classList.remove('active');
-                        document.body.style.overflow = 'auto';
+                    function closeLightbox() {
+                        document.getElementById('lightbox').classList.remove('active');
+                        document.body.style.overflow = '';
                     }
+                    // Close on Escape key
                     document.addEventListener('keydown', function(e) {
                         if (e.key === 'Escape') {
-                            closeFullscreen();
+                            closeLightbox();
                         }
                     });
                 </script>
