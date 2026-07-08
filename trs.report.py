@@ -64,7 +64,7 @@ div[data-testid="stDecoration"] {
     overflow: auto !important;
     height: auto !important;
     max-height: none !important;
-    min-height: 400vh !important; /* INCREASED GLOBALLY */
+    min-height: 10000vh !important; /* INCREASED GLOBALLY */
 }
 
 /* Catch and crush any empty layout blocks */
