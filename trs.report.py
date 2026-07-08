@@ -773,7 +773,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (NATIVE FRONTEND ROUTING) ---
+        # --- TAB 2: PROPERTY PHOTOS (HTML NATIVE INJECTION) ---
         with tab_photos:
             photo_cols = ["PROPERTY PHOTOS 1", "PROPERTY PHOTOS 2", "PROPERTY PHOTOS 3", "PROPERTY PHOTOS 4", "PROPERTY PHOTOS 5"]
             valid_photos = []
@@ -791,11 +791,12 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     with p_cols[i]:
                         st.markdown(f"<p style='font-size:0.8rem; font-weight:600; margin-bottom:4px; color:#4b5563;'>{label}</p>", unsafe_allow_html=True)
                         renderable_url = transform_to_renderable_url(url)
-                        st.image(renderable_url, use_container_width=True)
+                        # Render the image natively in HTML, bypassing Streamlit entirely
+                        st.markdown(f'<img src="{renderable_url}" style="width: 100%; border-radius: 8px; object-fit: contain;">', unsafe_allow_html=True)
             else:
                 st.info("No property photos attached to this site ledger entry.")
 
-        # --- TAB 3: PROPERTY DOCS (NATIVE FRONTEND ROUTING) ---
+        # --- TAB 3: PROPERTY DOCS (HTML NATIVE INJECTION) ---
         with tab_docs:
             doc_cols = ["TCT", "LOT PLAN", "BLDG PLAN", "TAX MAP"]
             valid_docs = []
@@ -813,7 +814,8 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     with d_cols[i]:
                         st.markdown(f"<p style='font-size:0.8rem; font-weight:600; margin-bottom:4px; color:#4b5563;'>{label}</p>", unsafe_allow_html=True)
                         renderable_url = transform_to_renderable_url(url)
-                        st.image(renderable_url, use_container_width=True)
+                        # Render the image natively in HTML, bypassing Streamlit entirely
+                        st.markdown(f'<img src="{renderable_url}" style="width: 100%; border-radius: 8px; object-fit: contain;">', unsafe_allow_html=True)
                         st.markdown(f"<a href='{url}' target='_blank'><button style='width:100%; border:1px solid #747775; background:white; color:#0b57d0; border-radius:4px; font-size:0.75rem; cursor:pointer; height:24px; margin-top:4px;'>Open Original File</button></a>", unsafe_allow_html=True)
             else:
                 st.info("No formal property documents linked to this site profile record.")
