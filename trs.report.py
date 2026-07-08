@@ -49,16 +49,13 @@ st.markdown("""
         opacity: 0 !important;
     }
 
-    /* 3. FIXED: ALLOW SCROLLING WITH AUTO HEIGHT */
+    /* 3. FIXED: ALLOW SCROLLING WITH AUTO HEIGHT - REMOVED PADDING */
     .appview-container, 
     .main, 
     [data-testid="stAppViewContainer"], 
     [data-testid="stMain"],
     .block-container, 
     [data-testid="stMainBlockContainer"] {
-        /* DIRECTIVE: To adjust the top/bottom padding of the main app container, 
-           modify the 'padding-top' and 'padding-bottom' values below. 
-           Set to 0px to remove padding completely. */
         padding-top: 0px !important;
         margin-top: 0px !important;
         padding-bottom: 0px !important;
@@ -70,6 +67,29 @@ st.markdown("""
         min-height: 100vh !important;
     }
 
+    /* Remove tab content padding */
+    div[data-testid="stTabContent"] {
+        padding: 0px !important;
+        margin: 0px !important;
+    }
+    
+    div[data-testid="stTabs"] {
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        padding: 0px !important;
+    }
+    
+    /* Remove extra spacing in tab panels */
+    .stTab {
+        padding: 0px !important;
+        margin: 0px !important;
+    }
+    
+    [role="tabpanel"] {
+        padding: 0px !important;
+        margin: 0px !important;
+    }
+
     /* Catch and crush any empty layout blocks */
     div[data-testid="stVerticalBlock"] > div:has(style),
     div[data-testid="stVerticalBlock"] > div:empty {
@@ -79,30 +99,13 @@ st.markdown("""
         padding: 0px !important;
     }
 
-    /* DIRECTIVE: To adjust the top/bottom padding of the tab content area, 
-       modify the 'padding' and 'margin' values below. 
-       Set to 0px to remove padding completely. */
-    div[data-testid="stTabContent"] > div,
-    div[data-testid="stTabContent"] > div > div,
-    div[data-testid="stVerticalBlock"] {
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-    }
-
     /* 4. FIXED: REPORT VIEWER WITH PROPER SCROLLING */
-    /* DIRECTIVE: To adjust the spacing and height of the HTML report/image viewer iframe, 
-       modify the 'height', 'margin', and 'padding' values below. 
-       Increase 'height' to make the image modal appear larger/fullscreen. */
     iframe[title="streamlit_components.components.html"] {
-        height: 85vh !important;
-        max-height: 85vh !important;
+        height: 600px !important;
+        max-height: 600px !important;
         border: none !important;
-        margin-top: 0px !important;
         margin-bottom: 0px !important;
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
+        margin-top: 0px !important;
         width: 100% !important;
     }
     
@@ -111,12 +114,6 @@ st.markdown("""
         padding-top: 0.1rem !important;
         padding-bottom: 0.1rem !important;
         font-size: 0.85rem !important;
-    }
-    
-    div[data-testid="stTabs"] {
-        margin-top: -5px !important;
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
     }
     
     /* 5. Ultra-Compact Control Bar layout matrix definitions */
@@ -922,44 +919,9 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_photos.append((label, thumb_url, full_url))
             
             if valid_photos:
-                # Build HTML grid with 3x3 layout using components.html
+                # Build HTML grid with 3x3 layout using components.html - now with fullscreen on click
                 grid_html = '''
                 <style>
-                    .modal {
-                        display: none; 
-                        position: fixed; 
-                        z-index: 999999; 
-                        padding-top: 50px; 
-                        left: 0; 
-                        top: 0; 
-                        width: 100%; 
-                        height: 100%; 
-                        overflow: auto; 
-                        background-color: rgba(0,0,0,0.95); 
-                    }
-                    .modal-content {
-                        margin: auto;
-                        display: block;
-                        width: 90%;
-                        max-width: 1200px;
-                        max-height: 85vh;
-                        object-fit: contain;
-                        box-shadow: 0 0 20px rgba(0,0,0,0.5);
-                    }
-                    .modal-close {
-                        position: absolute;
-                        top: 20px;
-                        right: 40px;
-                        color: #ffffff;
-                        font-size: 50px;
-                        font-weight: bold;
-                        cursor: pointer;
-                        z-index: 1000000;
-                        transition: color 0.2s;
-                    }
-                    .modal-close:hover {
-                        color: #ff4444;
-                    }
                     .image-grid-3x3 {
                         display: grid;
                         grid-template-columns: repeat(3, 1fr);
@@ -999,6 +961,37 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         border-top: 1px solid #dadce0;
                         flex-shrink: 0;
                     }
+                    .fullscreen-overlay {
+                        display: none;
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0,0,0,0.9);
+                        z-index: 9999;
+                        justify-content: center;
+                        align-items: center;
+                        cursor: pointer;
+                    }
+                    .fullscreen-overlay.active {
+                        display: flex;
+                    }
+                    .fullscreen-overlay img {
+                        max-width: 90%;
+                        max-height: 90%;
+                        object-fit: contain;
+                    }
+                    .fullscreen-overlay .close-btn {
+                        position: absolute;
+                        top: 20px;
+                        right: 30px;
+                        color: white;
+                        font-size: 40px;
+                        font-weight: bold;
+                        cursor: pointer;
+                        z-index: 10000;
+                    }
                     @media (max-width: 768px) {
                         .image-grid-3x3 {
                             grid-template-columns: repeat(2, 1fr);
@@ -1010,94 +1003,72 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         }
                     }
                 </style>
-                <div id="localImageModal" class="modal">
-                    <span class="modal-close" id="modalClose">&times;</span>
-                    <img class="modal-content" id="localImageModalImage">
-                </div>
-                <script>
-                    function openModal(imgSrc) {
-                        var targetDoc = window.document;
-                        var modalId = "localImageModal";
-                        
-                        try {
-                            if (window.top && window.top.document && window.top !== window) {
-                                targetDoc = window.top.document;
-                                modalId = "globalImageModal";
-                            }
-                        } catch (e) {}
-                        
-                        var modal = targetDoc.getElementById(modalId);
-                        var modalImg = targetDoc.getElementById(modalId + "Image");
-                        
-                        if (!modal) {
-                            modal = targetDoc.createElement('div');
-                            modal.id = modalId;
-                            modal.className = "modal";
-                            modal.innerHTML = '<span class="modal-close" id="' + modalId + 'Close">&times;</span><img class="modal-content" id="' + modalId + 'Image">';
-                            
-                            if (targetDoc === window.top.document) {
-                                var style = targetDoc.createElement('style');
-                                style.innerHTML = `
-                                    .modal { display: none; position: fixed; z-index: 999999; padding-top: 50px; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.95); }
-                                    .modal-content { margin: auto; display: block; width: 90%; max-width: 1200px; max-height: 85vh; object-fit: contain; }
-                                    .modal-close { position: absolute; top: 20px; right: 40px; color: #ffffff; font-size: 50px; font-weight: bold; cursor: pointer; z-index: 1000000; }
-                                    .modal-close:hover { color: #ff4444; }
-                                `;
-                                targetDoc.head.appendChild(style);
-                            }
-                            targetDoc.body.appendChild(modal);
-                            
-                            var closeBtn = targetDoc.getElementById(modalId + "Close");
-                            closeBtn.onclick = function() { modal.style.display = "none"; };
-                            modal.onclick = function(e) { if(e.target === modal) modal.style.display = "none"; };
-                        }
-                        
-                        modal.style.display = "block";
-                        modalImg.src = imgSrc;
-                    }
-                    
-                    function closeModalLocal() {
-                        var modal = document.getElementById("localImageModal");
-                        if(modal) modal.style.display = "none";
-                    }
-
-                    document.addEventListener('DOMContentLoaded', function() {
-                        var closeBtn = document.getElementById("modalClose");
-                        if(closeBtn) closeBtn.onclick = closeModalLocal;
-                        
-                        var modal = document.getElementById("localImageModal");
-                        if(modal) modal.onclick = function(e) { if(e.target === modal) closeModalLocal(); };
-                        
-                        document.onkeydown = function(evt) {
-                            evt = evt || window.event;
-                            if (evt.keyCode == 27) {
-                                closeModalLocal();
-                                try {
-                                    var gModal = window.top.document.getElementById("globalImageModal");
-                                    if(gModal) gModal.style.display = "none";
-                                } catch(e) {}
-                            }
-                        };
-                        
-                        document.querySelectorAll('.image-grid-item').forEach(function(item) {
-                            item.addEventListener('click', function() {
-                                var url = this.getAttribute('data-url');
-                                if(url) openModal(url);
-                            });
-                        });
-                    });
-                </script>
                 <div class="image-grid-3x3">
                 '''
-                for label, thumb_url, full_url in valid_photos:
+                for idx, (label, thumb_url, full_url) in enumerate(valid_photos):
                     grid_html += f'''
-                        <div class="image-grid-item" data-url="{full_url}">
+                        <div class="image-grid-item" onclick="openFullscreen('fullscreen-img-{idx}')">
                             <img src="{thumb_url}" alt="{label}" loading="lazy">
                             <div class="label">{label}</div>
                         </div>
                     '''
-                grid_html += '</div>'
-                components.html(grid_html, height=600, scrolling=True)
+                
+                # Add fullscreen overlay
+                grid_html += '''
+                </div>
+                <div id="fullscreenOverlay" class="fullscreen-overlay" onclick="closeFullscreen()">
+                    <span class="close-btn">&times;</span>
+                    <img id="fullscreenImage" src="" alt="Fullscreen view">
+                </div>
+                <script>
+                    function openFullscreen(imgId) {
+                        const img = document.getElementById(imgId);
+                        if (img) {
+                            const overlay = document.getElementById('fullscreenOverlay');
+                            const fullImg = document.getElementById('fullscreenImage');
+                            fullImg.src = img.src;
+                            overlay.classList.add('active');
+                            document.body.style.overflow = 'hidden';
+                        }
+                    }
+                    function closeFullscreen() {
+                        const overlay = document.getElementById('fullscreenOverlay');
+                        overlay.classList.remove('active');
+                        document.body.style.overflow = 'auto';
+                    }
+                    document.addEventListener('keydown', function(e) {
+                        if (e.key === 'Escape') {
+                            closeFullscreen();
+                        }
+                    });
+                </script>
+                '''
+                
+                # Add the img elements with IDs
+                for idx, (label, thumb_url, full_url) in enumerate(valid_photos):
+                    grid_html = grid_html.replace(f'onclick="openFullscreen(\'fullscreen-img-{idx}\')"', 
+                        f'onclick="openFullscreen(\'fullscreen-img-{idx}\')" data-fullsrc="{full_url}"')
+                
+                # Fix the script to use data-fullsrc for full resolution
+                grid_html += '''
+                <script>
+                    // Override the openFullscreen function to use data-fullsrc
+                    const originalOpenFullscreen = window.openFullscreen;
+                    window.openFullscreen = function(imgId) {
+                        const img = document.getElementById(imgId);
+                        if (img) {
+                            const overlay = document.getElementById('fullscreenOverlay');
+                            const fullImg = document.getElementById('fullscreenImage');
+                            const fullSrc = img.getAttribute('data-fullsrc') || img.src;
+                            fullImg.src = fullSrc;
+                            overlay.classList.add('active');
+                            document.body.style.overflow = 'hidden';
+                        }
+                    };
+                </script>
+                '''
+                
+                components.html(grid_html, height=500, scrolling=True)
             else:
                 st.info("No photo links configured for this property record selection.")
 
@@ -1126,44 +1097,9 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_docs.append((label, thumb_url, full_url))
             
             if valid_docs:
-                # Build HTML grid with 3x3 layout using components.html
+                # Build HTML grid with 3x3 layout using components.html - now with fullscreen on click
                 grid_html = '''
                 <style>
-                    .modal {
-                        display: none; 
-                        position: fixed; 
-                        z-index: 999999; 
-                        padding-top: 50px; 
-                        left: 0; 
-                        top: 0; 
-                        width: 100%; 
-                        height: 100%; 
-                        overflow: auto; 
-                        background-color: rgba(0,0,0,0.95); 
-                    }
-                    .modal-content {
-                        margin: auto;
-                        display: block;
-                        width: 90%;
-                        max-width: 1200px;
-                        max-height: 85vh;
-                        object-fit: contain;
-                        box-shadow: 0 0 20px rgba(0,0,0,0.5);
-                    }
-                    .modal-close {
-                        position: absolute;
-                        top: 20px;
-                        right: 40px;
-                        color: #ffffff;
-                        font-size: 50px;
-                        font-weight: bold;
-                        cursor: pointer;
-                        z-index: 1000000;
-                        transition: color 0.2s;
-                    }
-                    .modal-close:hover {
-                        color: #ff4444;
-                    }
                     .image-grid-3x3 {
                         display: grid;
                         grid-template-columns: repeat(3, 1fr);
@@ -1203,6 +1139,37 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         border-top: 1px solid #dadce0;
                         flex-shrink: 0;
                     }
+                    .fullscreen-overlay {
+                        display: none;
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0,0,0,0.9);
+                        z-index: 9999;
+                        justify-content: center;
+                        align-items: center;
+                        cursor: pointer;
+                    }
+                    .fullscreen-overlay.active {
+                        display: flex;
+                    }
+                    .fullscreen-overlay img {
+                        max-width: 90%;
+                        max-height: 90%;
+                        object-fit: contain;
+                    }
+                    .fullscreen-overlay .close-btn {
+                        position: absolute;
+                        top: 20px;
+                        right: 30px;
+                        color: white;
+                        font-size: 40px;
+                        font-weight: bold;
+                        cursor: pointer;
+                        z-index: 10000;
+                    }
                     @media (max-width: 768px) {
                         .image-grid-3x3 {
                             grid-template-columns: repeat(2, 1fr);
@@ -1214,93 +1181,49 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         }
                     }
                 </style>
-                <div id="localImageModal" class="modal">
-                    <span class="modal-close" id="modalClose">&times;</span>
-                    <img class="modal-content" id="localImageModalImage">
-                </div>
-                <script>
-                    function openModal(imgSrc) {
-                        var targetDoc = window.document;
-                        var modalId = "localImageModal";
-                        
-                        try {
-                            if (window.top && window.top.document && window.top !== window) {
-                                targetDoc = window.top.document;
-                                modalId = "globalImageModal";
-                            }
-                        } catch (e) {}
-                        
-                        var modal = targetDoc.getElementById(modalId);
-                        var modalImg = targetDoc.getElementById(modalId + "Image");
-                        
-                        if (!modal) {
-                            modal = targetDoc.createElement('div');
-                            modal.id = modalId;
-                            modal.className = "modal";
-                            modal.innerHTML = '<span class="modal-close" id="' + modalId + 'Close">&times;</span><img class="modal-content" id="' + modalId + 'Image">';
-                            
-                            if (targetDoc === window.top.document) {
-                                var style = targetDoc.createElement('style');
-                                style.innerHTML = `
-                                    .modal { display: none; position: fixed; z-index: 999999; padding-top: 50px; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.95); }
-                                    .modal-content { margin: auto; display: block; width: 90%; max-width: 1200px; max-height: 85vh; object-fit: contain; }
-                                    .modal-close { position: absolute; top: 20px; right: 40px; color: #ffffff; font-size: 50px; font-weight: bold; cursor: pointer; z-index: 1000000; }
-                                    .modal-close:hover { color: #ff4444; }
-                                `;
-                                targetDoc.head.appendChild(style);
-                            }
-                            targetDoc.body.appendChild(modal);
-                            
-                            var closeBtn = targetDoc.getElementById(modalId + "Close");
-                            closeBtn.onclick = function() { modal.style.display = "none"; };
-                            modal.onclick = function(e) { if(e.target === modal) modal.style.display = "none"; };
-                        }
-                        
-                        modal.style.display = "block";
-                        modalImg.src = imgSrc;
-                    }
-                    
-                    function closeModalLocal() {
-                        var modal = document.getElementById("localImageModal");
-                        if(modal) modal.style.display = "none";
-                    }
-
-                    document.addEventListener('DOMContentLoaded', function() {
-                        var closeBtn = document.getElementById("modalClose");
-                        if(closeBtn) closeBtn.onclick = closeModalLocal;
-                        
-                        var modal = document.getElementById("localImageModal");
-                        if(modal) modal.onclick = function(e) { if(e.target === modal) closeModalLocal(); };
-                        
-                        document.onkeydown = function(evt) {
-                            evt = evt || window.event;
-                            if (evt.keyCode == 27) {
-                                closeModalLocal();
-                                try {
-                                    var gModal = window.top.document.getElementById("globalImageModal");
-                                    if(gModal) gModal.style.display = "none";
-                                } catch(e) {}
-                            }
-                        };
-                        
-                        document.querySelectorAll('.image-grid-item').forEach(function(item) {
-                            item.addEventListener('click', function() {
-                                var url = this.getAttribute('data-url');
-                                if(url) openModal(url);
-                            });
-                        });
-                    });
-                </script>
                 <div class="image-grid-3x3">
                 '''
-                for label, thumb_url, full_url in valid_docs:
+                for idx, (label, thumb_url, full_url) in enumerate(valid_docs):
                     grid_html += f'''
-                        <div class="image-grid-item" data-url="{full_url}">
-                            <img src="{thumb_url}" alt="{label}" loading="lazy">
+                        <div class="image-grid-item" onclick="openFullscreen('fullscreen-img-doc-{idx}')" data-fullsrc="{full_url}">
+                            <img id="fullscreen-img-doc-{idx}" src="{thumb_url}" alt="{label}" loading="lazy">
                             <div class="label">{label}</div>
                         </div>
                     '''
-                grid_html += '</div>'
-                components.html(grid_html, height=600, scrolling=True)
+                
+                # Add fullscreen overlay
+                grid_html += '''
+                </div>
+                <div id="fullscreenOverlayDocs" class="fullscreen-overlay" onclick="closeFullscreenDocs()">
+                    <span class="close-btn">&times;</span>
+                    <img id="fullscreenImageDocs" src="" alt="Fullscreen view">
+                </div>
+                <script>
+                    function openFullscreen(imgId) {
+                        const img = document.getElementById(imgId);
+                        if (img) {
+                            const overlay = document.getElementById('fullscreenOverlayDocs');
+                            const fullImg = document.getElementById('fullscreenImageDocs');
+                            const parent = img.closest('.image-grid-item');
+                            const fullSrc = parent ? parent.getAttribute('data-fullsrc') : img.src;
+                            fullImg.src = fullSrc;
+                            overlay.classList.add('active');
+                            document.body.style.overflow = 'hidden';
+                        }
+                    }
+                    function closeFullscreenDocs() {
+                        const overlay = document.getElementById('fullscreenOverlayDocs');
+                        overlay.classList.remove('active');
+                        document.body.style.overflow = 'auto';
+                    }
+                    document.addEventListener('keydown', function(e) {
+                        if (e.key === 'Escape') {
+                            closeFullscreenDocs();
+                        }
+                    });
+                </script>
+                '''
+                
+                components.html(grid_html, height=500, scrolling=True)
             else:
                 st.info("No layout documents configured for this property record selection.")
