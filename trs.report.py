@@ -30,6 +30,19 @@ st.markdown("""
         max-height: 100vh !important;
     }
 
+    /* ELIMINATE STREAMLIT DEFAULT TOP PAD & MARGIN BLOCKS */
+    [data-testid="stMainBlockContainer"] {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+    header, [data-testid="stHeader"] {
+        display: none !important;
+        height: 0px !important;
+    }
+    div.stMain {
+        margin-top: 0rem !important;
+    }
+
     /* Instant CSS blocking engine to clean workspace elements before loading completes */
     ._profilePreview_gzau3_63,
     ._link_gzau3_10,
@@ -41,7 +54,6 @@ st.markdown("""
     [class*='avatar'],
     #MainMenu,
     footer,
-    header,
     button[title="View source"],
     .stAppDeployButton,
     div[data-testid="stStatusWidget"] {
@@ -335,7 +347,6 @@ HTML_FRAMEWORK = """
 <html>
 <head>
     <style type="text/css">
-        /* Lock the inner viewport body to handle layout sizing cleanly */
         html, body { 
             margin: 0; 
             padding: 0; 
@@ -345,7 +356,6 @@ HTML_FRAMEWORK = """
             overflow: hidden; 
         }
         
-        /* Local Container Scrollbar Setup: Confines all scroll mechanics strictly within the report window container */
         .ritz.grid-container {
             height: 100vh;
             overflow: auto !important;
@@ -548,7 +558,11 @@ HTML_FRAMEWORK = """
         <tr style="height: auto;"><td class="s2">Company Name</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Company Name</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s5" colspan="2">Developer Account Name</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Developer Account Name</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Business Address</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Business Address</td><td class="s9" colspan="5"></td></tr>
-        <tr style="height: auto;"><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td><td class="s3"></td><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s9" colspan="5"></td></tr>
+        <tr style="height: auto;"><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td>
+            <td class="s3"></td>
+            <td class="s5" colspan="2">Name of Authorized Representative</td>
+            <td class="s9" colspan="5"></td>
+        </tr>
         <tr style="height: auto;"><td class="s5" colspan="2">Residence Address of Authorized Representative</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Residence Address of Authorized Representative</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Contact No.</td><td class="s2"></td><td class="s4" colspan="5">_CONTACT_NUMBER_</td><td class="s3"></td><td class="s5" colspan="2">Contact No.</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">E-mail Address</td><td class="s2"></td><td class="s4" colspan="5">_EMAIL_ADDRESS_</td><td class="s3"></td><td class="s5" colspan="2">E-mail Address</td><td class="s9" colspan="5"></td></tr>
@@ -658,7 +672,7 @@ with col3:
             use_container_width=True
         )
 
-# --- ROW 2: DIRECT HTML REPORT VIEWER CONTAINER (OWNS 100% OF AVAILABLE DOWNWARD VERTICAL HEIGHT) ---
+# --- ROW 2: DIRECT HTML REPORT VIEWER CONTAINER (SCROLLBAR APPLIED ONLY LOCALLY) ---
 if selected_ta != "Select Trade Area..." and selected_site_display != "Select Site...":
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     if not site_data.empty:
@@ -706,10 +720,10 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             
             rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
             
-            # Using 100% of available height for the isolated sandboxed component canvas container
-            components.html(rendered_view, height=880, scrolling=False)
+            # Using 100% of available height for the iframe canvas with internal window scroll metrics turned on
+            components.html(rendered_view, height=920, scrolling=True)
                 
         except Exception as e:
-            st.error(f"Error compiling layout matrix: {str(e)}")
+            st.error(f"Error compiling visual matrix framework: {str(e)}")
 else:
     st.info("Please select a Trade Area and a Site to view the specific report.")
