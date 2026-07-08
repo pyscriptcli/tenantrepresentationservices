@@ -20,11 +20,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- GLOBAL ANTI-FLICKER INTERCEPTOR & FIXED ONE-PAGE VIEWPORT CSS ---
+# --- LINE 1 GLOBAL STYLESHEET ENFORCER (KILL WHITE SPACE & PARENT SCROLLBARS) ---
 st.markdown("""
 <style>
-    /* Force the main document window to lock to exactly 100% viewport height and hide page scrollbars */
-    html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
+    /* Force main document page layer shell to lock to exactly 100% vertical viewport real estate */
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"], .stApp {
         overflow: hidden !important;
         height: 100vh !important;
         max-height: 100vh !important;
@@ -32,7 +32,7 @@ st.markdown("""
         padding: 0px !important;
     }
 
-    /* REMOVE ALL DEFAULT STREAMLIT MARGINS, PADDING, AND SPACER HEADER/FOOTER BLOCKS */
+    /* ELIMINATE STREAMLIT MAIN VIEWPORT PADDING BLOCKS COMPLETELY */
     [data-testid="stMainBlockContainer"] {
         padding-top: 0rem !important;
         padding-bottom: 0rem !important;
@@ -41,24 +41,26 @@ st.markdown("""
         margin-top: 0px !important;
         margin-bottom: 0px !important;
         height: 100vh !important;
+        max-height: 100vh !important;
         display: flex !important;
         flex-direction: column !important;
     }
-    header, [data-testid="stHeader"], footer, [data-testid="stFooter"] {
+    
+    /* Hard-wipe platform header/footer alignment dimensions completely */
+    header, [data-testid="stHeader"], footer, [data-testid="stFooter"], [data-testid="stDecoration"] {
         display: none !important;
         height: 0px !important;
         margin: 0px !important;
         padding: 0px !important;
     }
+    
     div.stMain {
         margin-top: 0rem !important;
         margin-bottom: 0rem !important;
-    }
-    .stApp [data-testid="stDecoration"] {
-        display: none !important;
+        height: 100vh !important;
     }
 
-    /* Instant CSS blocking engine to clean workspace elements before loading completes */
+    /* Instant CSS blocking engine to clean deployment elements before loading completes */
     ._profilePreview_gzau3_63,
     ._link_gzau3_10,
     [class*='_profilePreview'],
@@ -81,7 +83,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- RUNTIME FRAME INTERCEPTION PROTOCOLS ---
+# --- RUNTIME WORKSPACE SECURITY OBSERVERS ---
 def deploy_workspace_security_protocols():
     """Manages active navigation hooks and runtime layout observation frames."""
     injected_js = """
@@ -175,14 +177,14 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write("[theme]\nbase=\"light\"\n")
 
-# --- ULTRA-COMPACT WORKSPACE HEADER & REAL ESTATE STYLING ---
+# --- ULTRA-COMPACT WORKSPACE HEADER CONTROL RULES ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
     
     * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
     
-    /* Ultra-Compact Control Bar configuration */
+    /* Ultra-Compact Control Bar layout matrix definitions */
     div[data-testid="stHorizontalBlock"] { 
         gap: 0.5rem !important; 
         align-items: center !important; 
@@ -190,7 +192,7 @@ st.markdown("""
         padding: 0.3rem 0.75rem !important;
         border-radius: 8px;
         margin-top: 0.2rem !important;
-        margin-bottom: 0.2rem !important;
+        margin-bottom: 0.1rem !important;
     }
     
     .stSelectbox label { display: none !important; } 
@@ -344,7 +346,7 @@ def generate_trade_area_report(trade_area):
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
-# --- COMPLETE HTML BLUEPRINT WITH LOCAL VIEWER SCROLLBAR ONLY ---
+# --- COMPLETE HTML BLUEPRINT ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
@@ -359,10 +361,11 @@ HTML_FRAMEWORK = """
             overflow: hidden; 
         }
         
+        /* Local Container Scrollbar Setup: Confines all scroll context strictly inside this element frame window */
         .ritz.grid-container {
             height: 100vh;
             overflow: auto !important;
-            padding-bottom: 20px;
+            padding-bottom: 40px;
             box-sizing: border-box;
         }
 
@@ -723,8 +726,8 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             
             rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
             
-            # Using 100% of available height for the iframe canvas with internal window scroll metrics turned on
-            components.html(rendered_view, height=940, scrolling=True)
+            # Use dynamic sizing calc property to automatically fill available remaining view area cleanly
+            components.html(rendered_view, height=950, scrolling=True)
                 
         except Exception as e:
             st.error(f"Error compiling visual matrix framework: {str(e)}")
