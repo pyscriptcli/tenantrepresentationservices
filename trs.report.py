@@ -183,14 +183,80 @@ st.markdown("""
     }
     
     .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
         padding-left: 1.5rem !important;
         padding-right: 1.5rem !important;
         max-width: 100% !important;
     }
     
-    /* Action Controls styling */
+    /* COMPACT CONTROLS ROW */
+    div[data-testid="stHorizontalBlock"] { 
+        gap: 0.5rem !important; 
+        align-items: center !important; 
+        background: #f0f4f9;
+        padding: 0.4rem 0.8rem !important;
+        border-radius: 8px !important;
+        margin-bottom: 0.5rem !important;
+        min-height: 50px !important;
+    }
+    
+    div[data-testid="stHorizontalBlock"] > div {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    
+    /* Compact select boxes */
+    div[data-testid="stHorizontalBlock"] .stSelectbox {
+        margin-bottom: 0 !important;
+    }
+    
+    div[data-testid="stHorizontalBlock"] .stSelectbox label { 
+        font-size: 0.7rem !important; 
+        font-weight: 500 !important;
+        color: #444746 !important;
+        margin-bottom: 2px !important;
+        display: block !important;
+    }
+    
+    div[data-testid="stHorizontalBlock"] .stSelectbox > div > div {
+        background-color: #fff !important;
+        border: 1px solid #747775 !important;
+        border-radius: 4px !important;
+        min-height: 30px !important;
+        height: 30px !important;
+        margin-top: 0 !important;
+    }
+    
+    div[data-testid="stHorizontalBlock"] .stSelectbox > div > div > div { 
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        font-size: 0.8rem !important;
+        line-height: 30px !important;
+    }
+    
+    /* Compact button */
+    div[data-testid="stHorizontalBlock"] .stButton > button {
+        background-color: #0b57d0 !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 100px !important;
+        padding: 0.3rem 1rem !important;
+        font-size: 0.8rem !important;
+        font-weight: 500 !important;
+        min-height: 30px !important;
+        height: 30px !important;
+        width: 100% !important;
+        box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15) !important;
+        transition: background-color 0.2s, box-shadow 0.2s;
+        margin-top: 18px !important;
+    }
+    
+    div[data-testid="stHorizontalBlock"] .stButton > button:hover {
+        background-color: #0b4cb4 !important;
+        box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15) !important;
+    }
+    
     .stButton > button, .stDownloadButton > button {
         background-color: #0b57d0 !important;
         color: #ffffff !important;
@@ -228,15 +294,6 @@ st.markdown("""
         font-size: 0.875rem !important; 
     }
     
-    div[data-testid="stHorizontalBlock"] { 
-        gap: 1rem !important; 
-        align-items: flex-end !important; 
-        background: #f0f4f9;
-        padding: 0.75rem 1rem;
-        border-radius: 12px;
-        margin-bottom: 1rem;
-    }
-    
     /* Flat clean visibility toggle override using monochrome character symbols */
     div[data-testid="stTextInput"] button {
         background: transparent !important;
@@ -266,6 +323,13 @@ st.markdown("""
         max-width: 400px;
         margin: 0 auto;
         padding: 20px;
+    }
+    
+    /* Make viewer taller */
+    iframe {
+        min-height: 700px !important;
+        height: calc(100vh - 200px) !important;
+        max-height: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -863,16 +927,18 @@ if df is None or template_bytes_raw is None:
 # --- POST-LOGIN SECURITY PROTOCOLS RE-ENFORCEMENT ---
 deploy_workspace_security_protocols()
 
-# --- CONTROLS ROW ---
+# --- COMPACT CONTROLS ROW ---
 trade_areas = ["Select Trade Area..."] + sorted(df["TRADE AREA"].dropna().unique().tolist())
+
+# Use a single row with compact styling
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
 
 with col1:
-    st.markdown("<p style='font-size:0.75rem; font-weight:500; color:#444746; margin:0;'>Trade Area</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size:0.7rem; font-weight:500; color:#444746; margin:0 0 2px 0;'>Trade Area</p>", unsafe_allow_html=True)
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=0, label_visibility="collapsed")
     
 with col2:
-    st.markdown("<p style='font-size:0.75rem; font-weight:500; color:#444746; margin:0;'>Site View</p>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size:0.7rem; font-weight:500; color:#444746; margin:0 0 2px 0;'>Site View</p>", unsafe_allow_html=True)
     if selected_ta and selected_ta != "Select Trade Area...":
         raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
         sorted_sites = sorted(raw_sites, key=parse_site_number)
@@ -883,9 +949,9 @@ with col2:
 
 with col3:
     if selected_ta and selected_ta != "Select Trade Area...":
-        # Native single-click background computation data payload stream utilizing optimized single-key cache parameter hooks
+        st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
         st.download_button(
-            label="Export",
+            label="📥 Export",
             data=generate_trade_area_report(selected_ta),
             file_name=f"{selected_ta}_Full_Report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -940,6 +1006,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             
             rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
             
+            # Increased height for viewer to utilize more space
             components.html(rendered_view, height=850, scrolling=True)
                 
         except Exception as e:
