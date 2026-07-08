@@ -36,7 +36,7 @@ st.markdown("""
     display: none !important; /* Chrome, Safari, Opera */
 }
 
-/* 1. FIXED: MAIN VIEWPORT WITH NATIVE SCROLL & INCREASED HEIGHT (+50px) */
+/* 1. FIXED: MAIN VIEWPORT WITH OUTER SCROLLBAR ONLY & INCREASED HEIGHT */
 html, body {
     overflow-y: auto !important;
     overflow-x: hidden !important;
@@ -59,7 +59,7 @@ div[data-testid="stDecoration"] {
     opacity: 0 !important;
 }
 
-/* 3. FIXED: ALLOW SCROLLING WITH INCREASED GLOBAL HEIGHT (+50px) */
+/* 3. FIXED: ALLOW SCROLLING WITH INCREASED GLOBAL HEIGHT */
 .appview-container, 
 .main, 
 [data-testid="stAppViewContainer"], 
@@ -74,7 +74,7 @@ div[data-testid="stDecoration"] {
     overflow: visible !important; /* Changed to visible to prevent inner scrollbars */
     height: auto !important;
     max-height: none !important;
-    min-height: calc(150vh + 50px) !important; /* INCREASED BY 50PX GLOBALLY */
+    min-height: calc(150vh + 100px) !important; /* INCREASED GLOBALLY */
 }
 
 /* Catch and crush any empty layout blocks */
@@ -88,12 +88,12 @@ div[data-testid="stVerticalBlock"] > div:empty {
 
 /* 4. FIXED: REPORT VIEWER WITH INCREASED HEIGHT & NO INNER SCROLLBAR */
 iframe[title="streamlit_components.components.html"] {
-    height: 900px !important; /* INCREASED HEIGHT */
+    height: 900px !important; /* INCREASED FROM 600px */
     max-height: 900px !important;
     border: none !important;
     margin-bottom: 10px !important;
     width: 100% !important;
-    overflow: hidden !important; /* Prevents iframe from having its own scrollbar */
+    overflow: hidden !important; /* PREVENTS INNER SCROLLBAR */
 }
 
 /* Optimize Tab Headers Matrix for High Density Views */
@@ -423,7 +423,6 @@ html, body {
          overflow: visible !important;
          padding: 10px;
          box-sizing: border-box;
-         transform-origin: top left;
      }
      .ritz .waffle a { color: inherit; }
      .ritz .waffle td { padding: 2px 3px !important; vertical-align: middle; border: none !important; }
@@ -494,32 +493,6 @@ html, body {
          const tableBody = document.querySelector('.waffle tbody');
          if (tableBody) { observer.observe(tableBody, { childList: true, subtree: true, characterData: true }); }
      });
-
-     /* SHRINK TO FIT ENGINE */
-     function fitTableToWidth() {
-         const container = document.querySelector('.ritz.grid-container');
-         if (!container) return;
-         // Total natural width of cols: 223+100+86+100+94+100+81+15+148+176+100+100+100+125+29 = 1577px
-         const naturalWidth = 1577; 
-         const availableWidth = window.innerWidth - 20; 
-         let scale = availableWidth / naturalWidth;
-         if (scale > 1) scale = 1; // Only downsize, never upscale
-         
-         container.style.transform = `scale(${scale})`;
-         container.style.transformOrigin = 'top left';
-         container.style.width = `${naturalWidth}px`;
-         
-         // Adjust body height to prevent cutoff and remove bottom whitespace
-         setTimeout(() => {
-             const scaledHeight = container.scrollHeight * scale;
-             document.body.style.height = `${scaledHeight + 50}px`;
-             document.body.style.minHeight = `${scaledHeight + 50}px`;
-         }, 50);
-     }
-     window.addEventListener('resize', fitTableToWidth);
-     window.addEventListener('load', fitTableToWidth);
-     setTimeout(fitTableToWidth, 100);
-     setTimeout(fitTableToWidth, 500);
  </script>
 </head>
 <body>
@@ -880,7 +853,8 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS"))
                 rendered_view = rendered_view.replace("_REMARKS_", process_val("REMARKS"))
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-                components.html(rendered_view, height=900, scrolling=False) # SCROLLING FALSE TO FORCE OUTER SCROLLBAR
+                # UPDATED: Increased height and disabled scrolling to force outer scrollbar
+                components.html(rendered_view, height=900, scrolling=False)
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
@@ -978,7 +952,8 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         </div>
                     '''
                 grid_html += '</div>'
-                components.html(grid_html, height=700, scrolling=False) # SCROLLING FALSE TO FORCE OUTER SCROLLBAR
+                # UPDATED: Increased height and disabled scrolling to force outer scrollbar
+                components.html(grid_html, height=700, scrolling=False)
             else:
                 st.info("No photo links configured for this property record selection.")
 
@@ -1075,6 +1050,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         </div>
                     '''
                 grid_html += '</div>'
-                components.html(grid_html, height=700, scrolling=False) # SCROLLING FALSE TO FORCE OUTER SCROLLBAR
+                # UPDATED: Increased height and disabled scrolling to force outer scrollbar
+                components.html(grid_html, height=700, scrolling=False)
             else:
                 st.info("No layout documents configured for this property record selection.")
