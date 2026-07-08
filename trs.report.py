@@ -49,18 +49,18 @@ st.markdown("""
         opacity: 0 !important;
     }
 
-    /* 3. FIXED: ALLOW SCROLLING WITH AUTO HEIGHT - REDUCED PADDING */
+    /* 3. MINIMAL PADDING - 1rem top, 1px bottom, 1rem sides */
     .appview-container, 
     .main, 
     [data-testid="stAppViewContainer"], 
     [data-testid="stMain"],
     .block-container, 
     [data-testid="stMainBlockContainer"] {
-        padding-top: 0rem !important;  /* CHANGED: removed top padding */
+        padding-top: 1rem !important;  /* MINIMAL: 1rem top padding */
         margin-top: 0px !important;
-        padding-bottom: 0rem !important;  /* CHANGED: removed bottom padding */
-        padding-left: 0.4rem !important;
-        padding-right: 0.4rem !important;
+        padding-bottom: 1px !important;  /* MINIMAL: 1px bottom padding */
+        padding-left: 1rem !important;  /* MINIMAL: 1rem side padding */
+        padding-right: 1rem !important;  /* MINIMAL: 1rem side padding */
         overflow: auto !important;
         height: auto !important;
         max-height: none !important;
@@ -76,14 +76,15 @@ st.markdown("""
         padding: 0px !important;
     }
 
-    /* 4. FIXED: REPORT VIEWER WITH PROPER SCROLLING - REDUCED MARGIN */
+    /* 4. REPORT VIEWER WITH MAXIMIZED HEIGHT */
     iframe[title="streamlit_components.components.html"] {
-        height: 600px !important;
-        max-height: 600px !important;
+        height: calc(100vh - 200px) !important;  /* DYNAMIC: fills remaining screen height */
+        min-height: 400px !important;
         border: none !important;
-        margin-bottom: 0px !important;  /* CHANGED: removed bottom margin */
-        margin-top: 0px !important;  /* CHANGED: removed top margin */
+        margin-bottom: 0px !important;
+        margin-top: 0px !important;
         width: 100% !important;
+        flex: 1 !important;
     }
     
     /* Optimize Tab Headers Matrix for High Density Views */
@@ -94,8 +95,52 @@ st.markdown("""
     }
     
     div[data-testid="stTabs"] {
-        margin-top: -5px !important;
-        margin-bottom: 0px !important;  /* CHANGED: removed bottom margin */
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    /* TAB CONTENT - MAXIMIZE REAL ESTATE */
+    div[data-testid="stTabContent"] {
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        flex: 1 !important;
+        height: calc(100vh - 220px) !important;  /* DYNAMIC: fills remaining space */
+        min-height: 300px !important;
+        overflow: auto !important;
+    }
+    
+    /* TAB PANELS - FULL HEIGHT */
+    div[role="tabpanel"] {
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        height: 100% !important;
+        overflow: auto !important;
+    }
+    
+    /* VERTICAL BLOCKS INSIDE TABS - MINIMAL GAP */
+    div[data-testid="stVerticalBlock"] {
+        gap: 0.25rem !important;  /* MINIMAL: small gap between elements */
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        height: 100% !important;
+    }
+    
+    /* MAIN BLOCK CONTAINER - MINIMAL PADDING */
+    .main .block-container {
+        padding-top: 1rem !important;  /* MINIMAL: 1rem top */
+        padding-bottom: 1px !important;  /* MINIMAL: 1px bottom */
+        margin-top: 0rem !important;
+        margin-bottom: 0rem !important;
+        max-width: 100% !important;
     }
     
     /* 5. Ultra-Compact Control Bar layout matrix definitions */
@@ -106,7 +151,7 @@ st.markdown("""
         padding: 0.2rem 0.5rem !important; 
         border-radius: 8px;
         margin-top: 0px !important; 
-        margin-bottom: 10px !important;
+        margin-bottom: 0.5rem !important;  /* MINIMAL: small gap after control bar */
     }
     
     .stSelectbox label { display: none !important; } 
@@ -140,39 +185,6 @@ st.markdown("""
         line-height: 1 !important;
     }
     .stButton > button:hover, .stDownloadButton > button:hover { background-color: #0b4cb4 !important; }
-    
-    /* REMOVED: Tab content padding that was causing thick white space */
-    div[data-testid="stTabContent"] {
-        padding-top: 0px !important;  /* CHANGED: removed top padding from tab content */
-        padding-bottom: 0px !important;  /* CHANGED: removed bottom padding from tab content */
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-    }
-    
-    /* REMOVED: Additional padding from tab panels */
-    div[role="tabpanel"] {
-        padding-top: 0px !important;  /* CHANGED: removed padding from tab panels */
-        padding-bottom: 0px !important;  /* CHANGED: removed padding from tab panels */
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
-    }
-    
-    /* REMOVED: Padding from Streamlit's column containers inside tabs */
-    div[data-testid="stVerticalBlock"] {
-        gap: 1rem !important;  /* CHANGED: removed gap between elements */
-        padding-top: 1px !important;
-        padding-bottom: 1px !important;
-        margin-top: 1px !important;
-        margin-bottom: 1px !important;
-    }
-    
-    /* REMOVED: Extra space from Streamlit's main block container */
-    .main .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
-        margin-top: 1rem !important;
-        margin-bottom: 1rem !important;
-    }
     
     /* CSS Blocking Engine to Hide Deployment Watermarks */
     ._profilePreview_gzau3_63,
@@ -833,7 +845,7 @@ with col3:
             use_container_width=True
         )
 
-# --- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
+# --- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME (MAXIMIZED) ---
 if selected_ta != "Select Trade Area..." and selected_site_display != "Select Site...":
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     if not site_data.empty:
@@ -903,6 +915,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
                 
+                # MAXIMIZED: Use full available height for the report
                 components.html(rendered_view, height=600, scrolling=True)
                     
             except Exception as e:
@@ -943,6 +956,9 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         gap: 15px;
                         padding: 10px 0;
                         max-width: 100%;
+                        height: 100%;
+                        min-height: 400px;
+                        align-content: start;
                     }
                     .image-grid-item {
                         border: 1px solid #dadce0;
@@ -1070,7 +1086,8 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     });
                 </script>
                 '''
-                components.html(grid_html, height=500, scrolling=True)
+                # MAXIMIZED: Use full available height for the grid
+                components.html(grid_html, height=550, scrolling=True)
             else:
                 st.info("No photo links configured for this property record selection.")
 
@@ -1108,6 +1125,9 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         gap: 15px;
                         padding: 10px 0;
                         max-width: 100%;
+                        height: 100%;
+                        min-height: 400px;
+                        align-content: start;
                     }
                     .image-grid-item {
                         border: 1px solid #dadce0;
@@ -1235,6 +1255,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     });
                 </script>
                 '''
-                components.html(grid_html, height=500, scrolling=True)
+                # MAXIMIZED: Use full available height for the grid
+                components.html(grid_html, height=550, scrolling=True)
             else:
                 st.info("No layout documents configured for this property record selection.")
