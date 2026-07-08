@@ -27,9 +27,19 @@ st.markdown("""
 
 * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
 
-/* 1. FIXED: MAIN VIEWPORT WITH NATIVE SCROLL & INCREASED HEIGHT */
+/* HIDE SCROLLBARS ON ALL ELEMENTS EXCEPT BODY */
+* {
+    scrollbar-width: none !important; /* Firefox */
+    -ms-overflow-style: none !important;  /* IE and Edge */
+}
+*::-webkit-scrollbar {
+    display: none !important; /* Chrome, Safari, Opera */
+}
+
+/* 1. FIXED: MAIN VIEWPORT WITH NATIVE SCROLL & INCREASED HEIGHT (+50px) */
 html, body {
-    overflow: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     height: 100% !important;
     margin: 0px !important;
     padding: 0px !important;
@@ -49,7 +59,7 @@ div[data-testid="stDecoration"] {
     opacity: 0 !important;
 }
 
-/* 3. FIXED: ALLOW SCROLLING WITH INCREASED GLOBAL HEIGHT */
+/* 3. FIXED: ALLOW SCROLLING WITH INCREASED GLOBAL HEIGHT (+50px) */
 .appview-container, 
 .main, 
 [data-testid="stAppViewContainer"], 
@@ -61,10 +71,10 @@ div[data-testid="stDecoration"] {
     padding-bottom: 0px !important;
     padding-left: 0.4rem !important;
     padding-right: 0.4rem !important;
-    overflow: auto !important;
+    overflow: visible !important; /* Changed to visible to prevent inner scrollbars */
     height: auto !important;
     max-height: none !important;
-    min-height: 10000vh !important; /* INCREASED GLOBALLY */
+    min-height: calc(150vh + 50px) !important; /* INCREASED BY 50PX GLOBALLY */
 }
 
 /* Catch and crush any empty layout blocks */
@@ -76,13 +86,14 @@ div[data-testid="stVerticalBlock"] > div:empty {
     padding: 0px !important;
 }
 
-/* 4. FIXED: REPORT VIEWER WITH INCREASED HEIGHT */
+/* 4. FIXED: REPORT VIEWER WITH INCREASED HEIGHT & NO INNER SCROLLBAR */
 iframe[title="streamlit_components.components.html"] {
     height: 900px !important; /* INCREASED HEIGHT */
     max-height: 900px !important;
     border: none !important;
     margin-bottom: 10px !important;
     width: 100% !important;
+    overflow: hidden !important; /* Prevents iframe from having its own scrollbar */
 }
 
 /* Optimize Tab Headers Matrix for High Density Views */
@@ -869,7 +880,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS"))
                 rendered_view = rendered_view.replace("_REMARKS_", process_val("REMARKS"))
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-                components.html(rendered_view, height=900, scrolling=True) # INCREASED HEIGHT
+                components.html(rendered_view, height=900, scrolling=False) # SCROLLING FALSE TO FORCE OUTER SCROLLBAR
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
@@ -967,7 +978,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         </div>
                     '''
                 grid_html += '</div>'
-                components.html(grid_html, height=700, scrolling=True) # INCREASED HEIGHT
+                components.html(grid_html, height=700, scrolling=False) # SCROLLING FALSE TO FORCE OUTER SCROLLBAR
             else:
                 st.info("No photo links configured for this property record selection.")
 
@@ -1064,6 +1075,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         </div>
                     '''
                 grid_html += '</div>'
-                components.html(grid_html, height=700, scrolling=True) # INCREASED HEIGHT
+                components.html(grid_html, height=700, scrolling=False) # SCROLLING FALSE TO FORCE OUTER SCROLLBAR
             else:
                 st.info("No layout documents configured for this property record selection.")
