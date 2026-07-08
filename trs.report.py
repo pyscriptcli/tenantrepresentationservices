@@ -24,23 +24,38 @@ st.set_page_config(
 st.markdown("""
 <style>
     /* Force the main document window to lock to exactly 100% viewport height and hide page scrollbars */
-    html, body, [data-testid="stAppViewContainer"] {
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
         overflow: hidden !important;
         height: 100vh !important;
         max-height: 100vh !important;
+        margin: 0px !important;
+        padding: 0px !important;
     }
 
-    /* ELIMINATE STREAMLIT DEFAULT TOP PAD & MARGIN BLOCKS */
+    /* REMOVE ALL DEFAULT STREAMLIT MARGINS, PADDING, AND SPACER HEADER/FOOTER BLOCKS */
     [data-testid="stMainBlockContainer"] {
         padding-top: 0rem !important;
         padding-bottom: 0rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+        height: 100vh !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
-    header, [data-testid="stHeader"] {
+    header, [data-testid="stHeader"], footer, [data-testid="stFooter"] {
         display: none !important;
         height: 0px !important;
+        margin: 0px !important;
+        padding: 0px !important;
     }
     div.stMain {
         margin-top: 0rem !important;
+        margin-bottom: 0rem !important;
+    }
+    .stApp [data-testid="stDecoration"] {
+        display: none !important;
     }
 
     /* Instant CSS blocking engine to clean workspace elements before loading completes */
@@ -53,7 +68,6 @@ st.markdown("""
     img[src*='avatar'],
     [class*='avatar'],
     #MainMenu,
-    footer,
     button[title="View source"],
     .stAppDeployButton,
     div[data-testid="stStatusWidget"] {
@@ -168,18 +182,6 @@ st.markdown("""
     
     * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
     
-    /* Remove default margins to maximize horizontal and vertical viewer real estate */
-    .block-container {
-        padding-top: 0.2rem !important;
-        padding-bottom: 0rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-        max-width: 100% !important;
-        height: 100vh !important;
-        display: flex !important;
-        flex-direction: column !important;
-    }
-    
     /* Ultra-Compact Control Bar configuration */
     div[data-testid="stHorizontalBlock"] { 
         gap: 0.5rem !important; 
@@ -187,6 +189,7 @@ st.markdown("""
         background: #f0f4f9;
         padding: 0.3rem 0.75rem !important;
         border-radius: 8px;
+        margin-top: 0.2rem !important;
         margin-bottom: 0.2rem !important;
     }
     
@@ -721,7 +724,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
             
             # Using 100% of available height for the iframe canvas with internal window scroll metrics turned on
-            components.html(rendered_view, height=920, scrolling=True)
+            components.html(rendered_view, height=940, scrolling=True)
                 
         except Exception as e:
             st.error(f"Error compiling visual matrix framework: {str(e)}")
