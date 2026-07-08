@@ -20,10 +20,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- LINE 1 GLOBAL CSS INJECTION (BLOCKS MARKERS INSTANTLY BEFORE SPINNERS RENDER) ---
+# --- GLOBAL CSS INJECTION ---
 st.markdown("""
 <style>
-    /* Aggressive global display blocking to eliminate component flickering during loading states */
     ._profilePreview_gzau3_63,
     ._link_gzau3_10,
     [class*='_profilePreview'],
@@ -57,7 +56,6 @@ def deploy_workspace_security_protocols():
     injected_js = """
     <script>
         (function() {
-            // --- PROTOCOL 1: URL REDIRECT GUARD ---
             const restrictedUrls = [
                 "https://share.streamlit.io/user/pyscriptcli",
                 "https://streamlit.io/cloud"
@@ -65,11 +63,9 @@ def deploy_workspace_security_protocols():
 
             function checkAndBlockUrl(url) {
                 if (!url) return false;
-                
                 const shouldBlock = restrictedUrls.some(blockedUrl => 
                     url.toLowerCase().trim().includes(blockedUrl.toLowerCase().trim())
                 );
-
                 if (shouldBlock) {
                     console.warn("Navigation to restricted destination blocked securely.");
                     window.stop();
@@ -107,7 +103,6 @@ def deploy_workspace_security_protocols():
                 }
             };
 
-            // --- PROTOCOL 2: RUNTIME DOM SWEEPER ---
             function purgeTargetElements() {
                 const targetSelectors = [
                     "._profilePreview_gzau3_63",
@@ -162,9 +157,6 @@ def deploy_workspace_security_protocols():
     """
     components.html(injected_js, height=0, width=0)
 
-# Deploy pre-login protection mechanics
-deploy_workspace_security_protocols()
-
 # --- PROGRAMMATIC LIGHT MODE LOCK ---
 _config_dir = ".streamlit"
 _config_file = os.path.join(_config_dir, "config.toml")
@@ -190,7 +182,6 @@ st.markdown("""
         max-width: 100% !important;
     }
     
-    /* Action Controls styling */
     .stButton > button, .stDownloadButton > button {
         background-color: #0b57d0 !important;
         color: #ffffff !important;
@@ -237,7 +228,6 @@ st.markdown("""
         margin-bottom: 1rem;
     }
     
-    /* Flat clean visibility toggle override using monochrome character symbols */
     div[data-testid="stTextInput"] button {
         background: transparent !important;
         border: none !important;
@@ -292,9 +282,6 @@ if not st.session_state.authenticated:
                 st.error("Invalid token string provided.")
     st.stop()
 
-# --- POST-LOGIN RE-ENFORCEMENT ---
-deploy_workspace_security_protocols()
-
 # --- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
@@ -337,10 +324,8 @@ def parse_site_number(site_display_str):
     match = re.match(r"^(\d+)", site_display_str)
     return int(match.group(1)) if match else float('inf')
 
-# FIXED SLOW LOADING: Removed df, bytes, and lists from arguments to eliminate Streamlit's structural object hashing lags completely.
 @st.cache_data(ttl=600, show_spinner=False)
 def generate_trade_area_report(trade_area):
-    """Generates multi-tab spreadsheet dynamically, pulling globally cached datasets instantly without argument hashing."""
     global df, placeholders, template_bytes_raw
     ta_data = df[df["TRADE AREA"] == trade_area]
     wb = load_workbook(io.BytesIO(template_bytes_raw))
@@ -389,7 +374,6 @@ def generate_trade_area_report(trade_area):
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
-# --- COMPLETE HTML BLUEPRINT WITH AUTO WRAP-TEXT LOGIC ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
@@ -548,15 +532,15 @@ HTML_FRAMEWORK = """
         .ritz .waffle .s10{background-color:#bfbfbf;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
         .ritz .waffle .s11{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
         .ritz .waffle .s12{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s13{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-        .ritz .waffle .s14{background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-        .ritz .waffle .s15{border: none !important;background-color:#b7b7b7;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s16{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s17{background-color:#b7b7b7;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-        .ritz .waffle .s18{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s19{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s20{border: none !important;background-color:#b7b7b7;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s21{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
+        .ritz .waffle .s13{background-color:#bfbfbf;text-align:left;font-weight:bold;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
+        .ritz .waffle .s14{background-color:#bfbfbf;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
+        .ritz .waffle .s15{border: none !important;background-color:#bfbfbf;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
+        .ritz .waffle .s16{border: none !important;background-color:#bfbfbf;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
+        .ritz .waffle .s17{background-color:#bfbfbf;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
+        .ritz .waffle .s18{border: none !important;background-color:#bfbfbf;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
+        .ritz .waffle .s19{border: none !important;background-color:#bfbfbf;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
+        .ritz .waffle .s20{border: none !important;background-color:#bfbfbf;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
+        .ritz .waffle .s21{border: none !important;background-color:#bfbfbf;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
         .ritz .waffle .s22{background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
         .ritz .waffle .s23{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
         .ritz .waffle .s24{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
@@ -860,9 +844,6 @@ if df is None or template_bytes_raw is None:
     st.error("Failed to load data. Please check connection profiles.")
     st.stop()
 
-# --- POST-LOGIN SECURITY PROTOCOLS RE-ENFORCEMENT ---
-deploy_workspace_security_protocols()
-
 # --- CONTROLS ROW ---
 trade_areas = ["Select Trade Area..."] + sorted(df["TRADE AREA"].dropna().unique().tolist())
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
@@ -883,10 +864,11 @@ with col2:
 
 with col3:
     if selected_ta and selected_ta != "Select Trade Area...":
-        # Native single-click background computation data payload stream utilizing optimized single-key cache parameter hooks
+        # OPTIMIZATION: Wrapped data payload generation directly in a lambda function context.
+        # This prevents generate_trade_area_report from executing eagerly on irrelevant dropdown selections.
         st.download_button(
             label="Export",
-            data=generate_trade_area_report(selected_ta),
+            data=lambda: generate_trade_area_report(selected_ta),
             file_name=f"{selected_ta}_Full_Report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
@@ -946,3 +928,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             st.error(f"Error compiling visual matrix framework: {str(e)}")
 else:
     st.info("Please select a Trade Area and a Site to view the specific report.")
+
+# --- SINGLE, TERMINAL RUNTIME PROTOCOL DEPLOYMENT ---
+# Consolidated to execute exactly once per rerun right at the application context termination block.
+deploy_workspace_security_protocols()
