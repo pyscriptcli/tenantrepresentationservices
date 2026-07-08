@@ -290,16 +290,15 @@ def download_file(url):
     except:
         return None
 
-# Converts any google drive viewing link into a frontend-renderable public thumbnail endpoint
-def transform_to_renderable_url(url):
+def extract_google_drive_id(url):
+    """Extracts the unique file ID from various Google Drive URL formats."""
     try:
-        file_id_match = re.search(r'(?:id=|/d/|/uc\?.*?id=)([a-zA-Z0-9_-]{25,})', str(url))
-        if file_id_match:
-            file_id = file_id_match.group(1)
-            return f"https://drive.google.com/thumbnail?sz=w1200&id={file_id}"
+        match = re.search(r'(?:id=|/d/|/uc\?.*?id=)([a-zA-Z0-9_-]{25,})', str(url))
+        if match:
+            return match.group(1)
     except:
         pass
-    return str(url)
+    return None
 
 def get_placeholders(sheet):
     placeholders = set()
@@ -773,7 +772,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (FIXED NATIVE RENDERER) ---
+        # --- TAB 2: PROPERTY PHOTOS (IFRAME PREVIEW METHOD) ---
         with tab_photos:
             photo_cols = ["PROPERTY PHOTOS 1", "PROPERTY PHOTOS 2", "PROPERTY PHOTOS 3", "PROPERTY PHOTOS 4", "PROPERTY PHOTOS 5"]
             valid_photos = []
@@ -781,20 +780,29 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             for col in photo_cols:
                 raw_img_val = site_row_data.get(col, "")
                 if pd.notna(raw_img_val) and str(raw_img_val).strip() != "":
-                    img_url = transform_to_renderable_url(raw_img_val)
-                    if "drive.google.com" in img_url:
-                        valid_photos.append((col, img_url))
+                    file_id = extract_google_drive_id(raw_img_val)
+                    if file_id:
+                        # Use the native previewer iframe approach
+                        preview_url = f"https://drive.google.com/file/d/{file_id}/preview"
+                        valid_photos.append((col, preview_url, raw_img_val))
             
             if valid_photos:
                 cols = st.columns(len(valid_photos))
-                for i, (label, url) in enumerate(valid_photos):
+                for i, (label, iframe_url, original_url) in enumerate(valid_photos):
                     with cols[i]:
                         st.markdown(f"<p style='font-size:0.7rem; font-weight:700; color:#5f6368; margin:0;'>{label}</p>", unsafe_allow_html=True)
-                        st.markdown(f'<img src="{url}" style="width:100%; height:auto; border-radius:4px; margin-top:5px; border:1px solid #dadce0;">', unsafe_allow_html=True)
+                        # Inject the iframe directly
+                        st.markdown(f'''
+                            <iframe src="{iframe_url}" 
+                                    style="width:100%; height:280px; border-radius:4px; margin-top:5px; border:1px solid #dadce0;" 
+                                    allow="autoplay">
+                            </iframe>
+                        ''', unsafe_allow_html=True)
+                        st.markdown(f"<a href='{original_url}' target='_blank' style='font-size:0.7rem;'>Open Full Window</a>", unsafe_allow_html=True)
             else:
                 st.info("No photos available.")
 
-        # --- TAB 3: PROPERTY DOCS (FIXED NATIVE RENDERER) ---
+        # --- TAB 3: PROPERTY DOCS (IFRAME PREVIEW METHOD) ---
         with tab_docs:
             doc_cols = ["TCT", "LOT PLAN", "BLDG PLAN", "TAX MAP"]
             valid_docs = []
@@ -802,16 +810,24 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             for col in doc_cols:
                 raw_doc_val = site_row_data.get(col, "")
                 if pd.notna(raw_doc_val) and str(raw_doc_val).strip() != "":
-                    doc_url = transform_to_renderable_url(raw_doc_val)
-                    if "drive.google.com" in doc_url:
-                        valid_docs.append((col, doc_url))
+                    file_id = extract_google_drive_id(raw_doc_val)
+                    if file_id:
+                        # Use the native previewer iframe approach
+                        preview_url = f"https://drive.google.com/file/d/{file_id}/preview"
+                        valid_docs.append((col, preview_url, raw_doc_val))
             
             if valid_docs:
                 cols = st.columns(len(valid_docs))
-                for i, (label, url) in enumerate(valid_docs):
+                for i, (label, iframe_url, original_url) in enumerate(valid_docs):
                     with cols[i]:
                         st.markdown(f"<p style='font-size:0.7rem; font-weight:700; color:#5f6368; margin:0;'>{label}</p>", unsafe_allow_html=True)
-                        st.markdown(f'<img src="{url}" style="width:100%; height:auto; border-radius:4px; margin-top:5px; border:1px solid #dadce0;">', unsafe_allow_html=True)
-                        st.markdown(f"<a href='{url}' target='_blank' style='font-size:0.7rem;'>View Full Resolution</a>", unsafe_allow_html=True)
+                        # Inject the iframe directly
+                        st.markdown(f'''
+                            <iframe src="{iframe_url}" 
+                                    style="width:100%; height:320px; border-radius:4px; margin-top:5px; border:1px solid #dadce0;" 
+                                    allow="autoplay">
+                            </iframe>
+                        ''', unsafe_allow_html=True)
+                        st.markdown(f"<a href='{original_url}' target='_blank' style='font-size:0.7rem;'>Open Full Window</a>", unsafe_allow_html=True)
             else:
                 st.info("No documents available.")
