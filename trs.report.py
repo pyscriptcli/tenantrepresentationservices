@@ -27,7 +27,7 @@ st.markdown("""
     
     * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
 
-    /* 1. FIXED: MAIN VIEWPORT WITH NATIVE SCROLL */
+    /* 1. COMPLETELY REMOVE ALL PADDING AND MARGINS */
     html, body {
         overflow: auto !important;
         height: 100% !important;
@@ -40,25 +40,32 @@ st.markdown("""
     header[data-testid="stHeader"], 
     [data-testid="stHeader"], 
     .stApp > header,
-    div[data-testid="stDecoration"] {
+    div[data-testid="stDecoration"],
+    .stAppDeployButton,
+    .stAppViewContainer > header,
+    footer,
+    [data-testid="stFooter"] {
         display: none !important;
         height: 0px !important;
         min-height: 0px !important;
         padding: 0px !important;
         margin: 0px !important;
         opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
     }
 
-    /* 3. FIXED: ALLOW SCROLLING WITH AUTO HEIGHT */
+    /* 3. REMOVE ALL PADDING FROM MAIN CONTAINERS */
     .appview-container, 
     .main, 
     [data-testid="stAppViewContainer"], 
     [data-testid="stMain"],
     .block-container, 
     [data-testid="stMainBlockContainer"] {
-        padding-top: 0.2rem !important;
+        padding-top: 0px !important;
         margin-top: 0px !important;
         padding-bottom: 0px !important;
+        margin-bottom: 0px !important;
         padding-left: 0.4rem !important;
         padding-right: 0.4rem !important;
         overflow: auto !important;
@@ -67,46 +74,68 @@ st.markdown("""
         min-height: 100vh !important;
     }
 
-    /* Catch and crush any empty layout blocks */
-    div[data-testid="stVerticalBlock"] > div:has(style),
-    div[data-testid="stVerticalBlock"] > div:empty {
-        display: none !important;
-        height: 0px !important;
-        margin: 0px !important;
+    /* 4. REMOVE PADDING FROM ALL VERTICAL BLOCKS */
+    div[data-testid="stVerticalBlock"] {
         padding: 0px !important;
+        margin: 0px !important;
+        gap: 0px !important;
     }
 
-    /* 4. FIXED: REPORT VIEWER WITH PROPER SCROLLING */
+    /* 5. REMOVE PADDING FROM ALL ELEMENTS */
+    .stTabs {
+        padding: 0px !important;
+        margin: 0px !important;
+    }
+
+    /* 6. REMOVE PADDING FROM TAB CONTENT */
+    [data-testid="stTabContent"] {
+        padding: 0px !important;
+        margin: 0px !important;
+    }
+
+    /* 7. REMOVE PADDING FROM IFRAMES */
     iframe[title="streamlit_components.components.html"] {
-        height: 600px !important;
-        max-height: 600px !important;
+        height: 100% !important;
+        max-height: none !important;
+        min-height: 400px !important;
         border: none !important;
-        margin-bottom: 10px !important;
+        margin: 0px !important;
+        padding: 0px !important;
         width: 100% !important;
+        display: block !important;
     }
-    
-    /* Optimize Tab Headers Matrix for High Density Views */
+
+    /* 8. REMOVE PADDING FROM ALL STREAMLIT WIDGETS */
+    .stSelectbox, .stButton, .stDownloadButton, .stColumns {
+        padding: 0px !important;
+        margin: 0px !important;
+    }
+
+    /* 9. REMOVE GAP FROM COLUMNS */
+    .stColumns, [data-testid="column"] {
+        gap: 0.2rem !important;
+        padding: 0px !important;
+        margin: 0px !important;
+    }
+
+    /* 10. REMOVE PADDING FROM TAB BUTTONS */
     button[data-baseweb="tab"] {
-        padding-top: 0.1rem !important;
-        padding-bottom: 0.1rem !important;
+        padding: 0.1rem 0.5rem !important;
         font-size: 0.85rem !important;
+        margin: 0px !important;
     }
-    
-    div[data-testid="stTabs"] {
-        margin-top: -5px !important;
-    }
-    
-    /* 5. Ultra-Compact Control Bar layout matrix definitions */
+
+    /* 11. REMOVE ALL MARGINS AND PADDING FROM CONTROLS ROW */
     div[data-testid="stHorizontalBlock"] { 
         gap: 0.5rem !important; 
         align-items: center !important; 
         background: #f0f4f9;
         padding: 0.2rem 0.5rem !important; 
         border-radius: 8px;
-        margin-top: 0px !important; 
-        margin-bottom: 10px !important;
+        margin: 0px 0px 5px 0px !important;
     }
-    
+
+    /* 12. REMOVE PADDING FROM CONTROL ELEMENTS */
     .stSelectbox label { display: none !important; } 
     .stSelectbox > div > div {
         background-color: #fff !important;
@@ -114,15 +143,9 @@ st.markdown("""
         border-radius: 4px !important;
         min-height: 28px !important;
         height: 28px !important;
+        margin: 0px !important;
     }
-    
-    .stSelectbox > div > div > div { 
-        padding-top: 0px !important; 
-        padding-bottom: 0px !important;
-        font-size: 0.8rem !important; 
-        line-height: 26px !important;
-    }
-    
+
     .stButton > button, .stDownloadButton > button {
         background-color: #0b57d0 !important;
         color: #ffffff !important;
@@ -136,10 +159,16 @@ st.markdown("""
         width: 100% !important;
         box-shadow: 0 1px 2px 0 rgba(60,64,67,0.2) !important;
         line-height: 1 !important;
+        margin: 0px !important;
     }
-    .stButton > button:hover, .stDownloadButton > button:hover { background-color: #0b4cb4 !important; }
-    
-    /* CSS Blocking Engine to Hide Deployment Watermarks */
+
+    /* 13. REMOVE PADDING FROM ELEMENTS INSIDE TABS */
+    .element-container, .stMarkdown, .stAlert {
+        padding: 0px !important;
+        margin: 0px !important;
+    }
+
+    /* 14. BLOCK DEPLOYMENT WATERMARKS AND FOOTERS */
     ._profilePreview_gzau3_63,
     ._link_gzau3_10,
     [class*='_profilePreview'],
@@ -151,13 +180,31 @@ st.markdown("""
     #MainMenu,
     button[title="View source"],
     .stAppDeployButton,
-    div[data-testid="stStatusWidget"] {
+    div[data-testid="stStatusWidget"],
+    footer,
+    [data-testid="stFooter"],
+    .stDeployButton,
+    [class*="stDeploy"] {
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;
         height: 0 !important;
         width: 0 !important;
         pointer-events: none !important;
+        position: absolute !important;
+        bottom: -9999px !important;
+    }
+
+    /* 15. REMOVE ALL BOTTOM PADDING FROM TAB CONTENT */
+    .tab-content {
+        padding-bottom: 0px !important;
+        margin-bottom: 0px !important;
+    }
+
+    /* 16. FORCE REMOVE PADDING FROM ALL CHILDREN OF TAB CONTENT */
+    [data-testid="stTabContent"] > div {
+        padding-bottom: 0px !important;
+        margin-bottom: 0px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -214,13 +261,29 @@ def deploy_workspace_security_protocols():
                     "._profilePreview_gzau3_63", "._link_gzau3_10",
                     "[class*='_profilePreview']", "[class*='_link_gzau3']",
                     "a[href*='share.streamlit.io']", "a[href*='streamlit.io']",
-                    "img[src*='avatar']", "[class*='avatar']"
+                    "img[src*='avatar']", "[class*='avatar']",
+                    "footer", "[data-testid='stFooter']",
+                    ".stDeployButton", "[class*='stDeploy']"
                 ];
                 targetSelectors.forEach(selector => {
-                    document.querySelectorAll(selector).forEach(el => el.style.setProperty('display', 'none', 'important'));
+                    document.querySelectorAll(selector).forEach(el => {
+                        el.style.setProperty('display', 'none', 'important');
+                        el.style.setProperty('visibility', 'hidden', 'important');
+                        el.style.setProperty('opacity', '0', 'important');
+                        el.style.setProperty('height', '0', 'important');
+                        el.style.setProperty('padding', '0', 'important');
+                        el.style.setProperty('margin', '0', 'important');
+                    });
                     if (window.top && window.top.document) {
                         try {
-                            window.top.document.querySelectorAll(selector).forEach(el => el.style.setProperty('display', 'none', 'important'));
+                            window.top.document.querySelectorAll(selector).forEach(el => {
+                                el.style.setProperty('display', 'none', 'important');
+                                el.style.setProperty('visibility', 'hidden', 'important');
+                                el.style.setProperty('opacity', '0', 'important');
+                                el.style.setProperty('height', '0', 'important');
+                                el.style.setProperty('padding', '0', 'important');
+                                el.style.setProperty('margin', '0', 'important');
+                            });
                         } catch(err) {}
                     }
                 });
@@ -240,6 +303,18 @@ def deploy_workspace_security_protocols():
                     if (window.top && window.top !== window) { checkAndBlockUrl(window.top.location.href); }
                 } catch(e) {}
             }, 1000);
+
+            // Remove padding from all tab content dynamically
+            setTimeout(function() {
+                document.querySelectorAll('[data-testid="stTabContent"]').forEach(el => {
+                    el.style.setProperty('padding', '0', 'important');
+                    el.style.setProperty('margin', '0', 'important');
+                });
+                document.querySelectorAll('.stTabs').forEach(el => {
+                    el.style.setProperty('padding', '0', 'important');
+                    el.style.setProperty('margin', '0', 'important');
+                });
+            }, 100);
         })();
     </script>
     """
@@ -422,7 +497,7 @@ HTML_FRAMEWORK = """
         .ritz.grid-container {
             height: auto;
             overflow: visible !important;
-            padding: 10px;
+            padding: 5px !important;
             box-sizing: border-box;
         }
 
@@ -462,7 +537,7 @@ HTML_FRAMEWORK = """
         .ritz .waffle .s24{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
         .ritz .waffle .s25{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
         
-        .ritz .waffle { border-collapse: collapse; width: 100%; }
+        .ritz .waffle { border-collapse: collapse; width: 100%; margin: 0 !important; }
         .ritz .waffle tr { height: auto !important; }
         .ritz .waffle td[class*="s4"], .ritz .waffle td[class*="s9"] { height: auto !important; min-height: 20px; }
         .remarks-row { height: auto !important; }
@@ -502,7 +577,7 @@ HTML_FRAMEWORK = """
 </head>
 <body>
 <div class="ritz grid-container" dir="ltr">
-<table class="waffle" cellspacing="0" cellpadding="0" style="table-layout: fixed; width: 100%; border-collapse: collapse;">
+<table class="waffle" cellspacing="0" cellpadding="0" style="table-layout: fixed; width: 100%; border-collapse: collapse; margin: 0 !important;">
     <colgroup>
         <col style="width:223px;"><col style="width:100px;"><col style="width:86px;"><col style="width:100px;"><col style="width:94px;"><col style="width:100px;"><col style="width:81px;"><col style="width:15px;"><col style="width:148px;"><col style="width:176px;"><col style="width:100px;"><col style="width:100px;"><col style="width:100px;"><col style="width:125px;"><col style="width:29px;">
     </colgroup>
@@ -899,19 +974,18 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_photos.append((label, thumb_url, full_url))
             
             if valid_photos:
-                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
                         display: grid;
                         grid-template-columns: repeat(3, 1fr);
-                        gap: 15px;
-                        padding: 10px 0;
+                        gap: 10px;
+                        padding: 5px 0;
                         max-width: 100%;
                     }
                     .image-grid-item {
                         border: 1px solid #dadce0;
-                        border-radius: 8px;
+                        border-radius: 6px;
                         overflow: hidden;
                         background: #f8f9fa;
                         transition: transform 0.2s;
@@ -931,8 +1005,8 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         flex: 1;
                     }
                     .image-grid-item .label {
-                        padding: 6px 8px;
-                        font-size: 0.7rem;
+                        padding: 4px 6px;
+                        font-size: 0.65rem;
                         font-weight: 600;
                         color: #5f6368;
                         background: white;
@@ -958,7 +1032,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         }
                     }
                 </style>
-                <div class="image-grid-3x3">
+                <div class="image-grid-3x3" style="margin:0;padding:0;">
                 '''
                 for label, thumb_url, full_url in valid_photos:
                     grid_html += f'''
@@ -999,19 +1073,18 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_docs.append((label, thumb_url, full_url))
             
             if valid_docs:
-                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
                         display: grid;
                         grid-template-columns: repeat(3, 1fr);
-                        gap: 15px;
-                        padding: 10px 0;
+                        gap: 10px;
+                        padding: 5px 0;
                         max-width: 100%;
                     }
                     .image-grid-item {
                         border: 1px solid #dadce0;
-                        border-radius: 8px;
+                        border-radius: 6px;
                         overflow: hidden;
                         background: #f8f9fa;
                         transition: transform 0.2s;
@@ -1031,8 +1104,8 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         flex: 1;
                     }
                     .image-grid-item .label {
-                        padding: 6px 8px;
-                        font-size: 0.7rem;
+                        padding: 4px 6px;
+                        font-size: 0.65rem;
                         font-weight: 600;
                         color: #5f6368;
                         background: white;
@@ -1058,7 +1131,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         }
                     }
                 </style>
-                <div class="image-grid-3x3">
+                <div class="image-grid-3x3" style="margin:0;padding:0;">
                 '''
                 for label, thumb_url, full_url in valid_docs:
                     grid_html += f'''
