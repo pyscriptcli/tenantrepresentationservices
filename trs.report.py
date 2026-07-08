@@ -700,9 +700,9 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             
         # Instantiate Workspace Tabs
         tab_report, tab_photos, tab_docs = st.tabs([
-            "INFORMATION", 
-            "PHOTOS", 
-            "DOCS"
+            "PROPERTY INFORMATION", 
+            "PROPERTY PHOTOS", 
+            "PROPERTY DOCS"
         ])
         
         # --- TAB 1: SITE INFORMATION REPORT ---
