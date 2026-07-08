@@ -33,8 +33,8 @@ st.markdown("""
     }
 
     /* ELIMINATE STREAMLIT MAIN VIEWPORT PADDING BLOCKS COMPLETELY */
-    [data-testid="stMainBlockContainer"] {
-        padding-top: 0rem !important;
+    .block-container, [data-testid="stMainBlockContainer"] {
+        padding-top: 1rem !important; /* Minimized top padding to remove the large gap */
         padding-bottom: 0rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
@@ -50,6 +50,7 @@ st.markdown("""
     header, [data-testid="stHeader"], footer, [data-testid="stFooter"], [data-testid="stDecoration"] {
         display: none !important;
         height: 0px !important;
+        min-height: 0px !important;
         margin: 0px !important;
         padding: 0px !important;
     }
@@ -189,9 +190,9 @@ st.markdown("""
         gap: 0.5rem !important; 
         align-items: center !important; 
         background: #f0f4f9;
-        padding: 0.3rem 0.75rem !important;
+        padding: 0.2rem 0.5rem !important; /* Compressed padding */
         border-radius: 8px;
-        margin-top: 0.2rem !important;
+        margin-top: 0rem !important; /* Removed top margin */
         margin-bottom: 0.1rem !important;
     }
     
@@ -200,23 +201,30 @@ st.markdown("""
         background-color: #fff !important;
         border: 1px solid #747775 !important;
         border-radius: 4px !important;
-        min-height: 32px !important;
-        height: 32px !important;
+        min-height: 28px !important; /* Height strictly compressed */
+        height: 28px !important;
     }
-    .stSelectbox > div > div > div { padding-top: 0px !important; font-size: 0.85rem !important; }
+    /* Vertically align text within the extremely tight bounds */
+    .stSelectbox > div > div > div { 
+        padding-top: 0px !important; 
+        padding-bottom: 0px !important;
+        font-size: 0.8rem !important; 
+        line-height: 26px !important;
+    }
     
     .stButton > button, .stDownloadButton > button {
         background-color: #0b57d0 !important;
         color: #ffffff !important;
         border: none !important;
         border-radius: 100px !important;
-        padding: 0.2rem 1rem !important;
-        font-size: 0.82rem !important;
+        padding: 0.1rem 1rem !important; /* Reduced vertical padding */
+        font-size: 0.8rem !important;
         font-weight: 500 !important;
-        min-height: 32px !important;
-        height: 32px !important;
+        min-height: 28px !important; /* Height strictly compressed */
+        height: 28px !important;
         width: 100% !important;
         box-shadow: 0 1px 2px 0 rgba(60,64,67,0.2) !important;
+        line-height: 1 !important;
     }
     .stButton > button:hover, .stDownloadButton > button:hover { background-color: #0b4cb4 !important; }
     
