@@ -73,7 +73,7 @@ div[data-testid="stDecoration"] {
     overflow: auto !important;
     height: auto !important;
     max-height: none !important;
-    min-height: 100vh !important;
+    min-height: 200vh !important;
 }
 
 /* Catch and crush any empty layout blocks */
@@ -851,7 +851,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS"))
                 rendered_view = rendered_view.replace("_REMARKS_", process_val("REMARKS"))
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-                components.html(rendered_view, height=600, scrolling=True)
+                components.html(rendered_view, height=1000, scrolling=True)
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
