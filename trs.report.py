@@ -34,7 +34,7 @@ st.markdown("""
 
     /* ELIMINATE STREAMLIT MAIN VIEWPORT PADDING BLOCKS COMPLETELY */
     .block-container, [data-testid="stMainBlockContainer"] {
-        padding-top: 1rem !important; /* Minimized top padding to remove the large gap */
+        padding-top: 0rem !important; /* Strictly set to 0 to eliminate top gap */
         padding-bottom: 0rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
@@ -44,6 +44,14 @@ st.markdown("""
         max-height: 100vh !important;
         display: flex !important;
         flex-direction: column !important;
+    }
+    
+    /* Hide the invisible containers created by st.markdown CSS injections so they don't stack height */
+    div[data-testid="stVerticalBlock"] > div:has(style) {
+        display: none !important;
+        height: 0px !important;
+        margin: 0px !important;
+        padding: 0px !important;
     }
     
     /* Hard-wipe platform header/footer alignment dimensions completely */
@@ -192,7 +200,7 @@ st.markdown("""
         background: #f0f4f9;
         padding: 0.2rem 0.5rem !important; /* Compressed padding */
         border-radius: 8px;
-        margin-top: 0rem !important; /* Removed top margin */
+        margin-top: 0px !important; /* Strictly set to 0 */
         margin-bottom: 0.1rem !important;
     }
     
