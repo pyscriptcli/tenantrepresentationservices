@@ -23,7 +23,7 @@ st.set_page_config(
 # --- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & ZERO PADDING GHOSTS) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght=400;500;700&family=Roboto:wght=300;400;500;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
     
     * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
 
@@ -291,29 +291,17 @@ def download_file(url):
         return None
 
 def clean_and_extract_url(cell_value):
-    """Bypasses formula blocks like =IMAGE("url") to get the clean direct link string."""
+    """Bypasses formula wrappers like =IMAGE("url") to grab the literal URL target."""
     if cell_value is None:
         return ""
     val_str = str(cell_value).strip()
-    
-    # Check if nested inside an IMAGE formula layout
     formula_match = re.search(r'IMAGE\s*\(\s*["\'](https?://[^"\']+)["\']', val_str, re.IGNORECASE)
     if formula_match:
         return formula_match.group(1)
-        
-    # Standard URL match fallback
     url_match = re.search(r'(https?://[^\s"\']+)', val_str)
     if url_match:
         return url_match.group(1)
-        
     return val_str
-
-def extract_google_drive_id(clean_url):
-    """Extracts unique file ID from verified URL strings."""
-    if not clean_url:
-        return None
-    match = re.search(r'(?:id=|/d/|/uc\?.*?id=)([a-zA-Z0-9_-]{25,})', clean_url)
-    return match.group(1) if match else None
 
 def get_placeholders(sheet):
     placeholders = set()
@@ -674,35 +662,69 @@ def load_data():
     if source_bytes is None or template_data is None: 
         return None, None, None
     
-    # Ingest openpyxl layout with direct cells intact
+    # Ingest layout with formulas intact
     src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
     src_ws = src_wb.active
     
     raw_rows = list(src_ws.iter_rows(values_only=False))
-    header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
+    
+    # Absolute column coordinates definition based on provided mapping images
+    # Column N = Index 13 (Trade Area), Column P = Index 15 (Site Name)
+    col_mapping = {
+        'TCT': 2,           # Column C
+        'LOT PLAN': 3,      # Column D
+        'BLDG PLAN': 4,     # Column E
+        'TAX MAP': 5,       # Column F
+        'PROPERTY PHOTOS 1': 7,   # Column H
+        'PROPERTY PHOTOS 2': 8,   # Column I
+        'PROPERTY PHOTOS 3': 9,   # Column J
+        'PROPERTY PHOTOS 4': 10,  # Column K
+        'PROPERTY PHOTOS 5': 11,  # Column L
+        'TRADE AREA': 13,   # Column N
+        'SITE NAME': 15     # Column P
+    }
     
     parsed_data_list = []
-    for r in raw_rows[1:]:
+    
+    # Dynamic coordinate iterator execution
+    for row_cells in raw_rows[1:]:
+        # Skip header rows or empty buffer ranges safely
+        if len(row_cells) <= 15:
+            continue
+            
+        trade_area_val = str(row_cells[13].value or "").strip()
+        site_name_val = str(row_cells[15].value or "").strip()
+        
+        if not trade_area_val and not site_name_val:
+            continue
+            
         row_dict = {}
-        has_val = False
-        for idx, cell in enumerate(r):
-            if idx < len(header_row) and header_row[idx]:
-                # Workaround: Intercept cell expressions right away and clean them up
-                cleaned_val = clean_and_extract_url(cell.value)
-                row_dict[header_row[idx]] = cleaned_val
-                if cleaned_val != "":
-                    has_val = True
-        if has_val:
-            parsed_data_list.append(row_dict)
+        row_dict['TRADE AREA'] = trade_area_val
+        row_dict['SITE NAME'] = site_name_val
+        
+        # Pull standard text data safely across other columns for the HTML viewer
+        # mapped via lower range loop index boundaries
+        for col_idx, cell in enumerate(row_cells):
+            if col_idx < len(raw_rows[0]) and raw_rows[0][col_idx].value:
+                h_name = str(raw_rows[0][col_idx].value).strip().upper()
+                if h_name not in col_mapping:
+                    row_dict[h_name] = clean_and_extract_url(cell.value)
+        
+        # Apply coordinate logic for Media asset links
+        for label, sheet_idx in col_mapping.items():
+            if label not in ['TRADE AREA', 'SITE NAME']:
+                row_dict[label] = clean_and_extract_url(row_cells[sheet_idx].value)
+                
+        parsed_data_list.append(row_dict)
             
     df = pd.DataFrame(parsed_data_list)
     df = df.loc[:, ~df.columns.str.contains('^$')]
     
-    # Synthesize standard high-density dropdown label matrix entries
+    # Synthesize selection list display labels
     def create_site_display(row):
         site_no = row.get('SITE NO', '')
         site_name = row.get('SITE NAME', '')
-        if pd.notna(site_no) and site_no != '':
+        if pd.notna(site_no) and str(site_no).strip() != '':
             try:
                 return f"{int(float(str(site_no)))} - {site_name}"
             except:
@@ -720,7 +742,7 @@ with st.spinner("Loading Data Assets..."):
     df, placeholders, template_bytes_raw = load_data()
 
 if df is None or template_bytes_raw is None:
-    st.error("Failed to load data assets. Please verify link paths.")
+    st.error("Failed to load data assets. Please verify source configurations.")
     st.stop()
 
 deploy_workspace_security_protocols()
@@ -812,13 +834,12 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (NATIVE ACTION TILES - ROBUST FALLBACK) ---
+        # --- TAB 2: PROPERTY PHOTOS (NATIVE ACTION TILES) ---
         with tab_photos:
             photo_cols = ["PROPERTY PHOTOS 1", "PROPERTY PHOTOS 2", "PROPERTY PHOTOS 3", "PROPERTY PHOTOS 4", "PROPERTY PHOTOS 5"]
             found_any_photo = False
             
-            # Simple, Creative dashboard cards layout using Streamlit metrics layout
-            st.markdown("<p style='font-size:0.85rem; font-weight:500; color:#5f6368; padding-bottom:10px;'>Select any discovered asset link tile below to open the property images:</p>", unsafe_allow_html=True)
+            st.markdown("<p style='font-size:0.85rem; font-weight:500; color:#5f6368; padding-bottom:10px;'>Select any coordinates cell asset tile below to launch property views:</p>", unsafe_allow_html=True)
             
             cols = st.columns(len(photo_cols))
             for idx, col_name in enumerate(photo_cols):
@@ -839,12 +860,12 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             if not found_any_photo:
                 st.info("No photo links configured for this property record selection.")
 
-        # --- TAB 3: PROPERTY DOCS (NATIVE ACTION TILES - ROBUST FALLBACK) ---
+        # --- TAB 3: PROPERTY DOCS (NATIVE ACTION TILES) ---
         with tab_docs:
             doc_cols = ["TCT", "LOT PLAN", "BLDG PLAN", "TAX MAP"]
             found_any_doc = False
             
-            st.markdown("<p style='font-size:0.85rem; font-weight:500; color:#5f6368; padding-bottom:10px;'>Select any legal schematic asset link tile below to view the secure blueprint documentation:</p>", unsafe_allow_html=True)
+            st.markdown("<p style='font-size:0.85rem; font-weight:500; color:#5f6368; padding-bottom:10px;'>Select any schematic mapping asset tile below to view blueprint document data:</p>", unsafe_allow_html=True)
             
             cols = st.columns(len(doc_cols))
             for idx, col_name in enumerate(doc_cols):
