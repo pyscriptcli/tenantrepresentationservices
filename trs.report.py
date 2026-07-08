@@ -23,14 +23,14 @@ st.set_page_config(
 # --- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & ZERO PADDING GHOSTS) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght=400;500;700&family=Roboto:wght=300;400;500;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
     
     * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
 
-    /* 1. COMPLETELY LOCK MAIN VIEWPORT AND KILL NATIVE SCROLLBARS */
+    /* 1. FIXED: MAIN VIEWPORT WITH NATIVE SCROLL */
     html, body {
-        overflow: hidden !important;
-        height: 100vh !important;
+        overflow: auto !important;
+        height: 100% !important;
         margin: 0px !important;
         padding: 0px !important;
         background-color: #ffffff !important;
@@ -49,7 +49,7 @@ st.markdown("""
         opacity: 0 !important;
     }
 
-    /* 3. ZERO-OUT PADDING ON ALL MAIN CONTAINERS TO MAXIMIZE SCREEN REAL ESTATE */
+    /* 3. FIXED: ALLOW SCROLLING WITH AUTO HEIGHT */
     .appview-container, 
     .main, 
     [data-testid="stAppViewContainer"], 
@@ -61,9 +61,10 @@ st.markdown("""
         padding-bottom: 0px !important;
         padding-left: 0.4rem !important;
         padding-right: 0.4rem !important;
-        overflow: hidden !important;
-        height: 100vh !important;
-        max-height: 100vh !important;
+        overflow: auto !important;
+        height: auto !important;
+        max-height: none !important;
+        min-height: 100vh !important;
     }
 
     /* Catch and crush any empty layout blocks */
@@ -75,12 +76,13 @@ st.markdown("""
         padding: 0px !important;
     }
 
-    /* 4. MAXIMUM DYNAMIC REPORT VIEWER REAL ESTATE */
+    /* 4. FIXED: REPORT VIEWER WITH PROPER SCROLLING */
     iframe[title="streamlit_components.components.html"] {
-        height: calc(100vh - 90px) !important;
-        max-height: calc(100vh - 90px) !important;
+        height: 600px !important;
+        max-height: 600px !important;
         border: none !important;
-        margin-bottom: 0px !important;
+        margin-bottom: 10px !important;
+        width: 100% !important;
     }
     
     /* Optimize Tab Headers Matrix for High Density Views */
@@ -102,7 +104,7 @@ st.markdown("""
         padding: 0.2rem 0.5rem !important; 
         border-radius: 8px;
         margin-top: 0px !important; 
-        margin-bottom: 0px !important;
+        margin-bottom: 10px !important;
     }
     
     .stSelectbox label { display: none !important; } 
@@ -156,6 +158,45 @@ st.markdown("""
         height: 0 !important;
         width: 0 !important;
         pointer-events: none !important;
+    }
+
+    /* FIXED: Responsive Grid for Images */
+    .image-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+        padding: 10px 0;
+    }
+    .image-grid-item {
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #f8f9fa;
+        transition: transform 0.2s;
+    }
+    .image-grid-item:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .image-grid-item img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        display: block;
+    }
+    .image-grid-item .label {
+        padding: 8px 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #5f6368;
+        background: white;
+        text-align: center;
+        border-top: 1px solid #dadce0;
+    }
+    .image-grid-item a {
+        text-decoration: none;
+        color: inherit;
+        display: block;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -291,7 +332,7 @@ def download_file(url):
         return None
 
 def clean_and_extract_url(cell_value):
-    """Bypasses formula blocks like =IMAGE("url") to get the clean direct link string."""
+    """Bypasses formula blocks like =IMAGE(\"url\") to get the clean direct link string."""
     if cell_value is None:
         return ""
     val_str = str(cell_value).strip()
@@ -354,8 +395,7 @@ def parse_site_number(site_display_str):
     return int(match.group(1)) if match else float('inf')
 
 @st.cache_data(ttl=600, show_spinner=False)
-def generate_trade_area_report(trade_area):
-    global df, placeholders, template_bytes_raw
+def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders):
     ta_data = df[df["TRADE AREA"] == trade_area]
     wb = load_workbook(io.BytesIO(template_bytes_raw))
     
@@ -415,13 +455,13 @@ HTML_FRAMEWORK = """
             background-color: #ffffff; 
             font-family: Arial, sans-serif; 
             height: 100%;
-            overflow: hidden; 
+            overflow: auto; 
         }
         
         .ritz.grid-container {
-            height: 100vh;
-            overflow: auto !important;
-            padding-bottom: 40px;
+            height: auto;
+            overflow: visible !important;
+            padding: 10px;
             box-sizing: border-box;
         }
 
@@ -791,7 +831,7 @@ with col3:
     if selected_ta and selected_ta != "Select Trade Area...":
         st.download_button(
             label="Export",
-            data=generate_trade_area_report(selected_ta),
+            data=generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders),
             file_name=f"{selected_ta}_Full_Report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
@@ -867,12 +907,12 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
                 
-                components.html(rendered_view, height=800, scrolling=True)
+                components.html(rendered_view, height=600, scrolling=True)
                     
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (DIRECT IMAGE RENDER) ---
+        # --- TAB 2: PROPERTY PHOTOS (RESPONSIVE CSS GRID) ---
         with tab_photos:
             direct_photo_mapping = {
                 "PROPERTY PHOTOS 1": "__DIRECT_PHOTO_1",
@@ -889,32 +929,32 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 if raw_url:
                     file_id = extract_google_drive_id(raw_url)
                     if file_id:
-                        # Generating the thumbnail endpoint strictly required for raw HTML rendering
                         thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
                         full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
                     else:
-                        # Direct web image fallback in case regex doesn't match standard Drive ID
                         thumb_url = raw_url
                         full_url = raw_url
                         
                     valid_photos.append((label, thumb_url, full_url))
             
             if valid_photos:
-                cols = st.columns(len(valid_photos))
-                for idx, (label, thumb_url, full_url) in enumerate(valid_photos):
-                    with cols[idx]:
-                        st.markdown(f"<p style='font-size:0.75rem; font-weight:700; color:#5f6368; margin:0;'>{label}</p>", unsafe_allow_html=True)
-                        # Render the actual image using HTML <img> tag, linking to the full view
-                        st.markdown(f'''
+                # Build HTML grid
+                grid_html = '<div class="image-grid">'
+                for label, thumb_url, full_url in valid_photos:
+                    grid_html += f'''
+                        <div class="image-grid-item">
                             <a href="{full_url}" target="_blank">
-                                <img src="{thumb_url}" style="width:100%; height:auto; border-radius:6px; margin-top:5px; border:1px solid #dadce0; object-fit: cover; aspect-ratio: 4/3;">
+                                <img src="{thumb_url}" alt="{label}" loading="lazy">
+                                <div class="label">{label}</div>
                             </a>
-                        ''', unsafe_allow_html=True)
-                        
+                        </div>
+                    '''
+                grid_html += '</div>'
+                st.markdown(grid_html, unsafe_allow_html=True)
             else:
                 st.info("No photo links configured for this property record selection.")
 
-        # --- TAB 3: PROPERTY DOCS (DIRECT IMAGE RENDER) ---
+        # --- TAB 3: PROPERTY DOCS (RESPONSIVE CSS GRID) ---
         with tab_docs:
             direct_doc_mapping = {
                 "TCT": "__DIRECT_TCT",
@@ -939,16 +979,18 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_docs.append((label, thumb_url, full_url))
             
             if valid_docs:
-                cols = st.columns(len(valid_docs))
-                for idx, (label, thumb_url, full_url) in enumerate(valid_docs):
-                    with cols[idx]:
-                        st.markdown(f"<p style='font-size:0.75rem; font-weight:700; color:#5f6368; margin:0;'>{label}</p>", unsafe_allow_html=True)
-                        # Render the actual document image using HTML <img> tag, linking to the full view
-                        st.markdown(f'''
+                # Build HTML grid
+                grid_html = '<div class="image-grid">'
+                for label, thumb_url, full_url in valid_docs:
+                    grid_html += f'''
+                        <div class="image-grid-item">
                             <a href="{full_url}" target="_blank">
-                                <img src="{thumb_url}" style="width:100%; height:auto; border-radius:6px; margin-top:5px; border:1px solid #dadce0; object-fit: cover; aspect-ratio: 4/3;">
+                                <img src="{thumb_url}" alt="{label}" loading="lazy">
+                                <div class="label">{label}</div>
                             </a>
-                        ''', unsafe_allow_html=True)
-                        
+                        </div>
+                    '''
+                grid_html += '</div>'
+                st.markdown(grid_html, unsafe_allow_html=True)
             else:
                 st.info("No layout documents configured for this property record selection.")
