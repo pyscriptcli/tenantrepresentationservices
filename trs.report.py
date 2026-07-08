@@ -912,7 +912,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (RESPONSIVE CSS GRID) ---
+        # --- TAB 2: PROPERTY PHOTOS (FIXED - USING components.html FOR PROPER RENDERING) ---
         with tab_photos:
             direct_photo_mapping = {
                 "PROPERTY PHOTOS 1": "__DIRECT_PHOTO_1",
@@ -938,8 +938,49 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_photos.append((label, thumb_url, full_url))
             
             if valid_photos:
-                # Build HTML grid
-                grid_html = '<div class="image-grid">'
+                # Build HTML grid using components.html for proper rendering
+                grid_html = '''
+                <style>
+                    .image-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                        gap: 15px;
+                        padding: 10px 0;
+                    }
+                    .image-grid-item {
+                        border: 1px solid #dadce0;
+                        border-radius: 8px;
+                        overflow: hidden;
+                        background: #f8f9fa;
+                        transition: transform 0.2s;
+                    }
+                    .image-grid-item:hover {
+                        transform: scale(1.02);
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    }
+                    .image-grid-item img {
+                        width: 100%;
+                        height: 200px;
+                        object-fit: cover;
+                        display: block;
+                    }
+                    .image-grid-item .label {
+                        padding: 8px 10px;
+                        font-size: 0.75rem;
+                        font-weight: 600;
+                        color: #5f6368;
+                        background: white;
+                        text-align: center;
+                        border-top: 1px solid #dadce0;
+                    }
+                    .image-grid-item a {
+                        text-decoration: none;
+                        color: inherit;
+                        display: block;
+                    }
+                </style>
+                <div class="image-grid">
+                '''
                 for label, thumb_url, full_url in valid_photos:
                     grid_html += f'''
                         <div class="image-grid-item">
@@ -950,11 +991,11 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         </div>
                     '''
                 grid_html += '</div>'
-                st.markdown(grid_html, unsafe_allow_html=True)
+                components.html(grid_html, height=500, scrolling=True)
             else:
                 st.info("No photo links configured for this property record selection.")
 
-        # --- TAB 3: PROPERTY DOCS (RESPONSIVE CSS GRID) ---
+        # --- TAB 3: PROPERTY DOCS (FIXED - USING components.html FOR PROPER RENDERING) ---
         with tab_docs:
             direct_doc_mapping = {
                 "TCT": "__DIRECT_TCT",
@@ -979,8 +1020,49 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_docs.append((label, thumb_url, full_url))
             
             if valid_docs:
-                # Build HTML grid
-                grid_html = '<div class="image-grid">'
+                # Build HTML grid using components.html for proper rendering
+                grid_html = '''
+                <style>
+                    .image-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                        gap: 15px;
+                        padding: 10px 0;
+                    }
+                    .image-grid-item {
+                        border: 1px solid #dadce0;
+                        border-radius: 8px;
+                        overflow: hidden;
+                        background: #f8f9fa;
+                        transition: transform 0.2s;
+                    }
+                    .image-grid-item:hover {
+                        transform: scale(1.02);
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    }
+                    .image-grid-item img {
+                        width: 100%;
+                        height: 200px;
+                        object-fit: cover;
+                        display: block;
+                    }
+                    .image-grid-item .label {
+                        padding: 8px 10px;
+                        font-size: 0.75rem;
+                        font-weight: 600;
+                        color: #5f6368;
+                        background: white;
+                        text-align: center;
+                        border-top: 1px solid #dadce0;
+                    }
+                    .image-grid-item a {
+                        text-decoration: none;
+                        color: inherit;
+                        display: block;
+                    }
+                </style>
+                <div class="image-grid">
+                '''
                 for label, thumb_url, full_url in valid_docs:
                     grid_html += f'''
                         <div class="image-grid-item">
@@ -991,6 +1073,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         </div>
                     '''
                 grid_html += '</div>'
-                st.markdown(grid_html, unsafe_allow_html=True)
+                components.html(grid_html, height=500, scrolling=True)
             else:
                 st.info("No layout documents configured for this property record selection.")
