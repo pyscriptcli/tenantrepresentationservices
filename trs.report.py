@@ -159,45 +159,6 @@ st.markdown("""
         width: 0 !important;
         pointer-events: none !important;
     }
-
-    /* FIXED: Responsive Grid for Images */
-    .image-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 15px;
-        padding: 10px 0;
-    }
-    .image-grid-item {
-        border: 1px solid #dadce0;
-        border-radius: 8px;
-        overflow: hidden;
-        background: #f8f9fa;
-        transition: transform 0.2s;
-    }
-    .image-grid-item:hover {
-        transform: scale(1.02);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    .image-grid-item img {
-        width: 100%;
-        height: 200px;
-        object-fit: cover;
-        display: block;
-    }
-    .image-grid-item .label {
-        padding: 8px 10px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: #5f6368;
-        background: white;
-        text-align: center;
-        border-top: 1px solid #dadce0;
-    }
-    .image-grid-item a {
-        text-decoration: none;
-        color: inherit;
-        display: block;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -912,7 +873,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (FIXED - USING components.html FOR PROPER RENDERING) ---
+        # --- TAB 2: PROPERTY PHOTOS (3x3 LAYOUT) ---
         with tab_photos:
             direct_photo_mapping = {
                 "PROPERTY PHOTOS 1": "__DIRECT_PHOTO_1",
@@ -938,14 +899,15 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_photos.append((label, thumb_url, full_url))
             
             if valid_photos:
-                # Build HTML grid using components.html for proper rendering
+                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
-                    .image-grid {
+                    .image-grid-3x3 {
                         display: grid;
-                        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                        grid-template-columns: repeat(3, 1fr);
                         gap: 15px;
                         padding: 10px 0;
+                        max-width: 100%;
                     }
                     .image-grid-item {
                         border: 1px solid #dadce0;
@@ -953,6 +915,9 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         overflow: hidden;
                         background: #f8f9fa;
                         transition: transform 0.2s;
+                        aspect-ratio: 4/3;
+                        display: flex;
+                        flex-direction: column;
                     }
                     .image-grid-item:hover {
                         transform: scale(1.02);
@@ -960,26 +925,40 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     }
                     .image-grid-item img {
                         width: 100%;
-                        height: 200px;
+                        height: 100%;
                         object-fit: cover;
                         display: block;
+                        flex: 1;
                     }
                     .image-grid-item .label {
-                        padding: 8px 10px;
-                        font-size: 0.75rem;
+                        padding: 6px 8px;
+                        font-size: 0.7rem;
                         font-weight: 600;
                         color: #5f6368;
                         background: white;
                         text-align: center;
                         border-top: 1px solid #dadce0;
+                        flex-shrink: 0;
                     }
                     .image-grid-item a {
                         text-decoration: none;
                         color: inherit;
-                        display: block;
+                        display: flex;
+                        flex-direction: column;
+                        height: 100%;
+                    }
+                    @media (max-width: 768px) {
+                        .image-grid-3x3 {
+                            grid-template-columns: repeat(2, 1fr);
+                        }
+                    }
+                    @media (max-width: 480px) {
+                        .image-grid-3x3 {
+                            grid-template-columns: 1fr;
+                        }
                     }
                 </style>
-                <div class="image-grid">
+                <div class="image-grid-3x3">
                 '''
                 for label, thumb_url, full_url in valid_photos:
                     grid_html += f'''
@@ -995,7 +974,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             else:
                 st.info("No photo links configured for this property record selection.")
 
-        # --- TAB 3: PROPERTY DOCS (FIXED - USING components.html FOR PROPER RENDERING) ---
+        # --- TAB 3: PROPERTY DOCS (3x3 LAYOUT) ---
         with tab_docs:
             direct_doc_mapping = {
                 "TCT": "__DIRECT_TCT",
@@ -1020,14 +999,15 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_docs.append((label, thumb_url, full_url))
             
             if valid_docs:
-                # Build HTML grid using components.html for proper rendering
+                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
-                    .image-grid {
+                    .image-grid-3x3 {
                         display: grid;
-                        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                        grid-template-columns: repeat(3, 1fr);
                         gap: 15px;
                         padding: 10px 0;
+                        max-width: 100%;
                     }
                     .image-grid-item {
                         border: 1px solid #dadce0;
@@ -1035,6 +1015,9 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         overflow: hidden;
                         background: #f8f9fa;
                         transition: transform 0.2s;
+                        aspect-ratio: 4/3;
+                        display: flex;
+                        flex-direction: column;
                     }
                     .image-grid-item:hover {
                         transform: scale(1.02);
@@ -1042,26 +1025,40 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     }
                     .image-grid-item img {
                         width: 100%;
-                        height: 200px;
+                        height: 100%;
                         object-fit: cover;
                         display: block;
+                        flex: 1;
                     }
                     .image-grid-item .label {
-                        padding: 8px 10px;
-                        font-size: 0.75rem;
+                        padding: 6px 8px;
+                        font-size: 0.7rem;
                         font-weight: 600;
                         color: #5f6368;
                         background: white;
                         text-align: center;
                         border-top: 1px solid #dadce0;
+                        flex-shrink: 0;
                     }
                     .image-grid-item a {
                         text-decoration: none;
                         color: inherit;
-                        display: block;
+                        display: flex;
+                        flex-direction: column;
+                        height: 100%;
+                    }
+                    @media (max-width: 768px) {
+                        .image-grid-3x3 {
+                            grid-template-columns: repeat(2, 1fr);
+                        }
+                    }
+                    @media (max-width: 480px) {
+                        .image-grid-3x3 {
+                            grid-template-columns: 1fr;
+                        }
                     }
                 </style>
-                <div class="image-grid">
+                <div class="image-grid-3x3">
                 '''
                 for label, thumb_url, full_url in valid_docs:
                     grid_html += f'''
