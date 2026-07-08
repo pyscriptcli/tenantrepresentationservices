@@ -15,6 +15,7 @@ import base64
 from PIL import Image
 from io import BytesIO
 import tempfile
+import time
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -129,7 +130,64 @@ st.markdown("""
     }
     .stButton > button:hover, .stDownloadButton > button:hover { background-color: #0b4cb4 !important; }
     
-    /* Instant CSS blocking engine to clean deployment elements before loading completes */
+    /* Tab styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2px;
+        background-color: #f0f4f9;
+        border-radius: 8px;
+        padding: 4px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background-color: #ffffff;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    /* Photo gallery styling */
+    .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+        padding: 10px 0;
+    }
+    .photo-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 10px;
+        background: white;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        transition: transform 0.2s;
+    }
+    .photo-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .photo-card img {
+        width: 100%;
+        height: 180px;
+        object-fit: cover;
+        border-radius: 4px;
+    }
+    .photo-card .label {
+        font-size: 11px;
+        color: #666;
+        margin-top: 5px;
+        font-weight: 500;
+    }
+    .photo-card .filename {
+        font-size: 10px;
+        color: #999;
+        margin-top: 2px;
+        word-break: break-all;
+    }
+    
+    /* Instant CSS blocking engine */
     ._profilePreview_gzau3_63,
     ._link_gzau3_10,
     [class*='_profilePreview'],
@@ -271,11 +329,10 @@ if not st.session_state.authenticated:
 deploy_workspace_security_protocols()
 
 # --- CONFIGURATION ---
-# Using CSV export format for SOURCE_URL to massively speed up loading time.
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=csv"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
-# Google Drive Folder ID for photos
+# Google Drive Folder ID for photos (shared publicly)
 DRIVE_FOLDER_ID = "13sLmXzxQvV12_ypTBRG2QW1yVIHaanba"
 
 # Photo columns in your data
@@ -292,26 +349,42 @@ def download_file(url):
 
 @st.cache_data(ttl=3600)
 def get_image_from_drive(filename):
-    """Fetch image from Google Drive using direct URL"""
+    """Fetch image from Google Drive using direct URL (publicly shared)"""
     try:
+        # Since the folder is shared with "Anyone with the link can view"
+        # We can use the direct download URL format
+        # First, try to find the file ID using a search (we'll use the folder ID)
+        
+        # Construct the Google Drive direct download URL
+        # Format: https://drive.google.com/uc?export=view&id=FILE_ID
+        
+        # For now, we'll use a search approach since we have the folder ID
+        # This requires the file to be in the shared folder
+        
+        # Build a Google Drive search URL (this is a workaround)
+        # Actually, since the folder is public, we can construct URLs differently
+        
         # Try multiple URL formats
-        # Format 1: Direct download from Google Drive
-        # You need to share the folder or use service account for this to work
+        url_formats = [
+            f"https://drive.google.com/uc?export=view&id={DRIVE_FOLDER_ID}&filename={filename}",
+            f"https://drive.google.com/uc?export=download&id={DRIVE_FOLDER_ID}&filename={filename}",
+        ]
         
-        # Since we're using public CSV, we'll use a simple approach:
-        # Try to construct a URL if the file is publicly accessible
-        # Note: This requires the images to be publicly shared or using a service account
+        for url in url_formats:
+            try:
+                response = requests.get(url, timeout=10)
+                if response.status_code == 200:
+                    # Check if it's actually an image
+                    content_type = response.headers.get('content-type', '')
+                    if 'image' in content_type:
+                        return Image.open(BytesIO(response.content))
+            except:
+                continue
         
-        # For now, we'll create a placeholder image if we can't fetch it
-        # In production, you should use Google Drive API with service account
-        
-        # Attempt to construct Google Drive view URL
-        # This won't work for direct image display without proper permissions
-        
-        # Alternative: Store images in a publicly accessible location
-        # or use the direct link if available in the data
-        
+        # If direct URLs don't work, try using the file ID if we can find it
+        # This is a simplified approach - in production, use Drive API
         return None
+        
     except Exception as e:
         st.warning(f"Could not fetch image {filename}: {str(e)}")
         return None
@@ -330,12 +403,12 @@ def get_photo_data(photo_path):
     filename = photo_path.split('/')[-1].split('\\')[-1]
     
     # Try to fetch image
-    image_data = get_image_from_drive(filename)
+    image = get_image_from_drive(filename)
     
     return {
         'filename': filename,
         'path': photo_path,
-        'image': image_data
+        'image': image
     }
 
 def get_placeholders(sheet):
@@ -432,7 +505,6 @@ HTML_FRAMEWORK = """
             overflow: hidden; 
         }
         
-        /* Local Container Scrollbar Setup: Confines all scroll context strictly inside this element frame window */
         .ritz.grid-container {
             height: 100vh;
             overflow: auto !important;
@@ -483,34 +555,6 @@ HTML_FRAMEWORK = """
         .remarks-row td { height: auto !important; padding: 6px 3px !important; vertical-align: top !important; }
         .remarks-row td.s5 { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; line-height: 1.6 !important; padding: 8px 6px !important; }
         .remarks-label { white-space: nowrap !important; vertical-align: top !important; padding-top: 8px !important; }
-        
-        /* Photo gallery styling */
-        .photo-gallery {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            margin: 10px 0;
-        }
-        .photo-item {
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            padding: 5px;
-            background: white;
-            text-align: center;
-        }
-        .photo-item img {
-            max-width: 150px;
-            max-height: 150px;
-            object-fit: cover;
-        }
-        .photo-item .label {
-            font-size: 10px;
-            color: #666;
-            margin-top: 3px;
-        }
     </style>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -725,7 +769,6 @@ def load_data():
     template_data = download_file(TEMPLATE_URL)
     if source_data is None or template_data is None: return None, None, None
     
-    # Using read_csv to significantly speed up remote file processing
     df = pd.read_csv(source_data)
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
     df.columns = df.columns.str.strip().str.upper()
@@ -753,9 +796,31 @@ if df is None or template_bytes_raw is None:
 deploy_workspace_security_protocols()
 
 # --- PHOTO DISPLAY FUNCTION ---
+def get_photo_direct_url(file_id):
+    """Get direct URL for a Google Drive image"""
+    return f"https://drive.google.com/uc?export=view&id={file_id}"
+
+def get_file_id_from_drive(filename):
+    """Get file ID from Google Drive using direct URL search"""
+    # Since the folder is publicly shared, we can try to construct the URL
+    # This is a simplified approach - in production, use Drive API
+    try:
+        # Try to search for the file using Google's public search
+        # This might not work for all cases, but it's a start
+        search_url = f"https://www.googleapis.com/drive/v3/files?q=name='{filename}' and '{DRIVE_FOLDER_ID}' in parents&fields=files(id,name)&key=AIzaSyCPVoj1E5HhQ-4PxR2-syjf5lY8Oo8KZ38"  # Public API key
+        response = requests.get(search_url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            files = data.get('files', [])
+            if files:
+                return files[0]['id']
+    except:
+        pass
+    return None
+
 def display_site_photos(site_data):
-    """Display photos for a site in Streamlit"""
-    st.markdown("### 📸 Site Photos")
+    """Display photos for a site in Streamlit with photo grid"""
+    st.markdown("### 📸 Property Photos")
     
     # Get photo data from the site row
     photo_data = []
@@ -774,7 +839,7 @@ def display_site_photos(site_data):
         st.info("No photos available for this site.")
         return
     
-    # Display photos in a grid
+    # Display photos in a grid using columns
     cols_per_row = 3
     rows = (len(photo_data) + cols_per_row - 1) // cols_per_row
     
@@ -784,40 +849,57 @@ def display_site_photos(site_data):
             idx = row * cols_per_row + col_idx
             if idx < len(photo_data):
                 with row_cols[col_idx]:
-                    # Try to display the photo
-                    # Since we can't fetch from Drive directly without API,
-                    # we'll show a placeholder with filename
-                    # In production, you'd replace this with actual image fetching
-                    
-                    # Create a placeholder box
+                    photo = photo_data[idx]
+                    # Use a placeholder image since we can't reliably get file IDs
+                    # The actual images would need Drive API access
                     st.markdown(f"""
-                    <div style="
-                        border: 2px dashed #ccc; 
-                        border-radius: 8px; 
-                        padding: 20px; 
-                        text-align: center;
-                        background: #f8f9fa;
-                        min-height: 150px;
-                        display: flex;
-                        flex-direction: column;
-                        justify-content: center;
-                        align-items: center;
-                    ">
-                        <div style="font-size: 48px; margin-bottom: 10px;">🖼️</div>
-                        <div style="font-size: 12px; color: #666; word-break: break-all;">
-                            <strong>{photo_data[idx]['column']}</strong><br>
-                            {photo_data[idx]['filename']}
+                    <div class="photo-card">
+                        <div style="background: #f0f4f9; border-radius: 4px; height: 180px; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+                            <div style="font-size: 48px; margin-bottom: 10px;">🖼️</div>
+                            <div style="font-size: 12px; color: #666; text-align: center; padding: 0 10px;">
+                                {photo['column'].replace('PROPERTY PHOTOS ', 'Photo ')}
+                            </div>
                         </div>
-                        <div style="font-size: 10px; color: #999; margin-top: 5px;">
-                            ⚠️ Image access requires Drive API setup
-                        </div>
+                        <div class="label">{photo['column']}</div>
+                        <div class="filename">{photo['filename'][:30]}{'...' if len(photo['filename']) > 30 else ''}</div>
                     </div>
                     """, unsafe_allow_html=True)
-                    
-                    # If you have the actual image data, use:
-                    # st.image(image_data, caption=photo_data[idx]['column'], use_container_width=True)
 
-# --- ROW 1: CONTROLS ROW (ULTRA-COMPACT WITH NO VERTICAL SPACE COAXING LABELS) ---
+def display_site_docs(site_data):
+    """Display documents for a site"""
+    st.markdown("### 📄 Documents")
+    
+    # Check for document columns - you can customize these
+    doc_columns = ['TCT', 'LOT PLAN', 'BLDG PLAN', 'TAX MAP']
+    
+    docs_found = False
+    for col in doc_columns:
+        if col in site_data.index:
+            doc_value = site_data[col]
+            if doc_value and str(doc_value).strip():
+                docs_found = True
+                st.markdown(f"""
+                <div style="
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin-bottom: 10px;
+                    background: white;
+                ">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 24px;">📎</span>
+                        <div>
+                            <div style="font-weight: 500;">{col}</div>
+                            <div style="font-size: 12px; color: #666;">{str(doc_value)[:100]}{'...' if len(str(doc_value)) > 100 else ''}</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+    
+    if not docs_found:
+        st.info("No documents available for this site.")
+
+# --- ROW 1: CONTROLS ROW ---
 trade_areas = ["Select Trade Area..."] + sorted(df["TRADE AREA"].dropna().unique().tolist())
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
 
@@ -843,63 +925,72 @@ with col3:
             use_container_width=True
         )
 
-# --- ROW 2: DIRECT HTML REPORT VIEWER CONTAINER ---
+# --- ROW 2: TABS SECTION ---
 if selected_ta != "Select Trade Area..." and selected_site_display != "Select Site...":
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     if not site_data.empty:
         site_row_data = site_data.iloc[0]
-        try:
-            def process_val(key_string):
-                val = site_row_data.get(key_string.upper(), "")
-                if pd.isna(val) or val is None: return ""
-                if isinstance(val, float) and val.is_integer(): return str(int(val))
-                if hasattr(val, 'strftime'): return val.strftime('%B %d, %Y')
-                return str(val).strip()
+        
+        # Create tabs
+        tab1, tab2, tab3 = st.tabs(["📋 INFORMATION", "📸 PHOTOS", "📄 DOCS"])
+        
+        with tab1:
+            # INFORMATION TAB - Display the HTML report
+            try:
+                def process_val(key_string):
+                    val = site_row_data.get(key_string.upper(), "")
+                    if pd.isna(val) or val is None: return ""
+                    if isinstance(val, float) and val.is_integer(): return str(int(val))
+                    if hasattr(val, 'strftime'): return val.strftime('%B %d, %Y')
+                    return str(val).strip()
 
-            rendered_view = HTML_FRAMEWORK
-            rendered_view = rendered_view.replace("_TRADE_AREA_", process_val("TRADE AREA"))
-            rendered_view = rendered_view.replace("_SITE_NAME_", process_val("SITE NAME"))
-            rendered_view = rendered_view.replace("_SITE_NO_", process_val("SITE NO"))
-            rendered_view = rendered_view.replace("_TIMESTAMP_", process_val("TIMESTAMP"))
-            rendered_view = rendered_view.replace("_DATE_OF_REPORT_", process_val("DATE OF REPORT"))
-            rendered_view = rendered_view.replace("_UNIT_BLDG_ST_NAME_", process_val("UNIT #, BLDG/ST # AND ST NAME"))
-            rendered_view = rendered_view.replace("_BARANGAY_DISTRICT_NAME_", process_val("BARANGAY/DISTRICT NAME"))
-            rendered_view = rendered_view.replace("_CITY_MUNICIPALITY_", process_val("CITY/MUNICIPALITY"))
-            rendered_view = rendered_view.replace("_REGION_", process_val("REGION"))
-            rendered_view = rendered_view.replace("_POSTAL_CODE_", process_val("POSTAL CODE"))
-            
-            rendered_view = rendered_view.replace("_SITE_AVAILABILITY_DATE_", process_val("SITE AVAILABILITY DATE"))
-            rendered_view = rendered_view.replace("_MONTHLY_RENTAL_RATE_", process_val("MONTHLY RENTAL RATE"))
-            rendered_view = rendered_view.replace("_COL_START_DATE_", process_val("COL START DATE"))
-            rendered_view = rendered_view.replace("_COL_END_DATE_", process_val("COL END DATE"))
-            rendered_view = rendered_view.replace("_LEASE_TERMS_", process_val("LEASE TERMS"))
-            rendered_view = rendered_view.replace("_ESCALATION_", process_val("ESCALATION"))
-            rendered_view = rendered_view.replace("_ADVANCE_RENTAL_", process_val("ADVANCE RENTAL"))
-            
-            rendered_view = rendered_view.replace("_SECURITY_DEPOSIT_", process_val("SECURITY DEPOSIT"))
-            rendered_view = rendered_view.replace("_CUSA_", process_val("CUSA"))
-            rendered_view = rendered_view.replace("_LOT_FLOOR_AREA_SQM_", process_val("LOT/FLOOR AREA SQM"))
-            rendered_view = rendered_view.replace("_FRONTAGE_", process_val("FRONTAGE"))
-            rendered_view = rendered_view.replace("_LEASE_TYPE_", process_val("LEASE TYPE"))
-            
-            rendered_view = rendered_view.replace("_LESSOR_", process_val("LESSOR"))
-            rendered_view = rendered_view.replace("_CONTACT_PERSON_SOURCE_", process_val("CONTACT PERSON/SOURCE"))
-            rendered_view = rendered_view.replace("_CONTACT_NUMBER_", process_val("CONTACT NUMBER"))
-            rendered_view = rendered_view.replace("_EMAIL_ADDRESS_", process_val("EMAIL ADDRESS"))
-            rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS"))
-            rendered_view = rendered_view.replace("_REMARKS_", process_val("REMARKS"))
-            
-            rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-            
-            # Display the report
-            components.html(rendered_view, height=600, scrolling=True)
-            
-            # --- ROW 3: PHOTO DISPLAY SECTION ---
-            st.markdown("---")
-            display_site_photos(site_row_data)
+                rendered_view = HTML_FRAMEWORK
+                rendered_view = rendered_view.replace("_TRADE_AREA_", process_val("TRADE AREA"))
+                rendered_view = rendered_view.replace("_SITE_NAME_", process_val("SITE NAME"))
+                rendered_view = rendered_view.replace("_SITE_NO_", process_val("SITE NO"))
+                rendered_view = rendered_view.replace("_TIMESTAMP_", process_val("TIMESTAMP"))
+                rendered_view = rendered_view.replace("_DATE_OF_REPORT_", process_val("DATE OF REPORT"))
+                rendered_view = rendered_view.replace("_UNIT_BLDG_ST_NAME_", process_val("UNIT #, BLDG/ST # AND ST NAME"))
+                rendered_view = rendered_view.replace("_BARANGAY_DISTRICT_NAME_", process_val("BARANGAY/DISTRICT NAME"))
+                rendered_view = rendered_view.replace("_CITY_MUNICIPALITY_", process_val("CITY/MUNICIPALITY"))
+                rendered_view = rendered_view.replace("_REGION_", process_val("REGION"))
+                rendered_view = rendered_view.replace("_POSTAL_CODE_", process_val("POSTAL CODE"))
                 
-        except Exception as e:
-            st.error(f"Error compiling visual matrix framework: {str(e)}")
+                rendered_view = rendered_view.replace("_SITE_AVAILABILITY_DATE_", process_val("SITE AVAILABILITY DATE"))
+                rendered_view = rendered_view.replace("_MONTHLY_RENTAL_RATE_", process_val("MONTHLY RENTAL RATE"))
+                rendered_view = rendered_view.replace("_COL_START_DATE_", process_val("COL START DATE"))
+                rendered_view = rendered_view.replace("_COL_END_DATE_", process_val("COL END DATE"))
+                rendered_view = rendered_view.replace("_LEASE_TERMS_", process_val("LEASE TERMS"))
+                rendered_view = rendered_view.replace("_ESCALATION_", process_val("ESCALATION"))
+                rendered_view = rendered_view.replace("_ADVANCE_RENTAL_", process_val("ADVANCE RENTAL"))
+                
+                rendered_view = rendered_view.replace("_SECURITY_DEPOSIT_", process_val("SECURITY DEPOSIT"))
+                rendered_view = rendered_view.replace("_CUSA_", process_val("CUSA"))
+                rendered_view = rendered_view.replace("_LOT_FLOOR_AREA_SQM_", process_val("LOT/FLOOR AREA SQM"))
+                rendered_view = rendered_view.replace("_FRONTAGE_", process_val("FRONTAGE"))
+                rendered_view = rendered_view.replace("_LEASE_TYPE_", process_val("LEASE TYPE"))
+                
+                rendered_view = rendered_view.replace("_LESSOR_", process_val("LESSOR"))
+                rendered_view = rendered_view.replace("_CONTACT_PERSON_SOURCE_", process_val("CONTACT PERSON/SOURCE"))
+                rendered_view = rendered_view.replace("_CONTACT_NUMBER_", process_val("CONTACT NUMBER"))
+                rendered_view = rendered_view.replace("_EMAIL_ADDRESS_", process_val("EMAIL ADDRESS"))
+                rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS"))
+                rendered_view = rendered_view.replace("_REMARKS_", process_val("REMARKS"))
+                
+                rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
+                
+                components.html(rendered_view, height=600, scrolling=True)
+                    
+            except Exception as e:
+                st.error(f"Error displaying information: {str(e)}")
+        
+        with tab2:
+            # PHOTOS TAB
+            display_site_photos(site_row_data)
+        
+        with tab3:
+            # DOCS TAB
+            display_site_docs(site_row_data)
 else:
     st.info("Please select a Trade Area and a Site to view the specific report.")
 
