@@ -773,7 +773,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (HTML NATIVE INJECTION) ---
+# --- TAB 2: PROPERTY PHOTOS (FIXED NATIVE RENDERER) ---
         with tab_photos:
             photo_cols = ["PROPERTY PHOTOS 1", "PROPERTY PHOTOS 2", "PROPERTY PHOTOS 3", "PROPERTY PHOTOS 4", "PROPERTY PHOTOS 5"]
             valid_photos = []
@@ -781,22 +781,25 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             for col in photo_cols:
                 raw_img_val = site_row_data.get(col, "")
                 if pd.notna(raw_img_val) and str(raw_img_val).strip() != "":
-                    match = re.search(r'="?([^"]+)"?', str(raw_img_val))
-                    img_url = match.group(1) if match else str(raw_img_val).strip()
-                    valid_photos.append((col, img_url))
+                    # Robust regex to extract the ID from the link
+                    match = re.search(r'([a-zA-Z0-9_-]{25,})', str(raw_img_val))
+                    if match:
+                        file_id = match.group(1)
+                        # Use the direct drive viewer endpoint which is most compatible with <img> tags
+                        img_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                        valid_photos.append((col, img_url))
             
             if valid_photos:
-                p_cols = st.columns(len(valid_photos))
+                # Use a cleaner column layout
+                cols = st.columns(len(valid_photos))
                 for i, (label, url) in enumerate(valid_photos):
-                    with p_cols[i]:
-                        st.markdown(f"<p style='font-size:0.8rem; font-weight:600; margin-bottom:4px; color:#4b5563;'>{label}</p>", unsafe_allow_html=True)
-                        renderable_url = transform_to_renderable_url(url)
-                        # Render the image natively in HTML, bypassing Streamlit entirely
-                        st.markdown(f'<img src="{renderable_url}" style="width: 100%; border-radius: 8px; object-fit: contain;">', unsafe_allow_html=True)
+                    with cols[i]:
+                        st.markdown(f"<p style='font-size:0.7rem; font-weight:700; color:#5f6368; margin:0;'>{label}</p>", unsafe_allow_html=True)
+                        st.markdown(f'<img src="{url}" style="width:100%; height:auto; border-radius:4px; margin-top:5px; border:1px solid #dadce0;">', unsafe_allow_html=True)
             else:
-                st.info("No property photos attached to this site ledger entry.")
+                st.info("No photos available.")
 
-        # --- TAB 3: PROPERTY DOCS (HTML NATIVE INJECTION) ---
+        # --- TAB 3: PROPERTY DOCS (FIXED NATIVE RENDERER) ---
         with tab_docs:
             doc_cols = ["TCT", "LOT PLAN", "BLDG PLAN", "TAX MAP"]
             valid_docs = []
@@ -804,20 +807,18 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             for col in doc_cols:
                 raw_doc_val = site_row_data.get(col, "")
                 if pd.notna(raw_doc_val) and str(raw_doc_val).strip() != "":
-                    match = re.search(r'="?([^"]+)"?', str(raw_doc_val))
-                    doc_url = match.group(1) if match else str(raw_doc_val).strip()
-                    valid_docs.append((col, doc_url))
+                    match = re.search(r'([a-zA-Z0-9_-]{25,})', str(raw_doc_val))
+                    if match:
+                        file_id = match.group(1)
+                        doc_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                        valid_docs.append((col, doc_url))
             
             if valid_docs:
-                d_cols = st.columns(len(valid_docs))
+                cols = st.columns(len(valid_docs))
                 for i, (label, url) in enumerate(valid_docs):
-                    with d_cols[i]:
-                        st.markdown(f"<p style='font-size:0.8rem; font-weight:600; margin-bottom:4px; color:#4b5563;'>{label}</p>", unsafe_allow_html=True)
-                        renderable_url = transform_to_renderable_url(url)
-                        # Render the image natively in HTML, bypassing Streamlit entirely
-                        st.markdown(f'<img src="{renderable_url}" style="width: 100%; border-radius: 8px; object-fit: contain;">', unsafe_allow_html=True)
-                        st.markdown(f"<a href='{url}' target='_blank'><button style='width:100%; border:1px solid #747775; background:white; color:#0b57d0; border-radius:4px; font-size:0.75rem; cursor:pointer; height:24px; margin-top:4px;'>Open Original File</button></a>", unsafe_allow_html=True)
+                    with cols[i]:
+                        st.markdown(f"<p style='font-size:0.7rem; font-weight:700; color:#5f6368; margin:0;'>{label}</p>", unsafe_allow_html=True)
+                        st.markdown(f'<img src="{url}" style="width:100%; height:auto; border-radius:4px; margin-top:5px; border:1px solid #dadce0;">', unsafe_allow_html=True)
+                        st.markdown(f"<a href='{url}' target='_blank' style='font-size:0.7rem;'>View Full Resolution</a>", unsafe_allow_html=True)
             else:
-                st.info("No formal property documents linked to this site profile record.")
-else:
-    st.info("Please select a Trade Area and a Site to view the specific report.")
+                st.info("No documents available.")
