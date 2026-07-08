@@ -872,14 +872,15 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_photos.append((label, thumb_url, full_url))
             
             if valid_photos:
-                # Build HTML grid with 3x3 layout using components.html WITH LIGHTBOX
+                # Build HTML grid with 3x3 layout using components.html
+                # FIXED: Removed padding to eliminate bottom whitespace
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
                         display: grid;
                         grid-template-columns: repeat(3, 1fr);
                         gap: 15px;
-                        padding: 10px 0;
+                        padding: 0; /* FIXED: Removed padding */
                         max-width: 100%;
                     }
                     .image-grid-item {
@@ -891,7 +892,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         aspect-ratio: 4/3;
                         display: flex;
                         flex-direction: column;
-                        cursor: pointer;
                     }
                     .image-grid-item:hover {
                         transform: scale(1.02);
@@ -915,44 +915,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         flex-shrink: 0;
                     }
                     
-                    /* Lightbox Styles */
-                    .lightbox-overlay {
-                        display: none;
-                        position: fixed;
-                        z-index: 9999;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                        height: 100%;
-                        overflow: auto;
-                        background-color: rgba(0,0,0,0.9);
-                        justify-content: center;
-                        align-items: center;
-                    }
-                    .lightbox-content {
-                        margin: auto;
-                        display: block;
-                        max-width: 90%;
-                        max-height: 90%;
-                        border-radius: 4px;
-                    }
-                    .close-lightbox {
-                        position: absolute;
-                        top: 20px;
-                        right: 35px;
-                        color: #f1f1f1;
-                        font-size: 40px;
-                        font-weight: bold;
-                        transition: 0.3s;
-                        cursor: pointer;
-                    }
-                    .close-lightbox:hover,
-                    .close-lightbox:focus {
-                        color: #bbb;
-                        text-decoration: none;
-                        cursor: pointer;
-                    }
-                    
                     @media (max-width: 768px) {
                         .image-grid-3x3 {
                             grid-template-columns: repeat(2, 1fr);
@@ -965,51 +927,19 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     }
                 </style>
                 
-                <!-- Lightbox Modal -->
-                <div id="myLightbox" class="lightbox-overlay">
-                    <span class="close-lightbox">&times;</span>
-                    <img class="lightbox-content" id="lightboxImg">
-                </div>
-
                 <div class="image-grid-3x3">
                 '''
                 for label, thumb_url, full_url in valid_photos:
-                    # Note: removed <a> tag, added onclick event
+                    # FIXED: Removed <a> tag and onclick event to disable fullscreen/link behavior
                     grid_html += f'''
-                        <div class="image-grid-item" onclick="openLightbox('{full_url}')">
+                        <div class="image-grid-item">
                             <img src="{thumb_url}" alt="{label}" loading="lazy">
                             <div class="label">{label}</div>
                         </div>
                     '''
                 grid_html += '</div>'
-                
-                # Add JS for Lightbox functionality
-                grid_html += '''
-                <script>
-                    function openLightbox(src) {
-                        var modal = document.getElementById("myLightbox");
-                        var modalImg = document.getElementById("lightboxImg");
-                        modal.style.display = "flex";
-                        modalImg.src = src;
-                    }
-                    
-                    // Get the <span> element that closes the modal
-                    var span = document.getElementsByClassName("close-lightbox")[0];
-                    
-                    // When the user clicks on <span> (x), close the modal
-                    span.onclick = function() { 
-                        document.getElementById("myLightbox").style.display = "none";
-                    }
-                    
-                    // Close when clicking outside the image
-                    document.getElementById("myLightbox").onclick = function(e) {
-                        if (e.target === this) {
-                            this.style.display = "none";
-                        }
-                    }
-                </script>
-                '''
-                components.html(grid_html, height=500, scrolling=True)
+                # Adjusted height slightly to fit content better without extra space
+                components.html(grid_html, height=480, scrolling=True)
             else:
                 st.info("No photo links configured for this property record selection.")
 
@@ -1035,14 +965,15 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     valid_docs.append((label, thumb_url, full_url))
             
             if valid_docs:
-                # Build HTML grid with 3x3 layout using components.html WITH LIGHTBOX
+                # Build HTML grid with 3x3 layout using components.html
+                # FIXED: Removed padding to eliminate bottom whitespace
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
                         display: grid;
                         grid-template-columns: repeat(3, 1fr);
                         gap: 15px;
-                        padding: 10px 0;
+                        padding: 0; /* FIXED: Removed padding */
                         max-width: 100%;
                     }
                     .image-grid-item {
@@ -1054,7 +985,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         aspect-ratio: 4/3;
                         display: flex;
                         flex-direction: column;
-                        cursor: pointer;
                     }
                     .image-grid-item:hover {
                         transform: scale(1.02);
@@ -1078,44 +1008,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         flex-shrink: 0;
                     }
                     
-                    /* Lightbox Styles */
-                    .lightbox-overlay {
-                        display: none;
-                        position: fixed;
-                        z-index: 9999;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                        height: 100%;
-                        overflow: auto;
-                        background-color: rgba(0,0,0,0.9);
-                        justify-content: center;
-                        align-items: center;
-                    }
-                    .lightbox-content {
-                        margin: auto;
-                        display: block;
-                        max-width: 90%;
-                        max-height: 90%;
-                        border-radius: 4px;
-                    }
-                    .close-lightbox {
-                        position: absolute;
-                        top: 20px;
-                        right: 35px;
-                        color: #f1f1f1;
-                        font-size: 40px;
-                        font-weight: bold;
-                        transition: 0.3s;
-                        cursor: pointer;
-                    }
-                    .close-lightbox:hover,
-                    .close-lightbox:focus {
-                        color: #bbb;
-                        text-decoration: none;
-                        cursor: pointer;
-                    }
-                    
                     @media (max-width: 768px) {
                         .image-grid-3x3 {
                             grid-template-columns: repeat(2, 1fr);
@@ -1128,50 +1020,18 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     }
                 </style>
                 
-                <!-- Lightbox Modal -->
-                <div id="myLightboxDocs" class="lightbox-overlay">
-                    <span class="close-lightbox">&times;</span>
-                    <img class="lightbox-content" id="lightboxImgDocs">
-                </div>
-
                 <div class="image-grid-3x3">
                 '''
                 for label, thumb_url, full_url in valid_docs:
-                    # Note: removed <a> tag, added onclick event
+                    # FIXED: Removed <a> tag and onclick event to disable fullscreen/link behavior
                     grid_html += f'''
-                        <div class="image-grid-item" onclick="openLightboxDocs('{full_url}')">
+                        <div class="image-grid-item">
                             <img src="{thumb_url}" alt="{label}" loading="lazy">
                             <div class="label">{label}</div>
                         </div>
                     '''
                 grid_html += '</div>'
-                
-                # Add JS for Lightbox functionality
-                grid_html += '''
-                <script>
-                    function openLightboxDocs(src) {
-                        var modal = document.getElementById("myLightboxDocs");
-                        var modalImg = document.getElementById("lightboxImgDocs");
-                        modal.style.display = "flex";
-                        modalImg.src = src;
-                    }
-                    
-                    // Get the <span> element that closes the modal
-                    var span = document.getElementsByClassName("close-lightbox")[0];
-                    
-                    // When the user clicks on <span> (x), close the modal
-                    span.onclick = function() { 
-                        document.getElementById("myLightboxDocs").style.display = "none";
-                    }
-                    
-                    // Close when clicking outside the image
-                    document.getElementById("myLightboxDocs").onclick = function(e) {
-                        if (e.target === this) {
-                            this.style.display = "none";
-                        }
-                    }
-                </script>
-                '''
-                components.html(grid_html, height=500, scrolling=True)
+                # Adjusted height slightly to fit content better without extra space
+                components.html(grid_html, height=480, scrolling=True)
             else:
                 st.info("No layout documents configured for this property record selection.")
