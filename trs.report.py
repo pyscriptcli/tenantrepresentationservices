@@ -293,13 +293,13 @@ def download_file(url):
 # Converts any google drive viewing link into a frontend-renderable public thumbnail endpoint
 def transform_to_renderable_url(url):
     try:
-        file_id_match = re.search(r'(?:id=|/d/|/uc\?.*?id=)([a-zA-Z0-9_-]{25,})', url)
+        file_id_match = re.search(r'(?:id=|/d/|/uc\?.*?id=)([a-zA-Z0-9_-]{25,})', str(url))
         if file_id_match:
             file_id = file_id_match.group(1)
-            return f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
+            return f"https://drive.google.com/thumbnail?sz=w1200&id={file_id}"
     except:
         pass
-    return url
+    return str(url)
 
 def get_placeholders(sheet):
     placeholders = set()
@@ -773,7 +773,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-# --- TAB 2: PROPERTY PHOTOS (FIXED NATIVE RENDERER) ---
+        # --- TAB 2: PROPERTY PHOTOS (FIXED NATIVE RENDERER) ---
         with tab_photos:
             photo_cols = ["PROPERTY PHOTOS 1", "PROPERTY PHOTOS 2", "PROPERTY PHOTOS 3", "PROPERTY PHOTOS 4", "PROPERTY PHOTOS 5"]
             valid_photos = []
@@ -781,16 +781,11 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             for col in photo_cols:
                 raw_img_val = site_row_data.get(col, "")
                 if pd.notna(raw_img_val) and str(raw_img_val).strip() != "":
-                    # Robust regex to extract the ID from the link
-                    match = re.search(r'([a-zA-Z0-9_-]{25,})', str(raw_img_val))
-                    if match:
-                        file_id = match.group(1)
-                        # Use the direct drive viewer endpoint which is most compatible with <img> tags
-                        img_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                    img_url = transform_to_renderable_url(raw_img_val)
+                    if "drive.google.com" in img_url:
                         valid_photos.append((col, img_url))
             
             if valid_photos:
-                # Use a cleaner column layout
                 cols = st.columns(len(valid_photos))
                 for i, (label, url) in enumerate(valid_photos):
                     with cols[i]:
@@ -807,10 +802,8 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             for col in doc_cols:
                 raw_doc_val = site_row_data.get(col, "")
                 if pd.notna(raw_doc_val) and str(raw_doc_val).strip() != "":
-                    match = re.search(r'([a-zA-Z0-9_-]{25,})', str(raw_doc_val))
-                    if match:
-                        file_id = match.group(1)
-                        doc_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                    doc_url = transform_to_renderable_url(raw_doc_val)
+                    if "drive.google.com" in doc_url:
                         valid_docs.append((col, doc_url))
             
             if valid_docs:
