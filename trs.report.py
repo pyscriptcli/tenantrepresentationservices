@@ -159,19 +159,19 @@ st.markdown("""
     
     /* REMOVED: Padding from Streamlit's column containers inside tabs */
     div[data-testid="stVerticalBlock"] {
-        gap: 0rem !important;  /* CHANGED: removed gap between elements */
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
-        margin-top: 0px !important;
-        margin-bottom: 0px !important;
+        gap: 1rem !important;  /* CHANGED: removed gap between elements */
+        padding-top: 1px !important;
+        padding-bottom: 1px !important;
+        margin-top: 1px !important;
+        margin-bottom: 1px !important;
     }
     
     /* REMOVED: Extra space from Streamlit's main block container */
     .main .block-container {
-        padding-top: 0rem !important;
-        padding-bottom: 0rem !important;
-        margin-top: 0rem !important;
-        margin-bottom: 0rem !important;
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+        margin-top: 1rem !important;
+        margin-bottom: 1rem !important;
     }
     
     /* CSS Blocking Engine to Hide Deployment Watermarks */
