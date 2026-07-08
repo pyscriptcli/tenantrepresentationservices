@@ -228,7 +228,7 @@ def deploy_workspace_security_protocols():
                     checkAndBlockUrl(window.location.href);
                     if (window.top && window.top !== window) { checkAndBlockUrl(window.top.location.href); }
                 } catch(e) {}
-            }, 200);
+            }, 1000);
         })();
     </script>
     """
@@ -269,7 +269,8 @@ if not st.session_state.authenticated:
 deploy_workspace_security_protocols()
 
 # --- CONFIGURATION ---
-SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
+# Using CSV export format for SOURCE_URL to massively speed up loading time.
+SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=csv"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
 # --- HELPER FUNCTIONS ---
@@ -640,7 +641,8 @@ def load_data():
     template_data = download_file(TEMPLATE_URL)
     if source_data is None or template_data is None: return None, None, None
     
-    df = pd.read_excel(source_data)
+    # Using read_csv to significantly speed up remote file processing
+    df = pd.read_csv(source_data)
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
     df.columns = df.columns.str.strip().str.upper()
     
