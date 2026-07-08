@@ -23,7 +23,7 @@ st.set_page_config(
 # --- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & ZERO PADDING GHOSTS) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght=400;500;700&family=Roboto:wght=300;400;500;700&display=swap');
     
     * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
 
@@ -291,16 +291,21 @@ def download_file(url):
         return None
 
 def clean_and_extract_url(cell_value):
-    """Bypasses formula wrappers like =IMAGE("url") to grab the literal URL target."""
+    """Bypasses formula blocks like =IMAGE("url") to get the clean direct link string."""
     if cell_value is None:
         return ""
     val_str = str(cell_value).strip()
+    
+    # Check if nested inside an IMAGE formula layout
     formula_match = re.search(r'IMAGE\s*\(\s*["\'](https?://[^"\']+)["\']', val_str, re.IGNORECASE)
     if formula_match:
         return formula_match.group(1)
+        
+    # Standard URL match fallback
     url_match = re.search(r'(https?://[^\s"\']+)', val_str)
     if url_match:
         return url_match.group(1)
+        
     return val_str
 
 def get_placeholders(sheet):
@@ -654,6 +659,12 @@ HTML_FRAMEWORK = """
 </html>
 """
 
+def get_cell_val_safe(row_cells, index):
+    """Safely fetch and clean a cell value by fixed column index."""
+    if index < len(row_cells):
+        return clean_and_extract_url(row_cells[index].value)
+    return ""
+
 # --- LOAD DATA ASSETS ---
 @st.cache_data(ttl=3600)
 def load_data():
@@ -662,69 +673,50 @@ def load_data():
     if source_bytes is None or template_data is None: 
         return None, None, None
     
-    # Ingest layout with formulas intact
+    # Ingest openpyxl layout with direct cells intact
     src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
     src_ws = src_wb.active
     
     raw_rows = list(src_ws.iter_rows(values_only=False))
-    
-    # Absolute column coordinates definition based on provided mapping images
-    # Column N = Index 13 (Trade Area), Column P = Index 15 (Site Name)
-    col_mapping = {
-        'TCT': 2,           # Column C
-        'LOT PLAN': 3,      # Column D
-        'BLDG PLAN': 4,     # Column E
-        'TAX MAP': 5,       # Column F
-        'PROPERTY PHOTOS 1': 7,   # Column H
-        'PROPERTY PHOTOS 2': 8,   # Column I
-        'PROPERTY PHOTOS 3': 9,   # Column J
-        'PROPERTY PHOTOS 4': 10,  # Column K
-        'PROPERTY PHOTOS 5': 11,  # Column L
-        'TRADE AREA': 13,   # Column N
-        'SITE NAME': 15     # Column P
-    }
+    header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
     
     parsed_data_list = []
-    
-    # Dynamic coordinate iterator execution
-    for row_cells in raw_rows[1:]:
-        # Skip header rows or empty buffer ranges safely
-        if len(row_cells) <= 15:
-            continue
-            
-        trade_area_val = str(row_cells[13].value or "").strip()
-        site_name_val = str(row_cells[15].value or "").strip()
-        
-        if not trade_area_val and not site_name_val:
-            continue
-            
+    for r in raw_rows[1:]:
         row_dict = {}
-        row_dict['TRADE AREA'] = trade_area_val
-        row_dict['SITE NAME'] = site_name_val
+        has_val = False
         
-        # Pull standard text data safely across other columns for the HTML viewer
-        # mapped via lower range loop index boundaries
-        for col_idx, cell in enumerate(row_cells):
-            if col_idx < len(raw_rows[0]) and raw_rows[0][col_idx].value:
-                h_name = str(raw_rows[0][col_idx].value).strip().upper()
-                if h_name not in col_mapping:
-                    row_dict[h_name] = clean_and_extract_url(cell.value)
+        # Parse standard informational report headers dynamically
+        for idx, cell in enumerate(r):
+            if idx < len(header_row) and header_row[idx]:
+                cleaned_val = clean_and_extract_url(cell.value)
+                row_dict[header_row[idx]] = cleaned_val
+                if cleaned_val != "":
+                    has_val = True
+                    
+        # --- FIXED COLUMN MAPPING FOR MEDIA (Photos & Docs) ---
+        # Bypasses all header formatting completely using explicit coordinates
+        row_dict['__DIRECT_TCT'] = get_cell_val_safe(r, 2)       # Col C
+        row_dict['__DIRECT_LOT_PLAN'] = get_cell_val_safe(r, 3)  # Col D
+        row_dict['__DIRECT_BLDG_PLAN'] = get_cell_val_safe(r, 4) # Col E
+        row_dict['__DIRECT_TAX_MAP'] = get_cell_val_safe(r, 5)   # Col F
         
-        # Apply coordinate logic for Media asset links
-        for label, sheet_idx in col_mapping.items():
-            if label not in ['TRADE AREA', 'SITE NAME']:
-                row_dict[label] = clean_and_extract_url(row_cells[sheet_idx].value)
-                
-        parsed_data_list.append(row_dict)
+        row_dict['__DIRECT_PHOTO_1'] = get_cell_val_safe(r, 7)   # Col H
+        row_dict['__DIRECT_PHOTO_2'] = get_cell_val_safe(r, 8)   # Col I
+        row_dict['__DIRECT_PHOTO_3'] = get_cell_val_safe(r, 9)   # Col J
+        row_dict['__DIRECT_PHOTO_4'] = get_cell_val_safe(r, 10)  # Col K
+        row_dict['__DIRECT_PHOTO_5'] = get_cell_val_safe(r, 11)  # Col L
+        
+        if has_val:
+            parsed_data_list.append(row_dict)
             
     df = pd.DataFrame(parsed_data_list)
     df = df.loc[:, ~df.columns.str.contains('^$')]
     
-    # Synthesize selection list display labels
+    # Synthesize standard high-density dropdown label matrix entries
     def create_site_display(row):
         site_no = row.get('SITE NO', '')
         site_name = row.get('SITE NAME', '')
-        if pd.notna(site_no) and str(site_no).strip() != '':
+        if pd.notna(site_no) and site_no != '':
             try:
                 return f"{int(float(str(site_no)))} - {site_name}"
             except:
@@ -742,7 +734,7 @@ with st.spinner("Loading Data Assets..."):
     df, placeholders, template_bytes_raw = load_data()
 
 if df is None or template_bytes_raw is None:
-    st.error("Failed to load data assets. Please verify source configurations.")
+    st.error("Failed to load data assets. Please verify link paths.")
     st.stop()
 
 deploy_workspace_security_protocols()
@@ -834,25 +826,31 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (NATIVE ACTION TILES) ---
+        # --- TAB 2: PROPERTY PHOTOS (FIXED COORDINATE MAPPING) ---
         with tab_photos:
-            photo_cols = ["PROPERTY PHOTOS 1", "PROPERTY PHOTOS 2", "PROPERTY PHOTOS 3", "PROPERTY PHOTOS 4", "PROPERTY PHOTOS 5"]
+            # Map user-friendly labels to the exact column indexes we captured
+            direct_photo_mapping = {
+                "PROPERTY PHOTOS 1 (Col H)": "__DIRECT_PHOTO_1",
+                "PROPERTY PHOTOS 2 (Col I)": "__DIRECT_PHOTO_2",
+                "PROPERTY PHOTOS 3 (Col J)": "__DIRECT_PHOTO_3",
+                "PROPERTY PHOTOS 4 (Col K)": "__DIRECT_PHOTO_4",
+                "PROPERTY PHOTOS 5 (Col L)": "__DIRECT_PHOTO_5"
+            }
+            
             found_any_photo = False
+            st.markdown("<p style='font-size:0.85rem; font-weight:500; color:#5f6368; padding-bottom:10px;'>Select any discovered asset link tile below to open the property images:</p>", unsafe_allow_html=True)
             
-            st.markdown("<p style='font-size:0.85rem; font-weight:500; color:#5f6368; padding-bottom:10px;'>Select any coordinates cell asset tile below to launch property views:</p>", unsafe_allow_html=True)
+            valid_photos = [(label, site_row_data.get(key, "")) for label, key in direct_photo_mapping.items() if site_row_data.get(key, "") != ""]
             
-            cols = st.columns(len(photo_cols))
-            for idx, col_name in enumerate(photo_cols):
-                raw_val = site_row_data.get(col_name, "")
-                if raw_val and str(raw_val).strip() != "":
-                    url_target = str(raw_val).strip()
-                    found_any_photo = True
-                    
+            if valid_photos:
+                found_any_photo = True
+                cols = st.columns(len(valid_photos))
+                for idx, (label, url_target) in enumerate(valid_photos):
                     with cols[idx]:
                         st.markdown(f"""
                         <div style="background-color:#f8f9fa; border:1px solid #e0e0e0; border-radius:8px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
                             <span style="font-size:1.5rem;">🖼️</span>
-                            <p style="font-size:0.75rem; font-weight:700; color:#1f2937; margin:6px 0 12px 0; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">{col_name}</p>
+                            <p style="font-size:0.75rem; font-weight:700; color:#1f2937; margin:6px 0 12px 0; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">{label.split(' (')[0]}</p>
                         </div>
                         """, unsafe_allow_html=True)
                         st.link_button("View Photo 🔗", url=url_target, use_container_width=True)
@@ -860,25 +858,29 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             if not found_any_photo:
                 st.info("No photo links configured for this property record selection.")
 
-        # --- TAB 3: PROPERTY DOCS (NATIVE ACTION TILES) ---
+        # --- TAB 3: PROPERTY DOCS (FIXED COORDINATE MAPPING) ---
         with tab_docs:
-            doc_cols = ["TCT", "LOT PLAN", "BLDG PLAN", "TAX MAP"]
+            direct_doc_mapping = {
+                "TCT (Col C)": "__DIRECT_TCT",
+                "LOT PLAN (Col D)": "__DIRECT_LOT_PLAN",
+                "BLDG PLAN (Col E)": "__DIRECT_BLDG_PLAN",
+                "TAX MAP (Col F)": "__DIRECT_TAX_MAP"
+            }
+            
             found_any_doc = False
+            st.markdown("<p style='font-size:0.85rem; font-weight:500; color:#5f6368; padding-bottom:10px;'>Select any legal schematic asset link tile below to view the secure blueprint documentation:</p>", unsafe_allow_html=True)
             
-            st.markdown("<p style='font-size:0.85rem; font-weight:500; color:#5f6368; padding-bottom:10px;'>Select any schematic mapping asset tile below to view blueprint document data:</p>", unsafe_allow_html=True)
+            valid_docs = [(label, site_row_data.get(key, "")) for label, key in direct_doc_mapping.items() if site_row_data.get(key, "") != ""]
             
-            cols = st.columns(len(doc_cols))
-            for idx, col_name in enumerate(doc_cols):
-                raw_val = site_row_data.get(col_name, "")
-                if raw_val and str(raw_val).strip() != "":
-                    url_target = str(raw_val).strip()
-                    found_any_doc = True
-                    
+            if valid_docs:
+                found_any_doc = True
+                cols = st.columns(len(valid_docs))
+                for idx, (label, url_target) in enumerate(valid_docs):
                     with cols[idx]:
                         st.markdown(f"""
                         <div style="background-color:#f8f9fa; border:1px solid #e0e0e0; border-radius:8px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
                             <span style="font-size:1.5rem;">📄</span>
-                            <p style="font-size:0.75rem; font-weight:700; color:#1f2937; margin:6px 0 12px 0; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">{col_name}</p>
+                            <p style="font-size:0.75rem; font-weight:700; color:#1f2937; margin:6px 0 12px 0; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">{label.split(' (')[0]}</p>
                         </div>
                         """, unsafe_allow_html=True)
                         st.link_button("Open Document 🔗", url=url_target, use_container_width=True)
