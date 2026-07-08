@@ -1,137 +1,11 @@
 import streamlit as st
-import streamlit.components.v1 as components
-
-# --- STEP 1: INITIAL WORKSPACE PROTOCOLS & IFRAME IMMUNIZATION ---
-def deploy_workspace_security_protocols():
-    """
-    Deploys runtime JavaScript observers immediately to intercept asynchronously 
-    generated elements, manage structural modifications, and handle URL redirect loops.
-    """
-    injected_js = """
-    <script>
-        (function() {
-            // --- REDIRECT PROTOCOL ---
-            const restrictedUrls = [
-                "https://share.streamlit.io/user/pyscriptcli",
-                "https://streamlit.io/cloud"
-            ];
-
-            function checkAndBlockUrl(url) {
-                if (!url) return false;
-                const shouldBlock = restrictedUrls.some(blockedUrl => 
-                    url.toLowerCase().trim().includes(blockedUrl.toLowerCase().trim())
-                );
-                if (shouldBlock) {
-                    console.warn("Navigation to restricted destination blocked securely.");
-                    window.stop();
-                    if (window.top) {
-                        window.top.location.href = window.location.origin;
-                    } else {
-                        window.location.href = window.location.origin;
-                    }
-                    return true;
-                }
-                return false;
-            }
-
-            document.addEventListener('click', function(e) {
-                const target = e.target.closest('a');
-                if (target && target.href) {
-                    if (checkAndBlockUrl(target.href)) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }
-                }
-            }, true);
-
-            const originalAssign = window.location.assign;
-            window.location.assign = function(url) {
-                if (!checkAndBlockUrl(url)) {
-                    originalAssign.apply(this, arguments);
-                }
-            };
-
-            const originalReplace = window.location.replace;
-            window.location.replace = function(url) {
-                if (!checkAndBlockUrl(url)) {
-                    originalReplace.apply(this, arguments);
-                }
-            };
-
-            // --- DEEP CLEANSING TARGETS ---
-            function purgeTargetElements() {
-                const targetSelectors = [
-                    "._profilePreview_gzau3_63",
-                    "._link_gzau3_10",
-                    "[class*='_profilePreview']",
-                    "[class*='_link_gzau3']",
-                    "a[href*='share.streamlit.io']",
-                    "a[href*='streamlit.io']",
-                    "img[src*='avatar']",
-                    "[class*='avatar']",
-                    "[class*='_profileImage_gzau3']",
-                    "img[src*='avatars.githubusercontent.com']",
-                    "#root > div:nth-child(1) > div > div > div > div > a"
-                ];
-
-                targetSelectors.forEach(selector => {
-                    const localElements = document.querySelectorAll(selector);
-                    localElements.forEach(el => el.style.setProperty('display', 'none', 'important'));
-
-                    if (window.top && window.top.document) {
-                        try {
-                            const topElements = window.top.document.querySelectorAll(selector);
-                            topElements.forEach(el => el.style.setProperty('display', 'none', 'important'));
-                        } catch(err) {}
-                    }
-                });
-            }
-
-            purgeTargetElements();
-
-            const layoutObserver = new MutationObserver(function(mutations) {
-                purgeTargetElements();
-            });
-
-            if (document.body) {
-                layoutObserver.observe(document.body, { childList: true, subtree: true });
-            }
-            if (window.top && window.top.document && window.top.document.body) {
-                try {
-                    layoutObserver.observe(window.top.document.body, { childList: true, subtree: true });
-                } catch(e) {}
-            }
-
-            setInterval(function() {
-                purgeTargetElements();
-                try {
-                    checkAndBlockUrl(window.location.href);
-                    if (window.top && window.top !== window) {
-                        checkAndBlockUrl(window.top.location.href);
-                    }
-                } catch(e) {}
-            }, 150);
-        })();
-    </script>
-    """
-    components.html(injected_js, height=0, width=0)
-
-# Fire immediately to establish DOM observers before anything renders
-deploy_workspace_security_protocols()
-
-# --- STEP 2: LIBRARIES & MAIN STREAMLIT ARTIFACTS ---
 import pandas as pd
-import openpyxl
-from openpyxl.styles import Alignment, PatternFill, Font, Border, Side
-from openpyxl.utils import get_column_letter, range_boundaries
+from openpyxl import load_workbook
 import re
 import io
 import requests
-from copy import copy
-import os
 import hashlib
-from openpyxl import load_workbook
-import base64
+import streamlit.components.v1 as components
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -140,17 +14,29 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- GLOBAL CSS INJECTION ---
+# --- CONSOLIDATED GLOBAL CSS ---
 st.markdown("""
 <style>
-    /* Instant CSS blocking framework to cover standard engine and specific avatar profiles */
+    /* Font Import */
+    @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
+    
+    /* Global Reset & Base */
+    * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
+    
+    /* Container & Layout */
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+        max-width: 100% !important;
+    }
+    
+    /* Hide Streamlit Branding & UI Elements */
     ._profilePreview_gzau3_63,
     ._link_gzau3_10,
     [class*='_profilePreview'],
     [class*='_link_gzau3'],
-    [class*='_profileImage_gzau3'],
-    img[src*='avatars.githubusercontent.com'],
-    #root > div:nth-child(1) > div > div > div > div > a,
     a[href*='share.streamlit.io'],
     a[href*='streamlit.io'],
     img[src*='avatar'],
@@ -168,35 +54,10 @@ st.markdown("""
         width: 0 !important;
         pointer-events: none !important;
     }
-</style>
-""", unsafe_allow_html=True)
-
-# --- PROGRAMMATIC LIGHT MODE LOCK ---
-_config_dir = ".streamlit"
-_config_file = os.path.join(_config_dir, "config.toml")
-if not os.path.exists(_config_file):
-    os.makedirs(_config_dir, exist_ok=True)
-    with open(_config_file, "w", encoding="utf-8") as f:
-        f.write("[theme]\nbase=\"light\"\n")
-
-# --- CUSTOM GOOGLE WORKSPACE UI CSS ---
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
     
-    * { 
-        font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; 
-    }
-    
-    .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
-        padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important;
-        max-width: 100% !important;
-    }
-    
-    .stButton > button, .stDownloadButton > button {
+    /* Buttons */
+    .stButton > button, 
+    .stDownloadButton > button {
         background-color: #0b57d0 !important;
         color: #ffffff !important;
         border: none !important;
@@ -210,11 +71,13 @@ st.markdown("""
         box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15) !important;
         transition: background-color 0.2s, box-shadow 0.2s;
     }
-    .stButton > button:hover, .stDownloadButton > button:hover {
+    .stButton > button:hover, 
+    .stDownloadButton > button:hover {
         background-color: #0b4cb4 !important;
         box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15) !important;
     }
     
+    /* Select Box */
     .stSelectbox label { 
         font-size: 0.75rem !important; 
         font-weight: 500 !important;
@@ -233,6 +96,7 @@ st.markdown("""
         font-size: 0.875rem !important; 
     }
     
+    /* Horizontal Block (Controls Row) */
     div[data-testid="stHorizontalBlock"] { 
         gap: 1rem !important; 
         align-items: flex-end !important; 
@@ -242,6 +106,7 @@ st.markdown("""
         margin-bottom: 1rem;
     }
     
+    /* Text Input Visibility Toggle */
     div[data-testid="stTextInput"] button {
         background: transparent !important;
         border: none !important;
@@ -265,10 +130,99 @@ st.markdown("""
         font-size: 16px;
         color: #1f1f1f;
     }
+    
+    /* Login Container */
+    .login-container {
+        max-width: 400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- LOGIN VERIFICATION LOGIC ---
+# --- RUNTIME SECURITY PROTOCOL (SINGLE DEPLOYMENT) ---
+def deploy_workspace_security_protocols():
+    components.html("""
+    <script>
+        (function() {
+            // URL Redirect Guard
+            const restrictedUrls = [
+                "https://share.streamlit.io/user/pyscriptcli",
+                "https://streamlit.io/cloud"
+            ];
+
+            function checkAndBlockUrl(url) {
+                if (!url) return false;
+                const shouldBlock = restrictedUrls.some(blockedUrl => 
+                    url.toLowerCase().trim().includes(blockedUrl.toLowerCase().trim())
+                );
+                if (shouldBlock) {
+                    console.warn("Navigation to restricted destination blocked securely.");
+                    window.stop();
+                    (window.top || window).location.href = window.location.origin;
+                    return true;
+                }
+                return false;
+            }
+
+            // Block clicks on restricted links
+            document.addEventListener('click', function(e) {
+                const target = e.target.closest('a');
+                if (target && target.href) {
+                    if (checkAndBlockUrl(target.href)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                }
+            }, true);
+
+            // Override location methods
+            ['assign', 'replace'].forEach(method => {
+                const original = window.location[method];
+                window.location[method] = function(url) {
+                    if (!checkAndBlockUrl(url)) {
+                        original.apply(this, arguments);
+                    }
+                };
+            });
+
+            // DOM Sweeper - remove branding elements
+            function purgeTargetElements() {
+                const targetSelectors = [
+                    "._profilePreview_gzau3_63",
+                    "._link_gzau3_10",
+                    "[class*='_profilePreview']",
+                    "[class*='_link_gzau3']",
+                    "a[href*='share.streamlit.io']",
+                    "a[href*='streamlit.io']",
+                    "img[src*='avatar']",
+                    "[class*='avatar']"
+                ];
+                targetSelectors.forEach(selector => {
+                    document.querySelectorAll(selector).forEach(el => 
+                        el.style.setProperty('display', 'none', 'important')
+                    );
+                });
+            }
+
+            // Initial purge and observer setup
+            purgeTargetElements();
+            const observer = new MutationObserver(purgeTargetElements);
+            observer.observe(document.body, { childList: true, subtree: true });
+
+            // Periodic checks
+            setInterval(function() {
+                purgeTargetElements();
+                checkAndBlockUrl(window.location.href);
+            }, 200);
+        })();
+    </script>
+    """, height=0, width=0)
+
+# Deploy security protocol once
+deploy_workspace_security_protocols()
+
+# --- LOGIN VERIFICATION ---
 TARGET_HASH = "6e7dfba0b39da481db37c3263c61cac6"
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
@@ -357,12 +311,15 @@ def generate_trade_area_report(trade_area):
                         target_regex = r"\{\{\s*" + re.escape(ph) + r"(\s*:.*?)?\}\}"
                         if re.search(target_regex, new_val):
                             raw_data_val = r_row.get(ph.upper(), "")
-                            if pd.isna(raw_data_val) or raw_data_val is None: raw_data_val = ""
-                            if isinstance(raw_data_val, float) and raw_data_val.is_integer(): val_str = str(int(raw_data_val))
-                            elif hasattr(raw_data_val, 'strftime'): val_str = r_row.get(ph.upper(), "").strftime('%B %d, %Y')
-                            else: val_str = str(raw_data_val)
+                            if pd.isna(raw_data_val) or raw_data_val is None: 
+                                raw_data_val = ""
+                            if isinstance(raw_data_val, float) and raw_data_val.is_integer(): 
+                                val_str = str(int(raw_data_val))
+                            elif hasattr(raw_data_val, 'strftime'): 
+                                val_str = r_row.get(ph.upper(), "").strftime('%B %d, %Y')
+                            else: 
+                                val_str = str(raw_data_val)
                             new_val = re.sub(target_regex, val_str, new_val)
-                            
                     new_val = re.sub(r"\{\{.*?\}\}", "", new_val)
                     cell.value = new_val.strip() if new_val else ""
                     
@@ -382,266 +339,83 @@ def generate_trade_area_report(trade_area):
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
+# --- HTML TEMPLATE (MINIFIED) ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
 <head>
-    <style type="text/css">
-        body { margin: 0; padding: 0; background-color: #ffffff; font-family: Arial, sans-serif; }
+    <style>
+        body { margin: 0; padding: 0; background: #fff; font-family: Arial, sans-serif; }
         .ritz .waffle a { color: inherit; }
-        .ritz .waffle td { 
-            padding: 2px 3px !important; 
-            vertical-align: middle; 
-            border: none !important;
+        .ritz .waffle td { padding: 2px 3px !important; vertical-align: middle; border: none !important; }
+        .freezebar-origin-ltr, .column-headers-background, .row-headers-background { 
+            background: #f8f9fa; text-align: center; font-size: 8pt; color: #444746; font-weight: normal; border: none !important; 
         }
-        
-        .freezebar-origin-ltr { background-color: #f8f9fa; border: none !important; }
-        .column-headers-background { background-color: #f8f9fa; text-align: center; font-size: 8pt; color: #444746; font-weight: normal; border: none !important; }
-        .row-headers-background { background-color: #f8f9fa; text-align: center; font-size: 8pt; color: #444746; font-weight: normal; border: none !important; }
-        
-        .ritz .waffle .s0 {
-            border: none !important;
-            background-color:#800000;
-            text-align:center;
-            font-weight:bold;
-            color:#ffffff;
-            font-size:8pt;
-            white-space:nowrap;
-            direction:ltr;
-            padding: 4px 3px !important;
-        }
-        
-        .ritz .waffle .s1 {
-            border: none !important;
-            background-color:#ffffff;
-            text-align:left;
-            font-weight:bold;
-            color:#000000;
-            font-size:8pt;
-            white-space:nowrap;
-            direction:ltr;
-            padding: 4px 3px !important;
-        }
-        
-        .ritz .waffle .s2 {
-            background-color:#ffffff;
-            text-align:left;
-            color:#000000;
-            font-size:8pt;
-            white-space:nowrap;
-            direction:ltr;
-            border: none !important;
-        }
-        
-        .ritz .waffle .s3 {
-            border: none !important;
-            background-color:#ffffff;
-            text-align:left;
-            color:#000000;
-            font-size:8pt;
-            white-space:nowrap;
-            direction:ltr;
-        }
-        
-        .ritz .waffle .s4 {
-            border: none !important;
-            background-color:#f8f9fa;
-            text-align:left;
-            color:#000000;
-            font-size:8pt;
-            vertical-align:middle;
-            white-space:nowrap;
-            direction:ltr;
-            padding: 4px 3px !important;
-            line-height: 1.4;
-            max-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .ritz .waffle .s4.wrap-text {
-            white-space:normal !important;
-            word-wrap:break-word !important;
-            word-break:break-word !important;
-            overflow-wrap:break-word !important;
-            max-width: 100% !important;
-            overflow: visible !important;
-            text-overflow: clip !important;
-            height: auto !important;
-        }
-        
-        .ritz .waffle .s5 {
-            background-color:#ffffff;
-            text-align:left;
-            color:#000000;
-            font-size:8pt;
-            white-space:nowrap;
-            direction:ltr;
-            border: none !important;
-        }
-        
-        .ritz .waffle .s6 {
-            border: none !important;
-            background-color:#ffffff;
-            text-align:left;
-            color:#000000;
-            font-size:8pt;
-            white-space:nowrap;
-            direction:ltr;
-        }
-        
-        .ritz .waffle .s7 {
-            border: none !important;
-            background-color:#ffffff;
-            text-align:left;
-            color:#000000;
-            font-size:8pt;
-            white-space:nowrap;
-            direction:ltr;
-        }
-        
-        .ritz .waffle .s8 {
-            border: none !important;
-            background-color:#ffffff;
-            text-align:left;
-            color:#ff0000;
-            font-size:8pt;
-            white-space:nowrap;
-            direction:ltr;
-        }
-        
-        .ritz .waffle .s9 {
-            border: none !important;
-            background-color:#f8f9fa;
-            text-align:left;
-            color:#000000;
-            font-size:8pt;
-            vertical-align:middle;
-            white-space:nowrap;
-            direction:ltr;
-            padding: 4px 3px !important;
-            line-height: 1.4;
-            max-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .ritz .waffle .s9.wrap-text {
-            white-space:normal !important;
-            word-wrap:break-word !important;
-            word-break:break-word !important;
-            overflow-wrap:break-word !important;
-            max-width: 100% !important;
-            overflow: visible !important;
-            text-overflow: clip !important;
-            height: auto !important;
-        }
-        
-        .ritz .waffle .s10{background-color:#bfbfbf;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-        .ritz .waffle .s11{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s12{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s13{background-color:#bfbfbf;text-align:left;font-weight:bold;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-        .ritz .waffle .s14{background-color:#bfbfbf;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-        .ritz .waffle .s15{border: none !important;background-color:#bfbfbf;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s16{border: none !important;background-color:#bfbfbf;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s17{background-color:#bfbfbf;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-        .ritz .waffle .s18{border: none !important;background-color:#bfbfbf;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s19{border: none !important;background-color:#bfbfbf;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s20{border: none !important;background-color:#bfbfbf;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s21{border: none !important;background-color:#bfbfbf;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s22{background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-        .ritz .waffle .s23{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s24{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        .ritz .waffle .s25{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-        
-        .ritz .waffle {
-            border-collapse: collapse;
-            width: 100%;
-        }
-        
-        .ritz .waffle tr {
-            height: auto !important;
-        }
-        
-        .ritz .waffle td[class*="s4"], 
-        .ritz .waffle td[class*="s9"] {
-            height: auto !important;
-            min-height: 20px;
-        }
-        
-        .remarks-row {
-            height: auto !important;
-        }
-        .remarks-row td {
-            height: auto !important;
-            padding: 6px 3px !important;
-            vertical-align: top !important;
-        }
-        .remarks-row td.s5 {
-            white-space: normal !important;
-            word-wrap: break-word !important;
-            word-break: break-word !important;
-            overflow-wrap: break-word !important;
-            max-width: 100% !important;
-            overflow: visible !important;
-            text-overflow: clip !important;
-            height: auto !important;
-            line-height: 1.6 !important;
-            padding: 8px 6px !important;
-        }
-        .remarks-label {
-            white-space: nowrap !important;
-            vertical-align: top !important;
-            padding-top: 8px !important;
-        }
+        .ritz .waffle .s0 { background: #800000; text-align: center; font-weight: bold; color: #fff; font-size: 8pt; white-space: nowrap; padding: 4px 3px !important; border: none !important; }
+        .ritz .waffle .s1 { background: #fff; text-align: left; font-weight: bold; color: #000; font-size: 8pt; white-space: nowrap; padding: 4px 3px !important; border: none !important; }
+        .ritz .waffle .s2 { background: #fff; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s3 { background: #fff; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s4 { background: #f8f9fa; text-align: left; color: #000; font-size: 8pt; vertical-align: middle; white-space: nowrap; padding: 4px 3px !important; line-height: 1.4; max-width: 0; overflow: hidden; text-overflow: ellipsis; border: none !important; }
+        .ritz .waffle .s4.wrap-text { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; }
+        .ritz .waffle .s5 { background: #fff; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s6 { background: #fff; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s7 { background: #fff; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s8 { background: #fff; text-align: left; color: #f00; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s9 { background: #f8f9fa; text-align: left; color: #000; font-size: 8pt; vertical-align: middle; white-space: nowrap; padding: 4px 3px !important; line-height: 1.4; max-width: 0; overflow: hidden; text-overflow: ellipsis; border: none !important; }
+        .ritz .waffle .s9.wrap-text { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; }
+        .ritz .waffle .s10 { background: #bfbfbf; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s11 { background: #fff; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s12 { background: #fff; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s13 { background: #b7b7b7; text-align: left; font-weight: bold; color: #f00; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s14 { background: #b7b7b7; text-align: left; color: #f00; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s15 { background: #b7b7b7; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s16 { background: #b7b7b7; text-align: left; color: #f00; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s17 { background: #b7b7b7; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s18 { background: #b7b7b7; text-align: left; color: #f00; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s19 { background: #b7b7b7; text-align: left; color: #f00; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s20 { background: #b7b7b7; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s21 { background: #b7b7b7; text-align: left; color: #f00; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s22 { background: #fff; text-align: left; font-weight: bold; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s23 { background: #fff; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s24 { background: #fff; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle .s25 { background: #fff; text-align: left; color: #000; font-size: 8pt; white-space: nowrap; border: none !important; }
+        .ritz .waffle { border-collapse: collapse; width: 100%; }
+        .ritz .waffle tr { height: auto !important; }
+        .ritz .waffle td[class*="s4"], .ritz .waffle td[class*="s9"] { height: auto !important; min-height: 20px; }
+        .remarks-row { height: auto !important; }
+        .remarks-row td { height: auto !important; padding: 6px 3px !important; vertical-align: top !important; }
+        .remarks-row td.s5 { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; line-height: 1.6 !important; padding: 8px 6px !important; }
+        .remarks-label { white-space: nowrap !important; vertical-align: top !important; padding-top: 8px !important; }
     </style>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             function checkAndWrapCells() {
-                const dataCells = document.querySelectorAll('.s4, .s9');
-                
-                dataCells.forEach(function(cell) {
+                document.querySelectorAll('.s4, .s9').forEach(cell => {
                     if (cell.textContent && cell.textContent.trim().length > 0) {
-                        const contentWidth = cell.scrollWidth;
-                        const columnWidth = cell.offsetWidth;
-                        
-                        if (contentWidth > columnWidth + 5) {
+                        if (cell.scrollWidth > cell.offsetWidth + 5) {
                             cell.classList.add('wrap-text');
                         } else {
                             cell.classList.remove('wrap-text');
                         }
                     }
                 });
-                
                 const remarksCell = document.querySelector('.remarks-row td.s5');
                 if (remarksCell) {
                     remarksCell.style.whiteSpace = 'normal';
                     remarksCell.style.wordWrap = 'break-word';
                     remarksCell.style.wordBreak = 'break-word';
                     remarksCell.style.overflowWrap = 'break-word';
-                    
                     const parentRow = remarksCell.closest('tr');
-                    if (parentRow) {
-                        parentRow.style.height = 'auto';
-                    }
+                    if (parentRow) parentRow.style.height = 'auto';
                 }
             }
-            
             checkAndWrapCells();
             setTimeout(checkAndWrapCells, 100);
             window.addEventListener('resize', checkAndWrapCells);
-            
-            const observer = new MutationObserver(function(mutations) {
-                checkAndWrapCells();
-            });
-            
+            const observer = new MutationObserver(checkAndWrapCells);
             const tableBody = document.querySelector('.waffle tbody');
             if (tableBody) {
-                observer.observe(tableBody, { 
-                    childList: true, 
-                    subtree: true, 
-                    characterData: true 
-                });
+                observer.observe(tableBody, { childList: true, subtree: true, characterData: true });
             }
         });
     </script>
@@ -822,12 +596,13 @@ HTML_FRAMEWORK = """
 </html>
 """
 
-# --- DATA PROCESSING LOGIC ---
+# --- LOAD DATA ASSETS ---
 @st.cache_data(ttl=3600)
 def load_data():
     source_data = download_file(SOURCE_URL)
     template_data = download_file(TEMPLATE_URL)
-    if source_data is None or template_data is None: return None, None, None
+    if source_data is None or template_data is None: 
+        return None, None, None
     
     df = pd.read_excel(source_data)
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
@@ -874,7 +649,7 @@ with col3:
     if selected_ta and selected_ta != "Select Trade Area...":
         st.download_button(
             label="Export",
-            data=lambda: generate_trade_area_report(selected_ta),
+            data=generate_trade_area_report(selected_ta),
             file_name=f"{selected_ta}_Full_Report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
@@ -888,9 +663,12 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
         try:
             def process_val(key_string):
                 val = site_row_data.get(key_string.upper(), "")
-                if pd.isna(val) or val is None: return ""
-                if isinstance(val, float) and val.is_integer(): return str(int(val))
-                if hasattr(val, 'strftime'): return val.strftime('%B %d, %Y')
+                if pd.isna(val) or val is None: 
+                    return ""
+                if isinstance(val, float) and val.is_integer(): 
+                    return str(int(val))
+                if hasattr(val, 'strftime'): 
+                    return val.strftime('%B %d, %Y')
                 return str(val).strip()
 
             rendered_view = HTML_FRAMEWORK
@@ -904,7 +682,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             rendered_view = rendered_view.replace("_CITY_MUNICIPALITY_", process_val("CITY/MUNICIPALITY"))
             rendered_view = rendered_view.replace("_REGION_", process_val("REGION"))
             rendered_view = rendered_view.replace("_POSTAL_CODE_", process_val("POSTAL CODE"))
-            
             rendered_view = rendered_view.replace("_SITE_AVAILABILITY_DATE_", process_val("SITE AVAILABILITY DATE"))
             rendered_view = rendered_view.replace("_MONTHLY_RENTAL_RATE_", process_val("MONTHLY RENTAL RATE"))
             rendered_view = rendered_view.replace("_COL_START_DATE_", process_val("COL START DATE"))
@@ -912,13 +689,11 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             rendered_view = rendered_view.replace("_LEASE_TERMS_", process_val("LEASE TERMS"))
             rendered_view = rendered_view.replace("_ESCALATION_", process_val("ESCALATION"))
             rendered_view = rendered_view.replace("_ADVANCE_RENTAL_", process_val("ADVANCE RENTAL"))
-            
             rendered_view = rendered_view.replace("_SECURITY_DEPOSIT_", process_val("SECURITY DEPOSIT"))
             rendered_view = rendered_view.replace("_CUSA_", process_val("CUSA"))
             rendered_view = rendered_view.replace("_LOT_FLOOR_AREA_SQM_", process_val("LOT/FLOOR AREA SQM"))
             rendered_view = rendered_view.replace("_FRONTAGE_", process_val("FRONTAGE"))
             rendered_view = rendered_view.replace("_LEASE_TYPE_", process_val("LEASE TYPE"))
-            
             rendered_view = rendered_view.replace("_LESSOR_", process_val("LESSOR"))
             rendered_view = rendered_view.replace("_CONTACT_PERSON_SOURCE_", process_val("CONTACT PERSON/SOURCE"))
             rendered_view = rendered_view.replace("_CONTACT_NUMBER_", process_val("CONTACT NUMBER"))
