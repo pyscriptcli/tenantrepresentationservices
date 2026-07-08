@@ -308,6 +308,15 @@ def clean_and_extract_url(cell_value):
         
     return val_str
 
+def get_cell_val_safe(row_cells, index):
+    """Safely fetch and clean a cell value by fixed column index. Checks hyperlinks too."""
+    if index < len(row_cells):
+        cell = row_cells[index]
+        if cell.hyperlink and cell.hyperlink.target:
+            return clean_and_extract_url(cell.hyperlink.target)
+        return clean_and_extract_url(cell.value)
+    return ""
+
 def extract_google_drive_id(clean_url):
     """Extracts unique file ID from verified URL strings."""
     if not clean_url:
@@ -666,24 +675,19 @@ HTML_FRAMEWORK = """
 </html>
 """
 
-def get_cell_val_safe(row_cells, index):
-    """Safely fetch and clean a cell value by fixed column index."""
-    if index < len(row_cells):
-        return clean_and_extract_url(row_cells[index].value)
-    return ""
-
 # --- LOAD DATA ASSETS ---
 @st.cache_data(ttl=3600)
 def load_data():
     source_bytes = download_file(SOURCE_URL)
     template_data = download_file(TEMPLATE_URL)
     if source_bytes is None or template_data is None: 
-        return None, None, None
+        return None, None, None, []
     
     # Ingest openpyxl layout with direct cells intact
     src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
-    src_ws = src_wb.active
     
+    # 1. Parse Main Data Sheet (assumed active/first)
+    src_ws = src_wb.active
     raw_rows = list(src_ws.iter_rows(values_only=False))
     header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
     
@@ -691,35 +695,18 @@ def load_data():
     for r in raw_rows[1:]:
         row_dict = {}
         has_val = False
-        
-        # Parse standard informational report headers dynamically
         for idx, cell in enumerate(r):
             if idx < len(header_row) and header_row[idx]:
                 cleaned_val = clean_and_extract_url(cell.value)
                 row_dict[header_row[idx]] = cleaned_val
                 if cleaned_val != "":
                     has_val = True
-                    
-        # --- FIXED COLUMN MAPPING FOR MEDIA (Photos & Docs) ---
-        # Python uses 0-based indexing: Col A=0, Col B=1, Col C=2, etc.
-        row_dict['__DIRECT_TCT'] = get_cell_val_safe(r, 2)       # Col C
-        row_dict['__DIRECT_LOT_PLAN'] = get_cell_val_safe(r, 3)  # Col D
-        row_dict['__DIRECT_BLDG_PLAN'] = get_cell_val_safe(r, 4) # Col E
-        row_dict['__DIRECT_TAX_MAP'] = get_cell_val_safe(r, 5)   # Col F
-        
-        row_dict['__DIRECT_PHOTO_1'] = get_cell_val_safe(r, 7)   # Col H
-        row_dict['__DIRECT_PHOTO_2'] = get_cell_val_safe(r, 8)   # Col I
-        row_dict['__DIRECT_PHOTO_3'] = get_cell_val_safe(r, 9)   # Col J
-        row_dict['__DIRECT_PHOTO_4'] = get_cell_val_safe(r, 10)  # Col K
-        row_dict['__DIRECT_PHOTO_5'] = get_cell_val_safe(r, 11)  # Col L
-        
         if has_val:
             parsed_data_list.append(row_dict)
             
     df = pd.DataFrame(parsed_data_list)
     df = df.loc[:, ~df.columns.str.contains('^$')]
     
-    # Synthesize standard high-density dropdown label matrix entries
     def create_site_display(row):
         site_no = row.get('SITE NO', '')
         site_name = row.get('SITE NAME', '')
@@ -732,13 +719,51 @@ def load_data():
 
     df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
     
+    # 2. Extract Data from Specific "PHOTOS/DOCS" Tab using Exact Coordinates
+    media_data_list = []
+    media_ws = None
+    
+    # Locate the correct tab
+    for sheet_name in src_wb.sheetnames:
+        if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
+            media_ws = src_wb[sheet_name]
+            break
+            
+    # Fallback if specific media sheet name isn't found
+    if not media_ws:
+        media_ws = src_ws
+        
+    for r in media_ws.iter_rows(values_only=False):
+        # Col N (13) and Col P (15) mapping to link specific records
+        t_area = str(get_cell_val_safe(r, 13)).strip()
+        s_name = str(get_cell_val_safe(r, 15)).strip()
+        
+        # Avoid pulling the header row itself
+        if t_area and s_name and t_area.upper() != "TRADE AREA":
+            media_data_list.append({
+                'TRADE AREA': t_area,
+                'SITE NAME': s_name,
+                # DOCS: C(2), D(3), E(4), F(5)
+                '__DIRECT_TCT': get_cell_val_safe(r, 2),
+                '__DIRECT_LOT_PLAN': get_cell_val_safe(r, 3),
+                '__DIRECT_BLDG_PLAN': get_cell_val_safe(r, 4),
+                '__DIRECT_TAX_MAP': get_cell_val_safe(r, 5),
+                # PHOTOS: H(7), I(8), J(9), K(10), L(11)
+                '__DIRECT_PHOTO_1': get_cell_val_safe(r, 7),
+                '__DIRECT_PHOTO_2': get_cell_val_safe(r, 8),
+                '__DIRECT_PHOTO_3': get_cell_val_safe(r, 9),
+                '__DIRECT_PHOTO_4': get_cell_val_safe(r, 10),
+                '__DIRECT_PHOTO_5': get_cell_val_safe(r, 11),
+            })
+    
     temp_wb = load_workbook(template_data)
     placeholders = get_placeholders(temp_wb.active)
     template_data.seek(0)
-    return df, placeholders, template_data.getvalue()
+    
+    return df, placeholders, template_data.getvalue(), media_data_list
 
 with st.spinner("Loading Data Assets..."):
-    df, placeholders, template_bytes_raw = load_data()
+    df, placeholders, template_bytes_raw, media_data_list = load_data()
 
 if df is None or template_bytes_raw is None:
     st.error("Failed to load data assets. Please verify link paths.")
@@ -777,6 +802,20 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     if not site_data.empty:
         site_row_data = site_data.iloc[0]
+        
+        # Seek exact row match inside the mapped media tab data
+        target_ta = str(site_row_data.get('TRADE AREA', '')).strip()
+        target_sn = str(site_row_data.get('SITE NAME', '')).strip()
+        
+        media_row_data = {}
+        for m in media_data_list:
+            if m['TRADE AREA'] == target_ta and m['SITE NAME'] == target_sn:
+                media_row_data = m
+                break
+                
+        # If no strict match is found, fallback to main site row to prevent crashes
+        if not media_row_data:
+            media_row_data = site_row_data
         
         # Instantiate Workspace Tabs
         tab_report, tab_photos, tab_docs = st.tabs([
@@ -843,21 +882,24 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 "PROPERTY PHOTOS 5": "__DIRECT_PHOTO_5"
             }
             
-            found_any_photo = False
             valid_photos = []
             
             for label, key in direct_photo_mapping.items():
-                raw_url = site_row_data.get(key, "")
+                raw_url = media_row_data.get(key, "")
                 if raw_url:
                     file_id = extract_google_drive_id(raw_url)
                     if file_id:
                         # Generating the thumbnail endpoint strictly required for raw HTML rendering
                         thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
                         full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
-                        valid_photos.append((label, thumb_url, full_url))
+                    else:
+                        # Direct web image fallback in case regex doesn't match standard Drive ID
+                        thumb_url = raw_url
+                        full_url = raw_url
+                        
+                    valid_photos.append((label, thumb_url, full_url))
             
             if valid_photos:
-                found_any_photo = True
                 cols = st.columns(len(valid_photos))
                 for idx, (label, thumb_url, full_url) in enumerate(valid_photos):
                     with cols[idx]:
@@ -865,11 +907,11 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         # Render the actual image using HTML <img> tag, linking to the full view
                         st.markdown(f'''
                             <a href="{full_url}" target="_blank">
-                                <img src="{thumb_url}" style="width:100%; height:auto; border-radius:6px; margin-top:5px; border:1px solid #dadce0;">
+                                <img src="{thumb_url}" style="width:100%; height:auto; border-radius:6px; margin-top:5px; border:1px solid #dadce0; object-fit: cover; aspect-ratio: 4/3;">
                             </a>
                         ''', unsafe_allow_html=True)
                         
-            if not found_any_photo:
+            else:
                 st.info("No photo links configured for this property record selection.")
 
         # --- TAB 3: PROPERTY DOCS (DIRECT IMAGE RENDER) ---
@@ -881,20 +923,22 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 "TAX MAP": "__DIRECT_TAX_MAP"
             }
             
-            found_any_doc = False
             valid_docs = []
             
             for label, key in direct_doc_mapping.items():
-                raw_url = site_row_data.get(key, "")
+                raw_url = media_row_data.get(key, "")
                 if raw_url:
                     file_id = extract_google_drive_id(raw_url)
                     if file_id:
                         thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
                         full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
-                        valid_docs.append((label, thumb_url, full_url))
+                    else:
+                        thumb_url = raw_url
+                        full_url = raw_url
+                        
+                    valid_docs.append((label, thumb_url, full_url))
             
             if valid_docs:
-                found_any_doc = True
                 cols = st.columns(len(valid_docs))
                 for idx, (label, thumb_url, full_url) in enumerate(valid_docs):
                     with cols[idx]:
@@ -902,9 +946,9 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         # Render the actual document image using HTML <img> tag, linking to the full view
                         st.markdown(f'''
                             <a href="{full_url}" target="_blank">
-                                <img src="{thumb_url}" style="width:100%; height:auto; border-radius:6px; margin-top:5px; border:1px solid #dadce0;">
+                                <img src="{thumb_url}" style="width:100%; height:auto; border-radius:6px; margin-top:5px; border:1px solid #dadce0; object-fit: cover; aspect-ratio: 4/3;">
                             </a>
                         ''', unsafe_allow_html=True)
                         
-            if not found_any_doc:
+            else:
                 st.info("No layout documents configured for this property record selection.")
