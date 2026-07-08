@@ -20,9 +20,16 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- GLOBAL ANTI-FLICKER INTERCEPTOR AND DISPLAY CLEANER ---
+# --- GLOBAL ANTI-FLICKER INTERCEPTOR & FIXED ONE-PAGE VIEWPORT CSS ---
 st.markdown("""
 <style>
+    /* Force the main document window to lock to exactly 100% viewport height and hide page scrollbars */
+    html, body, [data-testid="stAppViewContainer"] {
+        overflow: hidden !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+    }
+
     /* Instant CSS blocking engine to clean workspace elements before loading completes */
     ._profilePreview_gzau3_63,
     ._link_gzau3_10,
@@ -142,20 +149,23 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write("[theme]\nbase=\"light\"\n")
 
-# --- ULTRA-COMPACT WORKSPACE HEADER RULES ---
+# --- ULTRA-COMPACT WORKSPACE HEADER & REAL ESTATE STYLING ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
     
     * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
     
-    /* Minimize master body padding to expand visible screen canvas real estate */
+    /* Remove default margins to maximize horizontal and vertical viewer real estate */
     .block-container {
         padding-top: 0.2rem !important;
-        padding-bottom: 0.2rem !important;
+        padding-bottom: 0rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
         max-width: 100% !important;
+        height: 100vh !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
     
     /* Ultra-Compact Control Bar configuration */
@@ -165,10 +175,10 @@ st.markdown("""
         background: #f0f4f9;
         padding: 0.3rem 0.75rem !important;
         border-radius: 8px;
-        margin-bottom: 0.4rem !important;
+        margin-bottom: 0.2rem !important;
     }
     
-    .stSelectbox label { display: none !important; } /* Wipe label spaces to drop layout profiles */
+    .stSelectbox label { display: none !important; } 
     .stSelectbox > div > div {
         background-color: #fff !important;
         border: 1px solid #747775 !important;
@@ -319,13 +329,30 @@ def generate_trade_area_report(trade_area):
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
-# --- COMPLETE HTML BLUEPRINT ---
+# --- COMPLETE HTML BLUEPRINT WITH LOCAL VIEWER SCROLLBAR ONLY ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
 <head>
     <style type="text/css">
-        body { margin: 0; padding: 0; background-color: #ffffff; font-family: Arial, sans-serif; }
+        /* Lock the inner viewport body to handle layout sizing cleanly */
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            background-color: #ffffff; 
+            font-family: Arial, sans-serif; 
+            height: 100%;
+            overflow: hidden; 
+        }
+        
+        /* Local Container Scrollbar Setup: Confines all scroll mechanics strictly within the report window container */
+        .ritz.grid-container {
+            height: 100vh;
+            overflow: auto !important;
+            padding-bottom: 20px;
+            box-sizing: border-box;
+        }
+
         .ritz .waffle a { color: inherit; }
         .ritz .waffle td { padding: 2px 3px !important; vertical-align: middle; border: none !important; }
         .freezebar-origin-ltr { background-color: #f8f9fa; border: none !important; }
@@ -521,8 +548,7 @@ HTML_FRAMEWORK = """
         <tr style="height: auto;"><td class="s2">Company Name</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Company Name</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s5" colspan="2">Developer Account Name</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Developer Account Name</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Business Address</td><td class="s2"></td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Business Address</td><td class="s9" colspan="5"></td></tr>
-        <tr style="height: auto;"><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td><td class="s3"></td><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s9" colspan="5"></td>
-        </tr>
+        <tr style="height: auto;"><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td><td class="s3"></td><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s5" colspan="2">Residence Address of Authorized Representative</td><td class="s4" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Residence Address of Authorized Representative</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">Contact No.</td><td class="s2"></td><td class="s4" colspan="5">_CONTACT_NUMBER_</td><td class="s3"></td><td class="s5" colspan="2">Contact No.</td><td class="s9" colspan="5"></td></tr>
         <tr style="height: auto;"><td class="s2">E-mail Address</td><td class="s2"></td><td class="s4" colspan="5">_EMAIL_ADDRESS_</td><td class="s3"></td><td class="s5" colspan="2">E-mail Address</td><td class="s9" colspan="5"></td></tr>
@@ -606,7 +632,7 @@ if df is None or template_bytes_raw is None:
 # --- POST-LOGIN SECURITY PROTOCOLS RE-ENFORCEMENT ---
 deploy_workspace_security_protocols()
 
-# --- CONTROLS ROW (ULTRA-COMPACT WITH NO VERTICAL LABELS COAXING SPACE) ---
+# --- ROW 1: CONTROLS ROW (ULTRA-COMPACT WITH NO VERTICAL SPACE COAXING LABELS) ---
 trade_areas = ["Select Trade Area..."] + sorted(df["TRADE AREA"].dropna().unique().tolist())
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
 
@@ -632,7 +658,7 @@ with col3:
             use_container_width=True
         )
 
-# --- DIRECT HTML VIEW LAYOUT (ROW 2 OWNS ALL VERTICAL SPACE) ---
+# --- ROW 2: DIRECT HTML REPORT VIEWER CONTAINER (OWNS 100% OF AVAILABLE DOWNWARD VERTICAL HEIGHT) ---
 if selected_ta != "Select Trade Area..." and selected_site_display != "Select Site...":
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     if not site_data.empty:
@@ -680,9 +706,10 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             
             rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
             
-            components.html(rendered_view, height=850, scrolling=True)
+            # Using 100% of available height for the isolated sandboxed component canvas container
+            components.html(rendered_view, height=880, scrolling=False)
                 
         except Exception as e:
-            st.error(f"Error compiling visual matrix framework: {str(e)}")
+            st.error(f"Error compiling layout matrix: {str(e)}")
 else:
     st.info("Please select a Trade Area and a Site to view the specific report.")
