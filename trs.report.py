@@ -278,7 +278,9 @@ if not st.session_state.authenticated:
 deploy_workspace_security_protocols()
 
 # --- CONFIGURATION ---
-SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=csv"
+# IMPORTANT: Switching SOURCE_URL to pull the raw .xlsx layout instead of .csv format
+# This ensures that =IMAGE("...") functional definitions are kept safely inside openpyxl instead of being discarded as empty text cells!
+SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
 # --- HELPER FUNCTIONS ---
@@ -290,10 +292,12 @@ def download_file(url):
     except:
         return None
 
-def extract_google_drive_id(url):
-    """Extracts the unique file ID from various Google Drive URL formats."""
+def extract_google_drive_id(text_value):
+    """Extracts the unique file ID from various Google Drive formats or formula strings."""
+    if not text_value:
+        return None
     try:
-        match = re.search(r'(?:id=|/d/|/uc\?.*?id=)([a-zA-Z0-9_-]{25,})', str(url))
+        match = re.search(r'(?:id=|/d/|/uc\?.*?id=)([a-zA-Z0-9_-]{25,})', str(text_value))
         if match:
             return match.group(1)
     except:
@@ -654,13 +658,36 @@ HTML_FRAMEWORK = """
 # --- LOAD DATA ASSETS ---
 @st.cache_data(ttl=3600)
 def load_data():
-    source_data = download_file(SOURCE_URL)
+    source_bytes = download_file(SOURCE_URL)
     template_data = download_file(TEMPLATE_URL)
-    if source_data is None or template_data is None: return None, None, None
+    if source_bytes is None or template_data is None: 
+        return None, None, None
     
-    df = pd.read_csv(source_data)
-    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-    df.columns = df.columns.str.strip().str.upper()
+    # Using openpyxl to dynamically read the spreadsheet with formula contents preserved!
+    src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
+    src_ws = src_wb.active
+    
+    # Parse rows cleanly out of raw workbook cells
+    raw_rows = list(src_ws.iter_rows(values_only=False))
+    header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
+    
+    parsed_data_list = []
+    for r in raw_rows[1:]:
+        row_dict = {}
+        has_val = False
+        for idx, cell in enumerate(r):
+            if idx < len(header_row) and header_row[idx]:
+                val = cell.value
+                row_dict[header_row[idx]] = val
+                if val is not None and str(val).strip() != "":
+                    has_val = True
+        if has_val:
+            parsed_data_list.append(row_dict)
+            
+    df = pd.DataFrame(parsed_data_list)
+    
+    # Re-verify and clear out completely empty column fields safely
+    df = df.loc[:, ~df.columns.str.contains('^$')]
     
     df["SITE_DISPLAY"] = df.apply(
         lambda row: f"{int(row['SITE NO'])} - {row['SITE NAME']}" 
@@ -678,7 +705,7 @@ with st.spinner("Loading Data Assets..."):
     df, placeholders, template_bytes_raw = load_data()
 
 if df is None or template_bytes_raw is None:
-    st.error("Failed to load data. Please check connection profiles.")
+    st.error("Failed to load data assets. Please verify data configuration profiles.")
     st.stop()
 
 deploy_workspace_security_protocols()
@@ -728,6 +755,10 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 def process_val(key_string):
                     val = site_row_data.get(key_string.upper(), "")
                     if pd.isna(val) or val is None: return ""
+                    # Handle structural formula syntax formatting cleanout
+                    if isinstance(val, str) and val.startswith("="):
+                        extracted_id = extract_google_drive_id(val)
+                        if extracted_id: return f"Drive Asset: {extracted_id}"
                     if isinstance(val, float) and val.is_integer(): return str(int(val))
                     if hasattr(val, 'strftime'): return val.strftime('%B %d, %Y')
                     return str(val).strip()
@@ -772,7 +803,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (IFRAME PREVIEW METHOD) ---
+        # --- TAB 2: PROPERTY PHOTOS (FORMULA DYNAMIC PARSER) ---
         with tab_photos:
             photo_cols = ["PROPERTY PHOTOS 1", "PROPERTY PHOTOS 2", "PROPERTY PHOTOS 3", "PROPERTY PHOTOS 4", "PROPERTY PHOTOS 5"]
             valid_photos = []
@@ -780,29 +811,30 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             for col in photo_cols:
                 raw_img_val = site_row_data.get(col, "")
                 if pd.notna(raw_img_val) and str(raw_img_val).strip() != "":
-                    file_id = extract_google_drive_id(raw_img_val)
+                    val_str = str(raw_img_val).strip()
+                    file_id = extract_google_drive_id(val_str)
+                    
                     if file_id:
-                        # Use the native previewer iframe approach
                         preview_url = f"https://drive.google.com/file/d/{file_id}/preview"
-                        valid_photos.append((col, preview_url, raw_img_val))
+                        fallback_direct_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                        valid_photos.append((col, preview_url, fallback_direct_url))
             
             if valid_photos:
                 cols = st.columns(len(valid_photos))
-                for i, (label, iframe_url, original_url) in enumerate(valid_photos):
+                for i, (label, iframe_url, direct_url) in enumerate(valid_photos):
                     with cols[i]:
-                        st.markdown(f"<p style='font-size:0.7rem; font-weight:700; color:#5f6368; margin:0;'>{label}</p>", unsafe_allow_html=True)
-                        # Inject the iframe directly
+                        st.markdown(f"<p style='font-size:0.75rem; font-weight:700; color:#0b57d0; margin:0;'>📸 {label}</p>", unsafe_allow_html=True)
                         st.markdown(f'''
                             <iframe src="{iframe_url}" 
-                                    style="width:100%; height:280px; border-radius:4px; margin-top:5px; border:1px solid #dadce0;" 
+                                    style="width:100%; height:280px; border-radius:6px; margin-top:5px; border:1px solid #dadce0;" 
                                     allow="autoplay">
                             </iframe>
                         ''', unsafe_allow_html=True)
-                        st.markdown(f"<a href='{original_url}' target='_blank' style='font-size:0.7rem;'>Open Full Window</a>", unsafe_allow_html=True)
+                        st.markdown(f"<a href='{direct_url}' target='_blank' style='font-size:0.7rem;'>Open Image Window</a>", unsafe_allow_html=True)
             else:
-                st.info("No photos available.")
+                st.info("No photos configured or found for this property record selection.")
 
-        # --- TAB 3: PROPERTY DOCS (IFRAME PREVIEW METHOD) ---
+        # --- TAB 3: PROPERTY DOCS (FORMULA DYNAMIC PARSER) ---
         with tab_docs:
             doc_cols = ["TCT", "LOT PLAN", "BLDG PLAN", "TAX MAP"]
             valid_docs = []
@@ -810,24 +842,25 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             for col in doc_cols:
                 raw_doc_val = site_row_data.get(col, "")
                 if pd.notna(raw_doc_val) and str(raw_doc_val).strip() != "":
-                    file_id = extract_google_drive_id(raw_doc_val)
+                    val_str = str(raw_doc_val).strip()
+                    file_id = extract_google_drive_id(val_str)
+                    
                     if file_id:
-                        # Use the native previewer iframe approach
                         preview_url = f"https://drive.google.com/file/d/{file_id}/preview"
-                        valid_docs.append((col, preview_url, raw_doc_val))
+                        fallback_direct_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                        valid_docs.append((col, preview_url, fallback_direct_url))
             
             if valid_docs:
                 cols = st.columns(len(valid_docs))
-                for i, (label, iframe_url, original_url) in enumerate(valid_docs):
+                for i, (label, iframe_url, direct_url) in enumerate(valid_docs):
                     with cols[i]:
-                        st.markdown(f"<p style='font-size:0.7rem; font-weight:700; color:#5f6368; margin:0;'>{label}</p>", unsafe_allow_html=True)
-                        # Inject the iframe directly
+                        st.markdown(f"<p style='font-size:0.75rem; font-weight:700; color:#0b57d0; margin:0;'>📄 {label}</p>", unsafe_allow_html=True)
                         st.markdown(f'''
                             <iframe src="{iframe_url}" 
-                                    style="width:100%; height:320px; border-radius:4px; margin-top:5px; border:1px solid #dadce0;" 
+                                    style="width:100%; height:320px; border-radius:6px; margin-top:5px; border:1px solid #dadce0;" 
                                     allow="autoplay">
                             </iframe>
                         ''', unsafe_allow_html=True)
-                        st.markdown(f"<a href='{original_url}' target='_blank' style='font-size:0.7rem;'>Open Full Window</a>", unsafe_allow_html=True)
+                        st.markdown(f"<a href='{direct_url}' target='_blank' style='font-size:0.7rem;'>View Full Document</a>", unsafe_allow_html=True)
             else:
-                st.info("No documents available.")
+                st.info("No source documents configured or found for this property record selection.")
