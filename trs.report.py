@@ -308,6 +308,13 @@ def clean_and_extract_url(cell_value):
         
     return val_str
 
+def extract_google_drive_id(clean_url):
+    """Extracts unique file ID from verified URL strings."""
+    if not clean_url:
+        return None
+    match = re.search(r'(?:id=|/d/|/uc\?.*?id=)([a-zA-Z0-9_-]{25,})', clean_url)
+    return match.group(1) if match else None
+
 def get_placeholders(sheet):
     placeholders = set()
     for row in sheet.iter_rows():
@@ -694,7 +701,7 @@ def load_data():
                     has_val = True
                     
         # --- FIXED COLUMN MAPPING FOR MEDIA (Photos & Docs) ---
-        # Bypasses all header formatting completely using explicit coordinates
+        # Python uses 0-based indexing: Col A=0, Col B=1, Col C=2, etc.
         row_dict['__DIRECT_TCT'] = get_cell_val_safe(r, 2)       # Col C
         row_dict['__DIRECT_LOT_PLAN'] = get_cell_val_safe(r, 3)  # Col D
         row_dict['__DIRECT_BLDG_PLAN'] = get_cell_val_safe(r, 4) # Col E
@@ -826,64 +833,78 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
 
-        # --- TAB 2: PROPERTY PHOTOS (FIXED COORDINATE MAPPING) ---
+        # --- TAB 2: PROPERTY PHOTOS (DIRECT IMAGE RENDER) ---
         with tab_photos:
-            # Map user-friendly labels to the exact column indexes we captured
             direct_photo_mapping = {
-                "PROPERTY PHOTOS 1 (Col H)": "__DIRECT_PHOTO_1",
-                "PROPERTY PHOTOS 2 (Col I)": "__DIRECT_PHOTO_2",
-                "PROPERTY PHOTOS 3 (Col J)": "__DIRECT_PHOTO_3",
-                "PROPERTY PHOTOS 4 (Col K)": "__DIRECT_PHOTO_4",
-                "PROPERTY PHOTOS 5 (Col L)": "__DIRECT_PHOTO_5"
+                "PROPERTY PHOTOS 1": "__DIRECT_PHOTO_1",
+                "PROPERTY PHOTOS 2": "__DIRECT_PHOTO_2",
+                "PROPERTY PHOTOS 3": "__DIRECT_PHOTO_3",
+                "PROPERTY PHOTOS 4": "__DIRECT_PHOTO_4",
+                "PROPERTY PHOTOS 5": "__DIRECT_PHOTO_5"
             }
             
             found_any_photo = False
-            st.markdown("<p style='font-size:0.85rem; font-weight:500; color:#5f6368; padding-bottom:10px;'>Select any discovered asset link tile below to open the property images:</p>", unsafe_allow_html=True)
+            valid_photos = []
             
-            valid_photos = [(label, site_row_data.get(key, "")) for label, key in direct_photo_mapping.items() if site_row_data.get(key, "") != ""]
+            for label, key in direct_photo_mapping.items():
+                raw_url = site_row_data.get(key, "")
+                if raw_url:
+                    file_id = extract_google_drive_id(raw_url)
+                    if file_id:
+                        # Generating the thumbnail endpoint strictly required for raw HTML rendering
+                        thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
+                        full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                        valid_photos.append((label, thumb_url, full_url))
             
             if valid_photos:
                 found_any_photo = True
                 cols = st.columns(len(valid_photos))
-                for idx, (label, url_target) in enumerate(valid_photos):
+                for idx, (label, thumb_url, full_url) in enumerate(valid_photos):
                     with cols[idx]:
-                        st.markdown(f"""
-                        <div style="background-color:#f8f9fa; border:1px solid #e0e0e0; border-radius:8px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                            <span style="font-size:1.5rem;">🖼️</span>
-                            <p style="font-size:0.75rem; font-weight:700; color:#1f2937; margin:6px 0 12px 0; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">{label.split(' (')[0]}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        st.link_button("View Photo 🔗", url=url_target, use_container_width=True)
+                        st.markdown(f"<p style='font-size:0.75rem; font-weight:700; color:#5f6368; margin:0;'>{label}</p>", unsafe_allow_html=True)
+                        # Render the actual image using HTML <img> tag, linking to the full view
+                        st.markdown(f'''
+                            <a href="{full_url}" target="_blank">
+                                <img src="{thumb_url}" style="width:100%; height:auto; border-radius:6px; margin-top:5px; border:1px solid #dadce0;">
+                            </a>
+                        ''', unsafe_allow_html=True)
                         
             if not found_any_photo:
                 st.info("No photo links configured for this property record selection.")
 
-        # --- TAB 3: PROPERTY DOCS (FIXED COORDINATE MAPPING) ---
+        # --- TAB 3: PROPERTY DOCS (DIRECT IMAGE RENDER) ---
         with tab_docs:
             direct_doc_mapping = {
-                "TCT (Col C)": "__DIRECT_TCT",
-                "LOT PLAN (Col D)": "__DIRECT_LOT_PLAN",
-                "BLDG PLAN (Col E)": "__DIRECT_BLDG_PLAN",
-                "TAX MAP (Col F)": "__DIRECT_TAX_MAP"
+                "TCT": "__DIRECT_TCT",
+                "LOT PLAN": "__DIRECT_LOT_PLAN",
+                "BLDG PLAN": "__DIRECT_BLDG_PLAN",
+                "TAX MAP": "__DIRECT_TAX_MAP"
             }
             
             found_any_doc = False
-            st.markdown("<p style='font-size:0.85rem; font-weight:500; color:#5f6368; padding-bottom:10px;'>Select any legal schematic asset link tile below to view the secure blueprint documentation:</p>", unsafe_allow_html=True)
+            valid_docs = []
             
-            valid_docs = [(label, site_row_data.get(key, "")) for label, key in direct_doc_mapping.items() if site_row_data.get(key, "") != ""]
+            for label, key in direct_doc_mapping.items():
+                raw_url = site_row_data.get(key, "")
+                if raw_url:
+                    file_id = extract_google_drive_id(raw_url)
+                    if file_id:
+                        thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
+                        full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                        valid_docs.append((label, thumb_url, full_url))
             
             if valid_docs:
                 found_any_doc = True
                 cols = st.columns(len(valid_docs))
-                for idx, (label, url_target) in enumerate(valid_docs):
+                for idx, (label, thumb_url, full_url) in enumerate(valid_docs):
                     with cols[idx]:
-                        st.markdown(f"""
-                        <div style="background-color:#f8f9fa; border:1px solid #e0e0e0; border-radius:8px; padding:12px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                            <span style="font-size:1.5rem;">📄</span>
-                            <p style="font-size:0.75rem; font-weight:700; color:#1f2937; margin:6px 0 12px 0; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">{label.split(' (')[0]}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        st.link_button("Open Document 🔗", url=url_target, use_container_width=True)
+                        st.markdown(f"<p style='font-size:0.75rem; font-weight:700; color:#5f6368; margin:0;'>{label}</p>", unsafe_allow_html=True)
+                        # Render the actual document image using HTML <img> tag, linking to the full view
+                        st.markdown(f'''
+                            <a href="{full_url}" target="_blank">
+                                <img src="{thumb_url}" style="width:100%; height:auto; border-radius:6px; margin-top:5px; border:1px solid #dadce0;">
+                            </a>
+                        ''', unsafe_allow_html=True)
                         
             if not found_any_doc:
                 st.info("No layout documents configured for this property record selection.")
