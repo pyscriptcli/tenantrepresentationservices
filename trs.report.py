@@ -22,10 +22,19 @@ st.set_page_config(
 
 # --- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & ZERO PADDING GHOSTS) ---
 st.markdown("""
-<style >
+<style>
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
 
 * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
+
+/* HIDE SCROLLBARS BUT KEEP SCROLLABLE */
+* {
+    scrollbar-width: none !important; /* Firefox */
+    -ms-overflow-style: none !important;  /* IE and Edge */
+}
+*::-webkit-scrollbar {
+    display: none !important; /* Chrome, Safari, Opera */
+}
 
 /* 1. FIXED: MAIN VIEWPORT WITH NATIVE SCROLL */
 html, body {
@@ -49,7 +58,7 @@ div[data-testid="stDecoration"] {
     opacity: 0 !important;
 }
 
-/* 3. FIXED: ALLOW SCROLLING WITH AUTO HEIGHT - REMOVED BOTTOM PADDING */
+/* 3. FIXED: ALLOW SCROLLING WITH AUTO HEIGHT */
 .appview-container, 
 .main, 
 [data-testid="stAppViewContainer"], 
@@ -58,7 +67,7 @@ div[data-testid="stDecoration"] {
 [data-testid="stMainBlockContainer"] {
     padding-top: 0.2rem !important;
     margin-top: 0px !important;
-    padding-bottom: 0px !important; /* CRITICAL FIX: Removed bottom padding */
+    padding-bottom: 0px !important;
     padding-left: 0.4rem !important;
     padding-right: 0.4rem !important;
     overflow: auto !important;
@@ -76,15 +85,13 @@ div[data-testid="stVerticalBlock"] > div:empty {
     padding: 0px !important;
 }
 
-/* 4. FIXED: REPORT VIEWER WITH PROPER SCROLLING - REMOVED BOTTOM MARGIN/PADDING */
+/* 4. FIXED: REPORT VIEWER WITH PROPER SCROLLING */
 iframe[title="streamlit_components.components.html"] {
     height: 600px !important;
     max-height: 600px !important;
     border: none !important;
-    margin-bottom: 0px !important; /* Removed bottom margin */
-    margin-top: 0px !important;    /* Removed top margin */
+    margin-bottom: 10px !important;
     width: 100% !important;
-    display: block !important;
 }
 
 /* Optimize Tab Headers Matrix for High Density Views */
@@ -96,7 +103,6 @@ button[data-baseweb="tab"] {
 
 div[data-testid="stTabs"] {
     margin-top: -5px !important;
-    margin-bottom: 0px !important; /* Remove tab container bottom margin */
 }
 
 /* 5. Ultra-Compact Control Bar layout matrix definitions */
@@ -873,14 +879,13 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             
             if valid_photos:
                 # Build HTML grid with 3x3 layout using components.html
-                # FIXED: Removed padding to eliminate bottom whitespace
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
                         display: grid;
                         grid-template-columns: repeat(3, 1fr);
                         gap: 15px;
-                        padding: 0; /* FIXED: Removed padding */
+                        padding: 10px 0;
                         max-width: 100%;
                     }
                     .image-grid-item {
@@ -914,7 +919,13 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         border-top: 1px solid #dadce0;
                         flex-shrink: 0;
                     }
-                    
+                    .image-grid-item a {
+                        text-decoration: none;
+                        color: inherit;
+                        display: flex;
+                        flex-direction: column;
+                        height: 100%;
+                    }
                     @media (max-width: 768px) {
                         .image-grid-3x3 {
                             grid-template-columns: repeat(2, 1fr);
@@ -926,20 +937,19 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         }
                     }
                 </style>
-                
                 <div class="image-grid-3x3">
                 '''
                 for label, thumb_url, full_url in valid_photos:
-                    # FIXED: Removed <a> tag and onclick event to disable fullscreen/link behavior
                     grid_html += f'''
                         <div class="image-grid-item">
-                            <img src="{thumb_url}" alt="{label}" loading="lazy">
-                            <div class="label">{label}</div>
+                            <a href="{full_url}" target="_blank">
+                                <img src="{thumb_url}" alt="{label}" loading="lazy">
+                                <div class="label">{label}</div>
+                            </a>
                         </div>
                     '''
                 grid_html += '</div>'
-                # Adjusted height slightly to fit content better without extra space
-                components.html(grid_html, height=480, scrolling=True)
+                components.html(grid_html, height=500, scrolling=True)
             else:
                 st.info("No photo links configured for this property record selection.")
 
@@ -966,14 +976,13 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             
             if valid_docs:
                 # Build HTML grid with 3x3 layout using components.html
-                # FIXED: Removed padding to eliminate bottom whitespace
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
                         display: grid;
                         grid-template-columns: repeat(3, 1fr);
                         gap: 15px;
-                        padding: 0; /* FIXED: Removed padding */
+                        padding: 10px 0;
                         max-width: 100%;
                     }
                     .image-grid-item {
@@ -1007,7 +1016,13 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         border-top: 1px solid #dadce0;
                         flex-shrink: 0;
                     }
-                    
+                    .image-grid-item a {
+                        text-decoration: none;
+                        color: inherit;
+                        display: flex;
+                        flex-direction: column;
+                        height: 100%;
+                    }
                     @media (max-width: 768px) {
                         .image-grid-3x3 {
                             grid-template-columns: repeat(2, 1fr);
@@ -1019,19 +1034,18 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         }
                     }
                 </style>
-                
                 <div class="image-grid-3x3">
                 '''
                 for label, thumb_url, full_url in valid_docs:
-                    # FIXED: Removed <a> tag and onclick event to disable fullscreen/link behavior
                     grid_html += f'''
                         <div class="image-grid-item">
-                            <img src="{thumb_url}" alt="{label}" loading="lazy">
-                            <div class="label">{label}</div>
+                            <a href="{full_url}" target="_blank">
+                                <img src="{thumb_url}" alt="{label}" loading="lazy">
+                                <div class="label">{label}</div>
+                            </a>
                         </div>
                     '''
                 grid_html += '</div>'
-                # Adjusted height slightly to fit content better without extra space
-                components.html(grid_html, height=480, scrolling=True)
+                components.html(grid_html, height=500, scrolling=True)
             else:
                 st.info("No layout documents configured for this property record selection.")
