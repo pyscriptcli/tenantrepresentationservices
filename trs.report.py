@@ -112,12 +112,17 @@ div[data-testid="stTabs"] {
 /* 5. Ultra-Compact Control Bar layout matrix definitions */
 div[data-testid="stHorizontalBlock"] { 
     gap: 0.5rem !important; 
-    align-items: center !important; 
+    align-items: flex-end !important; /* Pushes the button to baseline-align with dropdown bottoms */
     background: #f0f4f9;
-    padding: 0.2rem 0.5rem !important; 
+    padding: 0.4rem 0.5rem !important; /* Slightly increased top/bottom padding for clean breathing room */
     border-radius: 8px;
     margin-top: 0px !important; 
     margin-bottom: 10px !important;
+}
+
+/* Force the download button row wrapper block to align flat with the dropdown margins */
+div[data-testid="stHorizontalBlock"] > div:last-child {
+    padding-bottom: 4px !important;
 }
 
 .stSelectbox > div > div {
