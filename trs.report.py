@@ -566,7 +566,7 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 #--- LOAD DATA ASSETS ---
-@st.cache_data(ttl=3600, show_spinner=false)
+@st.cache_data(ttl=3600, show_spinner=False)
 def load_data():
     source_bytes = download_file(SOURCE_URL)
     template_data = download_file(TEMPLATE_URL)
