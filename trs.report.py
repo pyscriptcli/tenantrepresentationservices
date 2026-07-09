@@ -577,6 +577,13 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 #--- LOAD DATA ASSETS ---
+# Initialize top-level scope tracking fallbacks to prevent NameErrors
+first_trade_area = ""
+first_site_display = ""
+trade_areas = []
+default_ta_index = 0
+default_site_index = 0
+
 with st.spinner("Loading Data..."):
     df, placeholders, template_bytes_raw, media_data_list = load_data()
 
@@ -584,11 +591,7 @@ with st.spinner("Loading Data..."):
         st.error("Failed to load data assets. Please verify link paths.")
         st.stop()
 
-    # Prefetch and calculate the initial data structures inside the loading gate context
     trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
-
-    default_ta_index = 0
-    default_site_index = 0
 
     if not df.empty:
         first_row = df.iloc[0]
