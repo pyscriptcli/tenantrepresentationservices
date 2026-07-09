@@ -6,6 +6,7 @@ from openpyxl.utils import get_column_letter, range_boundaries
 import re
 import io
 import requests
+from copy import copy
 import os
 import hashlib
 from openpyxl import load_workbook
@@ -26,11 +27,9 @@ st.markdown("""
 
 * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
 
-/* Hide the label of the password input on the login screen */
 div[data-testid="stTextInput"] label { display: none !important; }
 div[data-testid="stTextInput"] button { display: none !important; }
 
-/* 1. FIXED: MAIN VIEWPORT WITH OUTER SCROLLBAR ONLY */
 html, body {
     overflow-y: auto !important; 
     overflow-x: hidden !important;
@@ -40,7 +39,6 @@ html, body {
     background-color: #ffffff !important;
 }
 
-/* 2. NUKE STREAMLIT HEADER & PADDING GHOSTS */
 header[data-testid="stHeader"], 
 [data-testid="stHeader"], 
 .stApp > header,
@@ -53,7 +51,6 @@ div[data-testid="stDecoration"] {
     opacity: 0 !important;
 }
 
-/* 3. FIXED: ALLOW SCROLLING WITH INCREASED GLOBAL HEIGHT (+100px) */
 .stApp, .appview-container, .main, [data-testid="stAppViewContainer"], 
 [data-testid="stMain"], .block-container, [data-testid="stMainBlockContainer"] {
     padding-top: 0.2rem !important;
@@ -75,7 +72,6 @@ div[data-testid="stVerticalBlock"] > div:empty {
     padding: 0px !important;
 }
 
-/* 4. FIXED: REPORT VIEWER - HIDE INNER SCROLLBARS & INCREASE HEIGHT */
 iframe[title="streamlit_components.components.html"] {
     height: 1200px !important; 
     max-height: none !important;
@@ -85,7 +81,6 @@ iframe[title="streamlit_components.components.html"] {
     overflow: hidden !important; 
 }
 
-/* Optimize Tab Headers Matrix for High Density Views */
 button[data-baseweb="tab"] {
     padding-top: 0.1rem !important;
     padding-bottom: 0.1rem !important;
@@ -96,7 +91,6 @@ div[data-testid="stTabs"] {
     margin-top: -5px !important;
 }
 
-/* 5. Ultra-Compact Control Bar layout matrix definitions */
 div[data-testid="stHorizontalBlock"] { 
     gap: 0.5rem !important; 
     align-items: flex-end !important; 
@@ -225,7 +219,7 @@ if 'authenticated' not in st.session_state:
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
-# --- 1. ISOLATED LOGIN SEQUENCE ---
+# --- 1. ISOLATED LOGIN SEQUENCE (Prevents UI Overlap) ---
 if not st.session_state.authenticated:
     login_placeholder = st.empty()
     with login_placeholder.container():
@@ -236,29 +230,43 @@ if not st.session_state.authenticated:
             if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
                 if check_password(password_input):
                     st.session_state.authenticated = True
-                    login_placeholder.empty()
+                    login_placeholder.empty() # Instantly clears the login UI
                     st.rerun()
                 else:
                     st.error("Invalid token string provided.")
-    st.stop()
+    st.stop() # Execution absolutely stops here if not authenticated
 
 #--- CONFIGURATION ---
-SPREADSHEET_ID = "14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE"
-MAIN_DATA_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid=0"
-MEDIA_SHEET_NAME = "PHOTOS" 
-MEDIA_DATA_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&sheet={MEDIA_SHEET_NAME}"
+SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
 #--- HELPER FUNCTIONS ---
-def clean_and_extract_url(val_str):
-    if pd.isna(val_str) or not val_str:
-        return ""
-    val_str = str(val_str).strip()
+@st.cache_data(ttl=60) # Backend cache limits Google Sheets API hits
+def pull_raw_backend_data():
+    try:
+        r1 = requests.get(SOURCE_URL, timeout=30)
+        r2 = requests.get(TEMPLATE_URL, timeout=30)
+        if r1.status_code == 200 and r2.status_code == 200:
+            return io.BytesIO(r1.content), io.BytesIO(r2.content)
+    except:
+        pass
+    return None, None
+
+def clean_and_extract_url(cell_value):
+    if cell_value is None: return ""
+    val_str = str(cell_value).strip()
     formula_match = re.search(r'IMAGE\s*\(\s*["\'](https://[^"\']+)["\']', val_str, re.IGNORECASE)
     if formula_match: return formula_match.group(1)
     url_match = re.search(r'(https://[^\s"\']+)', val_str)
     if url_match: return url_match.group(1)
     return val_str
+
+def get_cell_val_safe(row_cells, index):
+    if index < len(row_cells):
+        cell = row_cells[index]
+        if cell.hyperlink and cell.hyperlink.target: return clean_and_extract_url(cell.hyperlink.target)
+        return clean_and_extract_url(cell.value)
+    return ""
 
 def extract_google_drive_id(clean_url):
     if not clean_url: return None
@@ -494,97 +502,80 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
-# --- 2. SINGLETON DATA LOAD ---
-def fetch_live_data():
-    """Fetches direct live strings from Google Sheets via fast CSV endpoints using custom headers"""
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+# --- 2. SINGLETON DATA LOAD & CACHE (Triggers only ONCE per session) ---
+def process_loaded_data(source_bytes, template_bytes):
+    src_wb = load_workbook(source_bytes, data_only=False)
+    src_ws = src_wb.active
+    raw_rows = list(src_ws.iter_rows(values_only=False))
+    header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
+    parsed_data_list = []
+    for r in raw_rows[1:]:
+        row_dict = {}
+        has_val = False
+        for idx, cell in enumerate(r):
+            if idx < len(header_row) and header_row[idx]:
+                cleaned_val = clean_and_extract_url(cell.value)
+                row_dict[header_row[idx]] = cleaned_val
+                if cleaned_val != "": has_val = True
+        if has_val: parsed_data_list.append(row_dict)
     
-    # 1. Fetch Main Data using requests.get to bypass custom user-agent checks
-    r1 = requests.get(MAIN_DATA_URL, headers=headers, timeout=30)
-    if r1.status_code != 200:
-        raise Exception(f"Failed to fetch main sheet data. HTTP status: {r1.status_code}")
-        
-    df = pd.read_csv(io.StringIO(r1.text), dtype=str).fillna("")
-    df.columns = [str(c).strip().upper() if c else "" for c in df.columns]
+    df = pd.DataFrame(parsed_data_list)
     df = df.loc[:, ~df.columns.str.contains('^$')]
     
     def create_site_display(row):
         site_no = row.get('SITE NO', '')
         site_name = row.get('SITE NAME', '')
-        if pd.notna(site_no) and str(site_no).strip() != '':
+        if pd.notna(site_no) and site_no != '':
             try: return f"{int(float(str(site_no)))} - {site_name}"
             except: return f"{site_no} - {site_name}"
         return str(site_name)
-        
+    
     df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
     
-    # 2. Fetch Media Data using requests.get
-    media_df = df.copy() 
-    try:
-        r2 = requests.get(MEDIA_DATA_URL, headers=headers, timeout=30)
-        if r2.status_code == 200:
-            temp_media = pd.read_csv(io.StringIO(r2.text), dtype=str).fillna("")
-            if not temp_media.empty:
-                media_df = temp_media
-    except:
-        pass
-        
     media_data_list = []
-    for _, row in media_df.iterrows():
-        try:
-            t_area = clean_and_extract_url(row.iloc[13])
-            s_name = clean_and_extract_url(row.iloc[15])
-            if t_area and s_name and t_area.upper() != "TRADE AREA":
-                media_data_list.append({
-                    'TRADE AREA': t_area,
-                    'SITE NAME': s_name,
-                    '__DIRECT_TCT': clean_and_extract_url(row.iloc[2]),
-                    '__DIRECT_LOT_PLAN': clean_and_extract_url(row.iloc[3]),
-                    '__DIRECT_BLDG_PLAN': clean_and_extract_url(row.iloc[4]),
-                    '__DIRECT_TAX_MAP': clean_and_extract_url(row.iloc[5]),
-                    '__DIRECT_PHOTO_1': clean_and_extract_url(row.iloc[7]),
-                    '__DIRECT_PHOTO_2': clean_and_extract_url(row.iloc[8]),
-                    '__DIRECT_PHOTO_3': clean_and_extract_url(row.iloc[9]),
-                    '__DIRECT_PHOTO_4': clean_and_extract_url(row.iloc[10]),
-                    '__DIRECT_PHOTO_5': clean_and_extract_url(row.iloc[11]),
-                })
-        except IndexError:
-            continue
+    media_ws = None
+    for sheet_name in src_wb.sheetnames:
+        if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
+            media_ws = src_wb[sheet_name]
+            break
+    if not media_ws: media_ws = src_ws
+    for r in media_ws.iter_rows(values_only=False):
+        t_area = str(get_cell_val_safe(r, 13)).strip()
+        s_name = str(get_cell_val_safe(r, 15)).strip()
+        if t_area and s_name and t_area.upper() != "TRADE AREA":
+            media_data_list.append({
+                'TRADE AREA': t_area, 'SITE NAME': s_name,
+                '__DIRECT_TCT': get_cell_val_safe(r, 2), '__DIRECT_LOT_PLAN': get_cell_val_safe(r, 3),
+                '__DIRECT_BLDG_PLAN': get_cell_val_safe(r, 4), '__DIRECT_TAX_MAP': get_cell_val_safe(r, 5),
+                '__DIRECT_PHOTO_1': get_cell_val_safe(r, 7), '__DIRECT_PHOTO_2': get_cell_val_safe(r, 8),
+                '__DIRECT_PHOTO_3': get_cell_val_safe(r, 9), '__DIRECT_PHOTO_4': get_cell_val_safe(r, 10),
+                '__DIRECT_PHOTO_5': get_cell_val_safe(r, 11),
+            })
             
-    # 3. Fetch Export Template Base (Cached via requests)
-    template_bytes = None
-    placeholders = []
-    try:
-        t_req = requests.get(TEMPLATE_URL, headers=headers, timeout=30)
-        if t_req.status_code == 200:
-            template_bytes = io.BytesIO(t_req.content)
-            temp_wb = load_workbook(template_bytes)
-            placeholders = get_placeholders(temp_wb.active)
-            template_bytes.seek(0)
-    except: pass
+    temp_wb = load_workbook(template_bytes)
+    placeholders = get_placeholders(temp_wb.active)
+    template_bytes_raw = template_bytes.getvalue()
+    template_bytes.seek(0)
     
-    return df, media_data_list, template_bytes, placeholders
+    return df, placeholders, template_bytes_raw, media_data_list
 
-# Lock all live data strictly into session memory
-if "master_data_loaded" not in st.session_state:
+# Master Data Injection into Session Memory
+if "master_data" not in st.session_state:
     with st.spinner("Loading Data..."):
-        df, media_list, t_bytes, p_holders = fetch_live_data()
-        st.session_state.master_df = df
-        st.session_state.media_data_list = media_list
-        st.session_state.template_bytes = t_bytes
-        st.session_state.placeholders = p_holders
-        st.session_state.master_data_loaded = True
+        raw_source, raw_template = pull_raw_backend_data()
+        if raw_source and raw_template:
+            st.session_state.master_data = process_loaded_data(raw_source, raw_template)
+        else:
+            st.session_state.master_data = (None, None, None, None)
 
-df = st.session_state.master_df
-media_data_list = st.session_state.media_data_list
-template_bytes_raw = st.session_state.template_bytes.getvalue() if st.session_state.template_bytes else None
-placeholders = st.session_state.placeholders
+df, placeholders, template_bytes_raw, media_data_list = st.session_state.master_data
 
-if df is None or df.empty or template_bytes_raw is None:
-    st.error("Failed to load source data. Please verify the spreadsheet links.")
+if df is None or template_bytes_raw is None:
+    st.error("Failed to fetch current data assets. Please verify the source links or reload the app.")
     st.stop()
 
-# --- 3. DISPLAY REPORT (ZERO LATENCY UI) ---
+
+# --- 3. DISPLAY REPORT (Zero Latency on interactions from this point forward) ---
 trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
 first_row = df.iloc[0] if not df.empty else None
 first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
