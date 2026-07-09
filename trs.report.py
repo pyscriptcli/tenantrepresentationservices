@@ -566,7 +566,7 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 #--- LOAD DATA ASSETS ---
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, show_spinner=false)
 def load_data():
     source_bytes = download_file(SOURCE_URL)
     template_data = download_file(TEMPLATE_URL)
@@ -639,7 +639,7 @@ def load_data():
     template_data.seek(0)
     return df, placeholders, template_data.getvalue(), media_data_list
 
-with st.spinner("Loading Data Assets..."):
+with st.spinner("Loading Data..."):
     df, placeholders, template_bytes_raw, media_data_list = load_data()
 
 if df is None or template_bytes_raw is None:
