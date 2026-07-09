@@ -264,8 +264,13 @@ if not st.session_state.authenticated:
     with r1_col2:
         st.markdown("<h3 style='text-align: center; margin-top:50px;'>Access Required</h3>", unsafe_allow_html=True)
         
-        # Standard hidden password input only - no visibility toggle
-        password_input = st.text_input("Enter password:", type="password", label_visibility="collapsed")
+        # Clean password input - completely rewritten to remove corrupted unicode/ghost text
+        password_input = st.text_input(
+            label="Enter password:", 
+            type="password", 
+            label_visibility="collapsed",
+            key="login_pwd_clean"
+        )
         
         if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
             if check_password(password_input):
@@ -273,9 +278,8 @@ if not st.session_state.authenticated:
                 st.cache_data.clear()
                 st.rerun()
             else:
-                st.error("Invalid token string provided.")
+                st.error("Incorrect password")
     st.stop()
-
 deploy_workspace_security_protocols()
 
 #--- CONFIGURATION ---
