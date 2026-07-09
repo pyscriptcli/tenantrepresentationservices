@@ -264,7 +264,7 @@ if not st.session_state.authenticated:
     with r1_col2:
         st.markdown("<h3 style='text-align: center; margin-top:50px;'>Access Required</h3>", unsafe_allow_html=True)
         
-        # Standard hidden password input only
+        # Standard hidden password input only - no visibility toggle
         password_input = st.text_input("Enter password:", type="password", label_visibility="collapsed")
         
         if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
