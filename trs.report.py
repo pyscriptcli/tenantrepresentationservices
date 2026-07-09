@@ -112,17 +112,24 @@ div[data-testid="stTabs"] {
 /* 5. Ultra-Compact Control Bar layout matrix definitions */
 div[data-testid="stHorizontalBlock"] { 
     gap: 0.5rem !important; 
-    align-items: flex-end !important; /* Pushes the button to baseline-align with dropdown bottoms */
+    align-items: flex-end !important; 
     background: #f0f4f9;
-    padding: 0.4rem 0.5rem !important; /* Slightly increased top/bottom padding for clean breathing room */
+    padding: 0.4rem 0.5rem !important; 
     border-radius: 8px;
     margin-top: 0px !important; 
     margin-bottom: 10px !important;
 }
 
-/* Force the download button row wrapper block to align flat with the dropdown margins */
-div[data-testid="stHorizontalBlock"] > div:last-child {
+/* Hard pixel alignment lock for the export column element wrapper */
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) {
+    align-self: flex-end !important;
     padding-bottom: 4px !important;
+}
+
+/* Force Streamlit's inner widget wrapper to drop any hidden margin blocks */
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"] {
+    margin-bottom: 0px !important;
+    padding-bottom: 0px !important;
 }
 
 .stSelectbox > div > div {
