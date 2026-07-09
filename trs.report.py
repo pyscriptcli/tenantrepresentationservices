@@ -15,7 +15,7 @@ import base64
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="trs-site-report",
+    page_title="trs.sitesourcing.viewer",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -27,7 +27,7 @@ st.markdown("""
 
 * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
 
-/* 1. MAIN VIEWPORT wSCROLLBAR */
+/* 1. FIXED: MAIN VIEWPORT WITH OUTER SCROLLBAR ONLY */
 html, body {
     overflow-y: auto !important; /* ENABLES OUTER SCROLLBAR */
     overflow-x: hidden !important;
@@ -37,7 +37,7 @@ html, body {
     background-color: #ffffff !important;
 }
 
-/* 2. REMOVED STREAMLIT HEADER & PADDING*/
+/* 2. NUKE STREAMLIT HEADER & PADDING GHOSTS */
 header[data-testid="stHeader"], 
 [data-testid="stHeader"], 
 .stApp > header,
@@ -50,7 +50,7 @@ div[data-testid="stDecoration"] {
     opacity: 0 !important;
 }
 
-/* 3. VERTICAL PAGE SCROLLING */
+/* 3. FIXED: ALLOW SCROLLING WITH INCREASED GLOBAL HEIGHT (+100px) */
 .stApp,
 .appview-container, 
 .main, 
@@ -70,7 +70,7 @@ div[data-testid="stDecoration"] {
 }
 
 /* Catch and crush any empty layout blocks */
-/* FIXED: Removed div:has(style) which was hiding all Streamlit layout elements */
+div[data-testid="stVerticalBlock"] > div:has(style),
 div[data-testid="stVerticalBlock"] > div:empty {
     display: none !important;
     height: 0px !important;
@@ -259,144 +259,21 @@ if 'authenticated' not in st.session_state:
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
-# --- LOGIN UI (3x3 CENTERED LAYOUT WITH EYE ICON) ---
 if not st.session_state.authenticated:
-    # Inject JS for the black and white eye icon toggle
-    js_code = """
-    const eyeOpenSVG = `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'></path><circle cx='12' cy='12' r='3'></circle></svg>`;
-    const eyeClosedSVG = `<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 0 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24'></path><line x1='1' y1='1' x2='23' y2='23'></line></svg>`;
-    function addEyeIcon() {
-        const inputs = document.querySelectorAll('input[type=&quot;password&quot;]');
-        inputs.forEach(input => {
-            if (input.getAttribute('data-eye-icon-added') === 'true') return;
-            input.setAttribute('data-eye-icon-added', 'true');
-            const wrapper = input.closest('[data-baseweb=&quot;base-input&quot;]') || input.parentElement;
-            wrapper.style.position = 'relative';
-            const eyeBtn = document.createElement('div');
-            eyeBtn.className = 'eye-toggle-btn';
-            eyeBtn.innerHTML = eyeOpenSVG;
-            eyeBtn.style.position = 'absolute';
-            eyeBtn.style.right = '10px';
-            eyeBtn.style.top = '50%';
-            eyeBtn.style.transform = 'translateY(-50%)';
-            eyeBtn.style.cursor = 'pointer';
-            eyeBtn.style.zIndex = '1000';
-            eyeBtn.style.display = 'flex';
-            eyeBtn.style.alignItems = 'center';
-            eyeBtn.style.justifyContent = 'center';
-            eyeBtn.style.background = 'transparent';
-            eyeBtn.onclick = function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                if (input.type === 'password') {
-                    input.type = 'text';
-                    eyeBtn.innerHTML = eyeClosedSVG;
-                } else {
-                    input.type = 'password';
-                    eyeBtn.innerHTML = eyeOpenSVG;
-                }
-                input.focus();
-            };
-            wrapper.appendChild(eyeBtn);
-        });
-    }
-    addEyeIcon();
-    const observer = new MutationObserver(addEyeIcon);
-    observer.observe(document.body, { childList: true, subtree: true });
-    """
-    js_code_single_line = " ".join(js_code.split())
-    st.markdown(f'<img src="x" style="display:none;" onerror="{js_code_single_line}" />', unsafe_allow_html=True)
-
-    # CSS for 3x3 layout and centering the login UI
-    st.markdown("""
-    <style>
-    /* Hide default header and adjust app container */
-    header[data-testid="stHeader"] { display: none !important; }
-    [data-testid="stAppViewContainer"] {
-        padding: 0 !important;
-        background: #f8f9fa !important;
-    }
-    
-    /* Force the main block container to be a 3x3 grid */
-    [data-testid="stMainBlockContainer"] {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr 1fr !important;
-        grid-template-rows: 1fr 1fr 1fr !important;
-        height: 100vh !important;
-        width: 100vw !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        background: #f8f9fa !important;
-        overflow: hidden !important; /* Prevent scrollbars on login */
-    }
-    
-    /* Place the main wrapper in the center cell of the 3x3 grid */
-    [data-testid="stMainBlockContainer"] > div {
-        grid-column: 2 !important;
-        grid-row: 2 !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        width: 100% !important;
-        height: 100% !important;
-    }
-    
-    /* Style the form to be the centered login box */
-    [data-testid="stMainBlockContainer"] form {
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: center !important;
-        align-items: center !important;
-        max-width: 400px !important;
-        width: 100% !important;
-        padding: 2.5rem !important;
-        background: #ffffff !important;
-        border-radius: 12px !important;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
-        border: 1px solid #e0e0e0 !important;
-    }
-    
-    /* Adjust Streamlit elements inside the login box */
-    [data-testid="stMainBlockContainer"] form .stTextInput input {
-        text-align: center;
-        padding-right: 40px !important; /* Make room for the eye icon */
-    }
-    [data-testid="stMainBlockContainer"] form .stButton button,
-    [data-testid="stMainBlockContainer"] form button[type="submit"] {
-        width: 100%;
-        background-color: #0b57d0 !important;
-        color: white !important;
-        margin-top: 16px !important;
-    }
-    [data-testid="stMainBlockContainer"] form .stAlert {
-        margin-top: 16px !important;
-        padding: 10px !important;
-        font-size: 0.9rem !important;
-        width: 100%;
-    }
-    [data-testid="stMainBlockContainer"] form h2 {
-        color: #202124;
-        margin-bottom: 24px;
-        font-weight: 500;
-        text-align: center;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # Render the login form
-    with st.form("login_form"):
-        st.markdown("## Login")
-        password = st.text_input("Password", type="password", label_visibility="collapsed", placeholder="Enter your password")
-        submitted = st.form_submit_button("Login")
-        
-        if submitted:
-            if check_password(password):
+    r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
+    with r1_col2:
+        st.markdown(" <h3 style='text-align: center; margin-top:50px;' >Access Required </h3> ", unsafe_allow_html=True)
+        password_input = st.text_input("Enter password: ", type="password", label_visibility="collapsed")
+        if st.button("Login", use_container_width=True) or password_input:
+            if check_password(password_input):
                 st.session_state.authenticated = True
+                st.cache_data.clear()
                 st.rerun()
             else:
-                st.error("Incorrect password. Please try again.")
-                
+                st.error("Invalid token string provided.")
     st.stop()
+
+deploy_workspace_security_protocols()
 
 # --- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
@@ -491,7 +368,7 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
                 if isinstance(cell.value, str) and "{{" in cell.value:
                     new_val = cell.value
                     for ph in placeholders:
-                        target_regex = r"\{\{\s*" + re.escape(ph) + r"(\s:.*?)?\}\}"
+                        target_regex = r"\{\{\s*" + re.escape(ph) + r"(\s*:.*?)?\}\}"
                         if re.search(target_regex, new_val):
                             raw_data_val = r_row.get(ph.upper(), "")
                             if pd.isna(raw_data_val) or raw_data_val is None: raw_data_val = ""
