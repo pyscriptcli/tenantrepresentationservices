@@ -280,22 +280,6 @@ if 'authenticated' not in st.session_state:
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
-if not st.session_state.authenticated:
-    r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
-    with r1_col2:
-        st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
-        password_input = st.text_input("", placeholder="Enter password", type="password")
-        if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
-            if check_password(password_input):
-                st.session_state.authenticated = True
-                st.cache_data.clear()
-                st.rerun()
-            else:
-                st.error("Invalid token string provided.")
-    st.stop()
-    
-deploy_workspace_security_protocols()
-
 #--- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
@@ -315,11 +299,11 @@ def clean_and_extract_url(cell_value):
         return ""
     val_str = str(cell_value).strip()
     # Check if nested inside an IMAGE formula layout
-    formula_match = re.search(r'IMAGE\s*\(\s*["\'](https?://[^"\']+)["\']', val_str, re.IGNORECASE)
+    formula_match = re.search(r'IMAGE\s*\(\s*["\'](https://[^"\']+)["\']', val_str, re.IGNORECASE)
     if formula_match:
         return formula_match.group(1)
     # Standard URL match fallback
-    url_match = re.search(r'(https?://[^\s"\']+)', val_str)
+    url_match = re.search(r'(https://[^\s"\']+)', val_str)
     if url_match:
         return url_match.group(1)
     return val_str
@@ -655,27 +639,46 @@ def load_data():
 
 # --- MAIN LOGIC BEGINS ---
 
-# Load data first. This ensures it's available before UI elements are processed below.
-# The @st.cache_data decorator means this only actually downloads and processes the files once per TTL period.
-# The 'show_spinner=True' will show Streamlit's internal indicator during the *first* run/cold cache.
+# --- Step 1: Display Login Function ---
+if not st.session_state.authenticated:
+    r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
+    with r1_col2:
+        st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
+        password_input = st.text_input("", placeholder="Enter password", type="password")
+        if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
+            if check_password(password_input):
+                st.session_state.authenticated = True
+                # Clear cache on successful login if needed, though typically not necessary just for auth
+                # st.cache_data.clear() 
+                st.rerun()
+            else:
+                st.error("Invalid token string provided.")
+    st.stop() # Stop execution if not authenticated
+
+# At this point, user is authenticated
+
+# --- Step 2: Initialize load_data() and derive defaults (this happens post-login) ---
+# The @st.cache_data decorator ensures this runs efficiently (from cache if possible)
 df, placeholders, template_bytes_raw, media_data_list = load_data()
 
 if df is None or template_bytes_raw is None:
     st.error("Failed to load data assets. Please verify link paths.")
     st.stop()
 
-# Derive initial values from loaded data
+# --- Step 3: Determine Default Selections (Preset Logic) ---
 trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
 first_row = df.iloc[0] if not df.empty else None
 first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
 first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
 default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
 
+# --- Step 4: Apply Presets and Render UI (Row 1 and Row 2) ---
 deploy_workspace_security_protocols()
 
 #--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
 with col1:
+    # Use the determined default index for the first TA
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
 
 with col2:
@@ -683,10 +686,11 @@ with col2:
         raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
         sites_in_ta = sorted(raw_sites, key=parse_site_number)
 
+        # Use the determined default index for the first site in the first TA
         if selected_ta == first_trade_area and first_site_display in sites_in_ta:
             default_site_index = sites_in_ta.index(first_site_display)
         else:
-            default_site_index = 0
+            default_site_index = 0 # Fallback if preset doesn't match
     else:
         sites_in_ta = []
         default_site_index = 0
@@ -705,18 +709,11 @@ with col3:
 
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta and selected_site_display:
-    # Instantiate Workspace Tabs instantly *after* controls are defined
-    tab_report, tab_photos, tab_docs = st.tabs([
-        "PROPERTY INFORMATION",
-        "PROPERTY PHOTOS",
-        "PROPERTY DOCS"
-    ])
-
-    # Get site data *inside* the Row 2 block
+    # Get site data based on the selected/preset site
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     site_row_data = site_data.iloc[0] if not site_data.empty else None
 
-    # Get media data *inside* the Row 2 block
+    # Get corresponding media data
     target_ta = str(site_row_data["TRADE AREA"]) if site_row_data is not None else ""
     target_sn = str(site_row_data["SITE NAME"]) if site_row_data is not None else ""
     media_row_data = {}
@@ -727,6 +724,14 @@ if selected_ta and selected_site_display:
                 break
         if not media_row_data:
             media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {} # Fallback if needed
+
+
+    # Instantiate Workspace Tabs instantly *after* controls are defined
+    tab_report, tab_photos, tab_docs = st.tabs([
+        "PROPERTY INFORMATION",
+        "PROPERTY PHOTOS",
+        "PROPERTY DOCS"
+    ])
 
 
     # --- TAB 1: SITE INFORMATION REPORT ---
@@ -977,6 +982,6 @@ if selected_ta and selected_site_display:
              st.info("No data available for the selected site.")
 
 
-# Note: The initial data loading spinner is now handled implicitly by @st.cache_data(show_spinner=True).
-# The Row 2 tabs structure is created immediately after Row 1. Their content populates as data becomes available.
-# This achieves the goal of having the UI structure (tabs) ready instantly after the initial load.
+# Note: The initial data loading happens via @st.cache_data(show_spinner=True) after login.
+# The UI renders with preset/default selections immediately upon successful authentication.
+# The "preset" is effectively the first entry in the loaded data.
