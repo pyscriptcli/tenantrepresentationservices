@@ -577,7 +577,7 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 #--- LOAD DATA ASSETS ---
-# Initialize top-level scope tracking fallbacks to prevent NameErrors
+# Initialize clean variables globally before loading data matrix strings
 first_trade_area = ""
 first_site_display = ""
 trade_areas = []
@@ -587,19 +587,20 @@ default_site_index = 0
 with st.spinner("Loading Data..."):
     df, placeholders, template_bytes_raw, media_data_list = load_data()
 
-    if df is None or template_bytes_raw is None:
-        st.error("Failed to load data assets. Please verify link paths.")
-        st.stop()
+if df is None or template_bytes_raw is None:
+    st.error("Failed to load data assets. Please verify link paths.")
+    st.stop()
 
-    trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
+# Process data structures and set state indexes
+trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
 
-    if not df.empty:
-        first_row = df.iloc[0]
-        first_trade_area = first_row.get("TRADE AREA", "")
-        first_site_display = first_row.get("SITE_DISPLAY", "")
-        
-        if first_trade_area in trade_areas:
-            default_ta_index = trade_areas.index(first_trade_area)
+if not df.empty:
+    first_row = df.iloc[0]
+    first_trade_area = first_row.get("TRADE AREA", "")
+    first_site_display = first_row.get("SITE_DISPLAY", "")
+    
+    if first_trade_area in trade_areas:
+        default_ta_index = trade_areas.index(first_trade_area)
 
 deploy_workspace_security_protocols()
 
