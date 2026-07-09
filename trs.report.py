@@ -283,7 +283,7 @@ def check_password(password):
 if not st.session_state.authenticated:
     r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
     with r1_col2:
-        st.markdown("<h3 style='text-align: center; margin-top:50px;'>Access Required</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
         password_input = st.text_input("", placeholder="Enter password", type="password")
         if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
             if check_password(password_input):
