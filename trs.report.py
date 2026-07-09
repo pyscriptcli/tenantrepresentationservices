@@ -70,7 +70,7 @@ div[data-testid="stDecoration"] {
 }
 
 /* Catch and crush any empty layout blocks */
-div[data-testid="stVerticalBlock"] > div:has(style),
+/* FIXED: Removed div:has(style) which was hiding all Streamlit layout elements */
 div[data-testid="stVerticalBlock"] > div:empty {
     display: none !important;
     height: 0px !important;
@@ -259,8 +259,6 @@ if 'authenticated' not in st.session_state:
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
-deploy_workspace_security_protocols()
-
 # --- LOGIN UI (3x3 CENTERED LAYOUT WITH EYE ICON) ---
 if not st.session_state.authenticated:
     # Inject JS for the black and white eye icon toggle
@@ -318,10 +316,6 @@ if not st.session_state.authenticated:
         padding: 0 !important;
         background: #f8f9fa !important;
     }
-    [data-testid="stMainBlockContainer"] {
-        padding: 0 !important;
-        max-width: 100% !important;
-    }
     
     /* Force the main block container to be a 3x3 grid */
     [data-testid="stMainBlockContainer"] {
@@ -329,35 +323,37 @@ if not st.session_state.authenticated:
         grid-template-columns: 1fr 1fr 1fr !important;
         grid-template-rows: 1fr 1fr 1fr !important;
         height: 100vh !important;
-        min-height: 100vh !important; /* Override global min-height */
         width: 100vw !important;
-        max-width: 100% !important;
         padding: 0 !important;
         margin: 0 !important;
         background: #f8f9fa !important;
+        overflow: hidden !important; /* Prevent scrollbars on login */
     }
     
-    /* Style the form to be the centered login box in the middle cell */
-    [data-testid="stMainBlockContainer"] form {
+    /* Place the main wrapper in the center cell of the 3x3 grid */
+    [data-testid="stMainBlockContainer"] > div {
         grid-column: 2 !important;
         grid-row: 2 !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
+    /* Style the form to be the centered login box */
+    [data-testid="stMainBlockContainer"] form {
         display: flex !important;
         flex-direction: column !important;
         justify-content: center !important;
         align-items: center !important;
         max-width: 400px !important;
         width: 100% !important;
-        margin: 0 auto !important;
         padding: 2.5rem !important;
         background: #ffffff !important;
         border-radius: 12px !important;
         box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
         border: 1px solid #e0e0e0 !important;
-    }
-    
-    /* Hide any stray widgets outside the form */
-    [data-testid="stMainBlockContainer"] > div:not(form) {
-        display: none !important; 
     }
     
     /* Adjust Streamlit elements inside the login box */
@@ -495,7 +491,7 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
                 if isinstance(cell.value, str) and "{{" in cell.value:
                     new_val = cell.value
                     for ph in placeholders:
-                        target_regex = r"\{\{\s*" + re.escape(ph) + r"(\s*:.*?)?\}\}"
+                        target_regex = r"\{\{\s*" + re.escape(ph) + r"(\s:.*?)?\}\}"
                         if re.search(target_regex, new_val):
                             raw_data_val = r_row.get(ph.upper(), "")
                             if pd.isna(raw_data_val) or raw_data_val is None: raw_data_val = ""
