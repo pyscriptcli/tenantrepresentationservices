@@ -690,8 +690,6 @@ with col2:
     
 with col3:
     if selected_ta:
-        # Transparent element spacing matrix to push button into linear alignment
-        st.markdown("<p style='margin: 0 0 -5px 0; font-size: 0.75rem;'>&nbsp;</p>", unsafe_allow_html=True)
         st.download_button(
             label="Export",
             data=generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders),
