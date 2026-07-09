@@ -148,7 +148,7 @@ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) di
 }
 
 .stButton > button, .stDownloadButton > button {
-    background-color: #0b57d0 !important;
+    background-color: #003366 !important;
     color: #ffffff !important;
     border: none !important;
     border-radius: 100px !important;
