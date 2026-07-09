@@ -698,9 +698,9 @@ with col2:
 with col3:
     if selected_ta:
         st.download_button(
-            label="Export",
+            label="Export Trade Area",
             data=generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders),
-            file_name=f"{selected_ta}_Full_Report.xlsx",
+            file_name=f"{selected_ta}_Site_Information_Report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
