@@ -13,14 +13,14 @@ from openpyxl import load_workbook
 import streamlit.components.v1 as components
 import base64
 
---- PAGE CONFIGURATION ---
+#--- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="trs.sitesourcing.viewer",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
---- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & OUTER SCROLLBAR) ---
+#--- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & OUTER SCROLLBAR) ---
 st.markdown("""
 <style >
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
@@ -165,7 +165,7 @@ div[data-testid="stStatusWidget"] {
 </style>
 """, unsafe_allow_html=True)
 
---- RUNTIME WORKSPACE SECURITY OBSERVERS ---
+#--- RUNTIME WORKSPACE SECURITY OBSERVERS ---
 def deploy_workspace_security_protocols():
     injected_js = """
     <script>
@@ -243,7 +243,7 @@ def deploy_workspace_security_protocols():
 
 deploy_workspace_security_protocols()
 
---- PROGRAMMATIC LIGHT MODE LOCK ---
+#--- PROGRAMMATIC LIGHT MODE LOCK ---
 _config_dir = ".streamlit"
 _config_file = os.path.join(_config_dir, "config.toml")
 if not os.path.exists(_config_file):
@@ -251,7 +251,7 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
---- LOGIN VERIFICATION LOGIC ---
+#--- LOGIN VERIFICATION LOGIC ---
 TARGET_HASH = "6e7dfba0b39da481db37c3263c61cac6"
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
@@ -293,11 +293,11 @@ if not st.session_state.authenticated:
 
 deploy_workspace_security_protocols()
 
---- CONFIGURATION ---
+#--- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
---- HELPER FUNCTIONS ---
+#--- HELPER FUNCTIONS ---
 @st.cache_data(ttl=3600)
 def download_file(url):
     try:
@@ -408,7 +408,7 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
---- COMPLETE HTML BLUEPRINT ---
+#--- COMPLETE HTML BLUEPRINT ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
@@ -573,7 +573,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
---- LOAD DATA ASSETS ---
+#--- LOAD DATA ASSETS ---
 @st.cache_data(ttl=3600)
 def load_data():
     source_bytes = download_file(SOURCE_URL)
@@ -656,7 +656,7 @@ if df is None or template_bytes_raw is None:
 
 deploy_workspace_security_protocols()
 
---- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
+#--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
 trade_areas = ["Select Trade Area..."] + sorted(df["TRADE AREA"].dropna().unique().tolist())
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
 with col1:
@@ -679,7 +679,7 @@ with col3:
             use_container_width=True
         )
 
---- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
+#--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta != "Select Trade Area..." and selected_site_display != "Select Site...":
     # Flat loading spinner (no text, just a simple black and gray rotating ring)
     spinner_placeholder = st.empty()
