@@ -120,7 +120,6 @@ div[data-testid="stHorizontalBlock"] {
     margin-bottom: 10px !important;
 }
 
-.stSelectbox label { display: none !important; } 
 .stSelectbox > div > div {
     background-color: #fff !important;
     border: 1px solid #747775 !important;
@@ -273,7 +272,7 @@ if not st.session_state.authenticated:
     r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
     with r1_col2:
         st.markdown("<h3 style='text-align: center; margin-top:50px;'>Access Required</h3>", unsafe_allow_html=True)
-        password_input = st.text_input("", placeholder="Enter password:", type="password")
+        password_input = st.text_input("", placeholder="Enter password", type="password")
         if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
             if check_password(password_input):
                 st.session_state.authenticated = True
@@ -649,14 +648,13 @@ if df is None or template_bytes_raw is None:
 deploy_workspace_security_protocols()
 
 #--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
-trade_areas = ["Select Trade Area..."] + sorted(df["TRADE AREA"].dropna().unique().tolist())
+# 1. Clear out the dummy placeholder text string from the list entirely
+trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
 
-# --- DYNAMICALLY GRAB FIRST DATA RECORD FROM THE DATAFRAME ---
 default_ta_index = 0
 default_site_index = 0
 
 if not df.empty:
-    # Row index 0 in a DataFrame represents the first actual data row (Row 2 in Excel)
     first_row = df.iloc[0]
     first_trade_area = first_row.get("TRADE AREA", "")
     first_site_display = first_row.get("SITE_DISPLAY", "")
@@ -666,28 +664,28 @@ if not df.empty:
 
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
 with col1:
-    selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="collapsed")
+    # Set the label visibility to "visible" so it renders cleanly above the dropdown box
+    selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
 
 with col2:
-    if selected_ta and selected_ta != "Select Trade Area...":
+    if selected_ta:
         raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
-        sorted_sites = sorted(raw_sites, key=parse_site_number)
-        sites_in_ta = ["Select Site..."] + sorted_sites
+        # 2. Clear out the dummy text string placeholder from the site listing array as well
+        sites_in_ta = sorted(raw_sites, key=parse_site_number)
         
-        # If the currently selected Trade Area matches our first data row, point to its matching site
         if selected_ta == first_trade_area and first_site_display in sites_in_ta:
             default_site_index = sites_in_ta.index(first_site_display)
         else:
-            default_site_index = 1 if len(sites_in_ta) > 1 else 0
+            default_site_index = 0
     else:
-        sites_in_ta = ["Select Site..."]
+        sites_in_ta = []
         default_site_index = 0
         
-    selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="collapsed")
+    # Set the label visibility to "visible" for the property selector
+    selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
     
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
-if selected_ta != "Select Trade Area..." and selected_site_display != "Select Site...":
-    # Flat loading spinner (no text, just a simple black and gray rotating ring)
+if selected_ta and selected_site_display:
     spinner_placeholder = st.empty()
     spinner_placeholder.markdown("""
     <style>
