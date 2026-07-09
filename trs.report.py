@@ -260,22 +260,12 @@ def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
 if not st.session_state.authenticated:
-    # Initialize session state for password visibility
-    if 'show_pwd' not in st.session_state:
-        st.session_state.show_pwd = False
-        
     r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
     with r1_col2:
         st.markdown("<h3 style='text-align: center; margin-top:50px;'>Access Required</h3>", unsafe_allow_html=True)
         
-        # Use a compact checkbox to toggle visibility natively without breaking layout
-        show_password = st.checkbox("Show Password", value=st.session_state.show_pwd, key="pwd_toggle")
-        if show_password != st.session_state.show_pwd:
-            st.session_state.show_pwd = show_password
-            
-        # Determine input type based on toggle state
-        pwd_type = "default" if st.session_state.show_pwd else "password"
-        password_input = st.text_input("Enter password:", type=pwd_type, label_visibility="collapsed")
+        # Standard hidden password input only
+        password_input = st.text_input("Enter password:", type="password", label_visibility="collapsed")
         
         if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
             if check_password(password_input):
