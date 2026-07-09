@@ -259,19 +259,7 @@ if 'authenticated' not in st.session_state:
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
-if not st.session_state.authenticated:
-    r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
-    with r1_col2:
-        st.markdown(" <h3 style='text-align: center; margin-top:50px;' >Access Required </h3> ", unsafe_allow_html=True)
-        password_input = st.text_input("Enter password: ", type="password", label_visibility="")
-        if st.button("Login", use_container_width=True) or password_input:
-            if check_password(password_input):
-                st.session_state.authenticated = True
-                st.cache_data.clear()
-                st.rerun()
-            else:
-                st.error("Invalid token string provided.")
-    st.stop()
+trs-site-report
 
 deploy_workspace_security_protocols()
 
