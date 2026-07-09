@@ -744,15 +744,20 @@ if selected_ta and selected_site_display:
         if not media_row_data:
             media_row_data = site_row_data
             
-        # Clear spinner before rendering tabs
-        spinner_placeholder.empty()
-        
-        # Instantiate Workspace Tabs
+        # Instantiate Workspace Tabs immediately (Spinner stays active during asset setup)
         tab_report, tab_photos, tab_docs = st.tabs([
             "PROPERTY INFORMATION", 
             "PROPERTY PHOTOS", 
             "PROPERTY DOCS"
         ])
+        
+        # --- TAB 1: SITE INFORMATION REPORT ---
+        with tab_report:
+            try:
+                def process_val(key_string):
+                    val = site_row_data.get(key_string.upper(), "")
+                    if pd.isna(val) or val is None: return ""
+                    return str(val).strip()
         
         # --- TAB 1: SITE INFORMATION REPORT ---
         with tab_report:
@@ -990,3 +995,6 @@ if selected_ta and selected_site_display:
                 components.html(grid_html, height=1200, scrolling=False)
             else:
                 st.info("No layout documents configured for this property record selection.")
+
+# CRITICAL: Drop the custom flat loading spinner only after all tab matrices are completely rendered!
+    spinner_placeholder.empty()
