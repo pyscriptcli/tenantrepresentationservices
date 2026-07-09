@@ -225,7 +225,7 @@ if 'authenticated' not in st.session_state:
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
-# --- 1. ISOLATED LOGIN SEQUENCE (Prevents UI Overlap & Blank Screens) ---
+# --- 1. ISOLATED LOGIN SEQUENCE ---
 if not st.session_state.authenticated:
     login_placeholder = st.empty()
     with login_placeholder.container():
@@ -236,26 +236,21 @@ if not st.session_state.authenticated:
             if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
                 if check_password(password_input):
                     st.session_state.authenticated = True
-                    login_placeholder.empty() # Instantly clears the login UI
+                    login_placeholder.empty()
                     st.rerun()
                 else:
                     st.error("Invalid token string provided.")
-    st.stop() # Execution absolutely stops here if not authenticated
+    st.stop()
 
-#--- CONFIGURATION (Refactored for Live Pandas API) ---
+#--- CONFIGURATION ---
 SPREADSHEET_ID = "14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE"
-# GID=0 targets the main primary sheet
 MAIN_DATA_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&gid=0"
-# Optional: Set the explicit name of your Media tab if it resides on a different sheet index
 MEDIA_SHEET_NAME = "PHOTOS" 
 MEDIA_DATA_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&sheet={MEDIA_SHEET_NAME}"
-
-# The template remains an .xlsx so openpyxl can inject the data into it properly
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
 #--- HELPER FUNCTIONS ---
 def clean_and_extract_url(val_str):
-    """Parses live strings from pandas to extract hidden URL links."""
     if pd.isna(val_str) or not val_str:
         return ""
     val_str = str(val_str).strip()
@@ -499,12 +494,18 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
-# --- 2. SINGLETON DATA LOAD (Triggers only ONCE right after login) ---
+# --- 2. SINGLETON DATA LOAD ---
 def fetch_live_data():
-    """Fetches direct live strings from Google Sheets via fast CSV endpoints"""
-    # 1. Fetch Main Data (Milliseconds)
-    df = pd.read_csv(MAIN_DATA_URL, dtype=str).fillna("")
-    df.columns = [str(c).strip().upper() for c in df.columns]
+    """Fetches direct live strings from Google Sheets via fast CSV endpoints using custom headers"""
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+    
+    # 1. Fetch Main Data using requests.get to bypass custom user-agent checks
+    r1 = requests.get(MAIN_DATA_URL, headers=headers, timeout=30)
+    if r1.status_code != 200:
+        raise Exception(f"Failed to fetch main sheet data. HTTP status: {r1.status_code}")
+        
+    df = pd.read_csv(io.StringIO(r1.text), dtype=str).fillna("")
+    df.columns = [str(c).strip().upper() if c else "" for c in df.columns]
     df = df.loc[:, ~df.columns.str.contains('^$')]
     
     def create_site_display(row):
@@ -517,17 +518,18 @@ def fetch_live_data():
         
     df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
     
-    # 2. Fetch Media Data (Fallback to main if specific tab fails)
+    # 2. Fetch Media Data using requests.get
     media_df = df.copy() 
     try:
-        temp_media = pd.read_csv(MEDIA_DATA_URL, dtype=str).fillna("")
-        if not temp_media.empty:
-            media_df = temp_media
+        r2 = requests.get(MEDIA_DATA_URL, headers=headers, timeout=30)
+        if r2.status_code == 200:
+            temp_media = pd.read_csv(io.StringIO(r2.text), dtype=str).fillna("")
+            if not temp_media.empty:
+                media_df = temp_media
     except:
         pass
         
     media_data_list = []
-    # Map back to exact column index logic used in original setup
     for _, row in media_df.iterrows():
         try:
             t_area = clean_and_extract_url(row.iloc[13])
@@ -549,11 +551,11 @@ def fetch_live_data():
         except IndexError:
             continue
             
-    # 3. Fetch Export Template Base (Cached)
+    # 3. Fetch Export Template Base (Cached via requests)
     template_bytes = None
     placeholders = []
     try:
-        t_req = requests.get(TEMPLATE_URL, timeout=30)
+        t_req = requests.get(TEMPLATE_URL, headers=headers, timeout=30)
         if t_req.status_code == 200:
             template_bytes = io.BytesIO(t_req.content)
             temp_wb = load_workbook(template_bytes)
