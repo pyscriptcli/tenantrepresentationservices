@@ -577,7 +577,80 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 #--- LOAD DATA ASSETS ---
-# Initialize clean variables globally before loading data matrix strings
+@st.cache_data(ttl=3600, show_spinner=False)
+def load_data():
+    source_bytes = download_file(SOURCE_URL)
+    template_data = download_file(TEMPLATE_URL)
+    if source_bytes is None or template_data is None:
+        return None, None, None, []
+    # Ingest openpyxl layout with direct cells intact
+    src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
+    # 1. Parse Main Data Sheet (assumed active/first)
+    src_ws = src_wb.active
+    raw_rows = list(src_ws.iter_rows(values_only=False))
+    header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
+    parsed_data_list = []
+    for r in raw_rows[1:]:
+        row_dict = {}
+        has_val = False
+        for idx, cell in enumerate(r):
+            if idx < len(header_row) and header_row[idx]:
+                cleaned_val = clean_and_extract_url(cell.value)
+                row_dict[header_row[idx]] = cleaned_val
+                if cleaned_val != "":
+                    has_val = True
+        if has_val:
+            parsed_data_list.append(row_dict)
+    df = pd.DataFrame(parsed_data_list)
+    df = df.loc[:, ~df.columns.str.contains('^$')]
+    def create_site_display(row):
+        site_no = row.get('SITE NO', '')
+        site_name = row.get('SITE NAME', '')
+        if pd.notna(site_no) and site_no != '':
+            try:
+                return f"{int(float(str(site_no)))} - {site_name}"
+            except:
+                return f"{site_no} - {site_name}"
+        return str(site_name)
+    df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
+    # 2. Extract Data from Specific "PHOTOS/DOCS" Tab using Exact Coordinates
+    media_data_list = []
+    media_ws = None
+    # Locate the correct tab
+    for sheet_name in src_wb.sheetnames:
+        if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
+            media_ws = src_wb[sheet_name]
+            break
+    # Fallback if specific media sheet name isn't found
+    if not media_ws:
+        media_ws = src_ws
+    for r in media_ws.iter_rows(values_only=False):
+        # Col N (13) and Col P (15) mapping to link specific records
+        t_area = str(get_cell_val_safe(r, 13)).strip()
+        s_name = str(get_cell_val_safe(r, 15)).strip()
+        # Avoid pulling the header row itself
+        if t_area and s_name and t_area.upper() != "TRADE AREA":
+            media_data_list.append({
+                'TRADE AREA': t_area,
+                'SITE NAME': s_name,
+                # DOCS: C(2), D(3), E(4), F(5)
+                '__DIRECT_TCT': get_cell_val_safe(r, 2),
+                '__DIRECT_LOT_PLAN': get_cell_val_safe(r, 3),
+                '__DIRECT_BLDG_PLAN': get_cell_val_safe(r, 4),
+                '__DIRECT_TAX_MAP': get_cell_val_safe(r, 5),
+                # PHOTOS: H(7), I(8), J(9), K(10), L(11)
+                '__DIRECT_PHOTO_1': get_cell_val_safe(r, 7),
+                '__DIRECT_PHOTO_2': get_cell_val_safe(r, 8),
+                '__DIRECT_PHOTO_3': get_cell_val_safe(r, 9),
+                '__DIRECT_PHOTO_4': get_cell_val_safe(r, 10),
+                '__DIRECT_PHOTO_5': get_cell_val_safe(r, 11),
+            })
+    temp_wb = load_workbook(template_data)
+    placeholders = get_placeholders(temp_wb.active)
+    template_data.seek(0)
+    return df, placeholders, template_bytes_raw, media_data_list
+
+# Initialize top-level scope variables safely before execution triggers
 first_trade_area = ""
 first_site_display = ""
 trade_areas = []
@@ -591,7 +664,7 @@ if df is None or template_bytes_raw is None:
     st.error("Failed to load data assets. Please verify link paths.")
     st.stop()
 
-# Process data structures and set state indexes
+# Parse out values right after execution loop finishes
 trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
 
 if not df.empty:
@@ -623,7 +696,7 @@ with col2:
         default_site_index = 0
         
     selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
-    
+
 with col3:
     if selected_ta:
         st.download_button(
