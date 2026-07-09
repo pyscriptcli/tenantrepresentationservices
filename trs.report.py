@@ -282,32 +282,34 @@ def check_password(password):
 
 # --- 1. INITIALIZE & DISPLAY LOGIN ---
 if not st.session_state.authenticated:
-    r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
-    with r1_col2:
-        st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
-        password_input = st.text_input("", placeholder="Enter password", type="password")
-        if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
-            if check_password(password_input):
-                st.session_state.authenticated = True
-                st.rerun()
-            else:
-                st.error("Invalid token string provided.")
-    st.stop() # Stop execution here to prevent unauthenticated data loads
+    # Encapsulated login UI to prevent CSS bleeding and layout jumping
+    login_container = st.container()
+    with login_container:
+        r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
+        with r1_col2:
+            st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
+            password_input = st.text_input("", placeholder="Enter password", type="password")
+            if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
+                if check_password(password_input):
+                    st.session_state.authenticated = True
+                    st.rerun()
+                else:
+                    st.error("Invalid token string provided.")
+    # Strictly stop execution here to prevent ANY background data loading or UI overlap
+    st.stop()
 
 # --- 2. FORCE DATA SCAN ON NEW SESSIONS BEFORE LOADING ---
 # This block guarantees that every time the app initializes a new session, 
 # it wipes the cache to pull the absolute latest data from the sheets.
 if not st.session_state.get('data_initialized', False):
-    st.cache_data.clear() # Wipe any old cache
-    st.session_state.data_initialized = True # Mark session as initialized
+    st.cache_data.clear() 
+    st.session_state.data_initialized = True 
 
 #--- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
 #--- HELPER FUNCTIONS ---
-# Cache TTL is kept at 60s so it doesn't crash your app if you click through tabs quickly, 
-# but the block above guarantees it always refreshes on a new app startup.
 @st.cache_data(ttl=60) 
 def download_file(url):
     try:
@@ -579,7 +581,7 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 # --- 3. FETCH THE DATA ---
-@st.cache_data(ttl=60, show_spinner=True) 
+@st.cache_data(ttl=60, show_spinner="Loading Data...") 
 def load_data():
     source_bytes = download_file(SOURCE_URL)
     template_data = download_file(TEMPLATE_URL)
