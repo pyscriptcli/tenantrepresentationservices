@@ -113,7 +113,7 @@ div[data-testid="stTabs"] {
 div[data-testid="stHorizontalBlock"] { 
     gap: 0.5rem !important; 
     align-items: flex-end !important; 
-    background: #f0f4f9;
+    background: #ffffff;
     padding: 0.4rem 0.5rem !important; 
     border-radius: 8px;
     margin-top: 0px !important; 
@@ -577,105 +577,98 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 #--- LOAD DATA ASSETS ---
-@st.cache_data(ttl=3600, show_spinner=False)
+@st.cache_data(ttl=3600, show_spinner=False) # Show spinner here instead of in main UI flow
 def load_data():
-    source_bytes = download_file(SOURCE_URL)
-    template_data = download_file(TEMPLATE_URL)
-    if source_bytes is None or template_data is None:
-        return None, None, None, []
-    # Ingest openpyxl layout with direct cells intact
-    src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
-    # 1. Parse Main Data Sheet (assumed active/first)
-    src_ws = src_wb.active
-    raw_rows = list(src_ws.iter_rows(values_only=False))
-    header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
-    parsed_data_list = []
-    for r in raw_rows[1:]:
-        row_dict = {}
-        has_val = False
-        for idx, cell in enumerate(r):
-            if idx < len(header_row) and header_row[idx]:
-                cleaned_val = clean_and_extract_url(cell.value)
-                row_dict[header_row[idx]] = cleaned_val
-                if cleaned_val != "":
-                    has_val = True
-        if has_val:
-            parsed_data_list.append(row_dict)
-    df = pd.DataFrame(parsed_data_list)
-    df = df.loc[:, ~df.columns.str.contains('^$')]
-    def create_site_display(row):
-        site_no = row.get('SITE NO', '')
-        site_name = row.get('SITE NAME', '')
-        if pd.notna(site_no) and site_no != '':
-            try:
-                return f"{int(float(str(site_no)))} - {site_name}"
-            except:
-                return f"{site_no} - {site_name}"
-        return str(site_name)
-    df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
-    # 2. Extract Data from Specific "PHOTOS/DOCS" Tab using Exact Coordinates
-    media_data_list = []
-    media_ws = None
-    # Locate the correct tab
-    for sheet_name in src_wb.sheetnames:
-        if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
-            media_ws = src_wb[sheet_name]
-            break
-    # Fallback if specific media sheet name isn't found
-    if not media_ws:
-        media_ws = src_ws
-    for r in media_ws.iter_rows(values_only=False):
-        # Col N (13) and Col P (15) mapping to link specific records
-        t_area = str(get_cell_val_safe(r, 13)).strip()
-        s_name = str(get_cell_val_safe(r, 15)).strip()
-        # Avoid pulling the header row itself
-        if t_area and s_name and t_area.upper() != "TRADE AREA":
-            media_data_list.append({
-                'TRADE AREA': t_area,
-                'SITE NAME': s_name,
-                # DOCS: C(2), D(3), E(4), F(5)
-                '__DIRECT_TCT': get_cell_val_safe(r, 2),
-                '__DIRECT_LOT_PLAN': get_cell_val_safe(r, 3),
-                '__DIRECT_BLDG_PLAN': get_cell_val_safe(r, 4),
-                '__DIRECT_TAX_MAP': get_cell_val_safe(r, 5),
-                # PHOTOS: H(7), I(8), J(9), K(10), L(11)
-                '__DIRECT_PHOTO_1': get_cell_val_safe(r, 7),
-                '__DIRECT_PHOTO_2': get_cell_val_safe(r, 8),
-                '__DIRECT_PHOTO_3': get_cell_val_safe(r, 9),
-                '__DIRECT_PHOTO_4': get_cell_val_safe(r, 10),
-                '__DIRECT_PHOTO_5': get_cell_val_safe(r, 11),
-            })
-    temp_wb = load_workbook(template_data)
-    placeholders = get_placeholders(temp_wb.active)
-    # Extract the raw content to resolve the NameError
-    template_bytes_raw = template_data.getvalue()
-    template_data.seek(0)
-    return df, placeholders, template_bytes_raw, media_data_list
+    with st.spinner("Loading Data..."): # This spinner will show during the *initial* cache miss
+        source_bytes = download_file(SOURCE_URL)
+        template_data = download_file(TEMPLATE_URL)
+        if source_bytes is None or template_data is None:
+            return None, None, None, []
+        # Ingest openpyxl layout with direct cells intact
+        src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
+        # 1. Parse Main Data Sheet (assumed active/first)
+        src_ws = src_wb.active
+        raw_rows = list(src_ws.iter_rows(values_only=False))
+        header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
+        parsed_data_list = []
+        for r in raw_rows[1:]:
+            row_dict = {}
+            has_val = False
+            for idx, cell in enumerate(r):
+                if idx < len(header_row) and header_row[idx]:
+                    cleaned_val = clean_and_extract_url(cell.value)
+                    row_dict[header_row[idx]] = cleaned_val
+                    if cleaned_val != "":
+                        has_val = True
+            if has_val:
+                parsed_data_list.append(row_dict)
+        df = pd.DataFrame(parsed_data_list)
+        df = df.loc[:, ~df.columns.str.contains('^$')]
+        def create_site_display(row):
+            site_no = row.get('SITE NO', '')
+            site_name = row.get('SITE NAME', '')
+            if pd.notna(site_no) and site_no != '':
+                try:
+                    return f"{int(float(str(site_no)))} - {site_name}"
+                except:
+                    return f"{site_no} - {site_name}"
+            return str(site_name)
+        df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
+        # 2. Extract Data from Specific "PHOTOS/DOCS" Tab using Exact Coordinates
+        media_data_list = []
+        media_ws = None
+        # Locate the correct tab
+        for sheet_name in src_wb.sheetnames:
+            if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
+                media_ws = src_wb[sheet_name]
+                break
+        # Fallback if specific media sheet name isn't found
+        if not media_ws:
+            media_ws = src_ws
+        for r in media_ws.iter_rows(values_only=False):
+            # Col N (13) and Col P (15) mapping to link specific records
+            t_area = str(get_cell_val_safe(r, 13)).strip()
+            s_name = str(get_cell_val_safe(r, 15)).strip()
+            # Avoid pulling the header row itself
+            if t_area and s_name and t_area.upper() != "TRADE AREA":
+                media_data_list.append({
+                    'TRADE AREA': t_area,
+                    'SITE NAME': s_name,
+                    # DOCS: C(2), D(3), E(4), F(5)
+                    '__DIRECT_TCT': get_cell_val_safe(r, 2),
+                    '__DIRECT_LOT_PLAN': get_cell_val_safe(r, 3),
+                    '__DIRECT_BLDG_PLAN': get_cell_val_safe(r, 4),
+                    '__DIRECT_TAX_MAP': get_cell_val_safe(r, 5),
+                    # PHOTOS: H(7), I(8), J(9), K(10), L(11)
+                    '__DIRECT_PHOTO_1': get_cell_val_safe(r, 7),
+                    '__DIRECT_PHOTO_2': get_cell_val_safe(r, 8),
+                    '__DIRECT_PHOTO_3': get_cell_val_safe(r, 9),
+                    '__DIRECT_PHOTO_4': get_cell_val_safe(r, 10),
+                    '__DIRECT_PHOTO_5': get_cell_val_safe(r, 11),
+                })
+        temp_wb = load_workbook(template_data)
+        placeholders = get_placeholders(temp_wb.active)
+        # Extract the raw content to resolve the NameError
+        template_bytes_raw = template_data.getvalue()
+        template_data.seek(0)
+        return df, placeholders, template_bytes_raw, media_data_list
 
-# Initialize top-level scope variables safely before execution triggers
-first_trade_area = ""
-first_site_display = ""
-trade_areas = []
-default_ta_index = 0
-default_site_index = 0
+# --- MAIN LOGIC BEGINS ---
 
-with st.spinner("Loading Data..."):
-    df, placeholders, template_bytes_raw, media_data_list = load_data()
+# Load data first. This ensures it's available before UI elements are processed below.
+# The @st.cache_data decorator means this only actually downloads and processes the files once per TTL period.
+df, placeholders, template_bytes_raw, media_data_list = load_data()
 
 if df is None or template_bytes_raw is None:
     st.error("Failed to load data assets. Please verify link paths.")
     st.stop()
 
-# Parse out values right after execution loop finishes
+# Derive initial values from loaded data
 trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
-
-if not df.empty:
-    first_row = df.iloc[0]
-    first_trade_area = first_row.get("TRADE AREA", "")
-    first_site_display = first_row.get("SITE_DISPLAY", "")
-    
-    if first_trade_area in trade_areas:
-        default_ta_index = trade_areas.index(first_trade_area)
+first_row = df.iloc[0] if not df.empty else None
+first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
+first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
+default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
 
 deploy_workspace_security_protocols()
 
@@ -688,7 +681,7 @@ with col2:
     if selected_ta:
         raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
         sites_in_ta = sorted(raw_sites, key=parse_site_number)
-        
+
         if selected_ta == first_trade_area and first_site_display in sites_in_ta:
             default_site_index = sites_in_ta.index(first_site_display)
         else:
@@ -696,7 +689,7 @@ with col2:
     else:
         sites_in_ta = []
         default_site_index = 0
-        
+
     selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
 
 with col3:
@@ -714,7 +707,7 @@ if selected_ta and selected_site_display:
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     if not site_data.empty:
         site_row_data = site_data.iloc[0]
-        
+
         # Seek exact row match inside the mapped media tab data
         target_ta = str(site_row_data.get('TRADE AREA', '')).strip()
         target_sn = str(site_row_data.get('SITE NAME', '')).strip()
@@ -723,17 +716,17 @@ if selected_ta and selected_site_display:
             if m['TRADE AREA'] == target_ta and m['SITE NAME'] == target_sn:
                 media_row_data = m
                 break
-                
+
         if not media_row_data:
             media_row_data = site_row_data
-            
+
         # Instantiate Workspace Tabs instantly
         tab_report, tab_photos, tab_docs = st.tabs([
-            "PROPERTY INFORMATION", 
-            "PROPERTY PHOTOS", 
+            "PROPERTY INFORMATION",
+            "PROPERTY PHOTOS",
             "PROPERTY DOCS"
         ])
-        
+
         # --- TAB 1: SITE INFORMATION REPORT ---
         with tab_report:
             try:
@@ -771,12 +764,12 @@ if selected_ta and selected_site_display:
                 rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS"))
                 rendered_view = rendered_view.replace("_REMARKS_", process_val("REMARKS"))
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-                
+
                 components.html(rendered_view, height=1200, scrolling=False)
-                
+
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
-                
+
         # --- TAB 2: PROPERTY PHOTOS (3x3 LAYOUT) ---
         with tab_photos:
             direct_photo_mapping = {
@@ -874,7 +867,7 @@ if selected_ta and selected_site_display:
                 components.html(grid_html, height=1200, scrolling=False)
             else:
                 st.info("No photo links configured for this property record selection.")
-                
+
         # --- TAB 3: PROPERTY DOCS (3x3 LAYOUT) ---
         with tab_docs:
             direct_doc_mapping = {
@@ -972,5 +965,6 @@ if selected_ta and selected_site_display:
             else:
                 st.info("No layout documents configured for this property record selection.")
 
-# CRITICAL: Drop the custom flat loading spinner only after all tab matrices are completely rendered!
-    spinner_placeholder.empty()
+# Note: The original 'spinner_placeholder' variable was removed as the loading
+# spinner is now handled directly within the @st.cache_data function 'load_data'.
+# The UI will appear quickly after the initial data load is cached.
