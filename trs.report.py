@@ -260,26 +260,39 @@ def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
 if not st.session_state.authenticated:
+    # Initialize session state for password visibility toggle
+    if 'show_pwd' not in st.session_state:
+        st.session_state.show_pwd = False
+        
     r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
     with r1_col2:
         st.markdown("<h3 style='text-align: center; margin-top:50px;'>Access Required</h3>", unsafe_allow_html=True)
         
-        # Clean password input - completely rewritten to remove corrupted unicode/ghost text
-        password_input = st.text_input(
-            label="Enter password:", 
-            type="password", 
-            label_visibility="collapsed",
-            key="login_pwd_clean"
-        )
+        # Create a compact row for password input and eye icon
+        pwd_col, eye_col = st.columns([0.85, 0.15])
         
+        # Determine input type based on toggle state
+        pwd_type = "default" if st.session_state.show_pwd else "password"
+        
+        with pwd_col:
+            password_input = st.text_input("Enter password:", type=pwd_type, label_visibility="collapsed")
+            
+        with eye_col:
+            # Black and white Material Design eye icons
+            eye_icon = ":material/visibility_off:" if st.session_state.show_pwd else ":material/visibility:"
+            if st.button("", icon=eye_icon, key="toggle_pwd", help="Show/Hide Password"):
+                st.session_state.show_pwd = not st.session_state.show_pwd
+                st.rerun()
+                
         if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
             if check_password(password_input):
                 st.session_state.authenticated = True
                 st.cache_data.clear()
                 st.rerun()
             else:
-                st.error("Incorrect password")
+                st.error("Invalid token string provided.")
     st.stop()
+    
 deploy_workspace_security_protocols()
 
 #--- CONFIGURATION ---
