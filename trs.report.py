@@ -704,9 +704,10 @@ with col3:
 
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta and selected_site_display:
-    site_data = df[df["SITE_DISPLAY"] == selected_site_display]
-    if not site_data.empty:
-        site_row_data = site_data.iloc[0]
+    with st.spinner("Loading site details..."):
+        site_data = df[df["SITE_DISPLAY"] == selected_site_display]
+        if not site_data.empty:
+            site_row_data = site_data.iloc[0]
 
         # Seek exact row match inside the mapped media tab data
         target_ta = str(site_row_data.get('TRADE AREA', '')).strip()
