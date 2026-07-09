@@ -650,27 +650,41 @@ deploy_workspace_security_protocols()
 
 #--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
 trade_areas = ["Select Trade Area..."] + sorted(df["TRADE AREA"].dropna().unique().tolist())
+
+# --- DYNAMICALLY GRAB FIRST DATA RECORD FROM THE DATAFRAME ---
+default_ta_index = 0
+default_site_index = 0
+
+if not df.empty:
+    # Row index 0 in a DataFrame represents the first actual data row (Row 2 in Excel)
+    first_row = df.iloc[0]
+    first_trade_area = first_row.get("TRADE AREA", "")
+    first_site_display = first_row.get("SITE_DISPLAY", "")
+    
+    if first_trade_area in trade_areas:
+        default_ta_index = trade_areas.index(first_trade_area)
+
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
 with col1:
-    selected_ta = st.selectbox("Trade Area", options=trade_areas, index=0, label_visibility="collapsed")
+    selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="collapsed")
+
 with col2:
     if selected_ta and selected_ta != "Select Trade Area...":
         raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
         sorted_sites = sorted(raw_sites, key=parse_site_number)
         sites_in_ta = ["Select Site..."] + sorted_sites
+        
+        # If the currently selected Trade Area matches our first data row, point to its matching site
+        if selected_ta == first_trade_area and first_site_display in sites_in_ta:
+            default_site_index = sites_in_ta.index(first_site_display)
+        else:
+            default_site_index = 1 if len(sites_in_ta) > 1 else 0
     else:
         sites_in_ta = ["Select Site..."]
-    selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=0, label_visibility="collapsed")
-with col3:
-    if selected_ta and selected_ta != "Select Trade Area...":
-        st.download_button(
-            label="Export",
-            data=generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders),
-            file_name=f"{selected_ta}_Full_Report.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
-
+        default_site_index = 0
+        
+    selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="collapsed")
+    
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta != "Select Trade Area..." and selected_site_display != "Select Site...":
     # Flat loading spinner (no text, just a simple black and gray rotating ring)
