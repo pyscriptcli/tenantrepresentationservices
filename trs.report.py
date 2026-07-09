@@ -280,7 +280,7 @@ if 'authenticated' not in st.session_state:
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
-# --- Step 1 & 2: Init App & Display Login ---
+# --- 1. INITIALIZE & DISPLAY LOGIN ---
 if not st.session_state.authenticated:
     r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
     with r1_col2:
@@ -292,14 +292,23 @@ if not st.session_state.authenticated:
                 st.rerun()
             else:
                 st.error("Invalid token string provided.")
-    st.stop() # Stop execution here if not authenticated to prevent unauthenticated data loads
+    st.stop() # Stop execution here to prevent unauthenticated data loads
+
+# --- 2. FORCE DATA SCAN ON NEW SESSIONS BEFORE LOADING ---
+# This block guarantees that every time the app initializes a new session, 
+# it wipes the cache to pull the absolute latest data from the sheets.
+if not st.session_state.get('data_initialized', False):
+    st.cache_data.clear() # Wipe any old cache
+    st.session_state.data_initialized = True # Mark session as initialized
 
 #--- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
 #--- HELPER FUNCTIONS ---
-@st.cache_data(ttl=60) # Caches the raw file download separately for efficiency
+# Cache TTL is kept at 60s so it doesn't crash your app if you click through tabs quickly, 
+# but the block above guarantees it always refreshes on a new app startup.
+@st.cache_data(ttl=60) 
 def download_file(url):
     try:
         response = requests.get(url, timeout=30)
@@ -569,7 +578,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
-# --- Step 3: Initialize/Load Data (With 60s TTL) ---
+# --- 3. FETCH THE DATA ---
 @st.cache_data(ttl=60, show_spinner=True) 
 def load_data():
     source_bytes = download_file(SOURCE_URL)
@@ -636,7 +645,6 @@ def load_data():
     
     return df, placeholders, template_bytes_raw, media_data_list
 
-# Load the authenticated user's data
 df, placeholders, template_bytes_raw, media_data_list = load_data()
 
 if df is None or template_bytes_raw is None:
@@ -649,9 +657,8 @@ first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
 first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
 default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
 
-deploy_workspace_security_protocols()
 
-# --- Step 4: Display Report (3-COLUMN GRID) ---
+# --- 4. DISPLAY REPORT CONTROLS (3-COLUMN GRID) ---
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
 with col1:
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
