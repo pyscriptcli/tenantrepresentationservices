@@ -15,7 +15,7 @@ import base64
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="trs.sitesourcing.viewer",
+    page_title="trs-site-report",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -237,63 +237,20 @@ if not st.session_state.authenticated:
     st.stop() # Execution absolutely stops here if not authenticated
 
 #--- CONFIGURATION ---
-SOURCE_SPREADSHEET_ID = '14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE'
-SOURCE_URL = f"https://docs.google.com/spreadsheets/d/{SOURCE_SPREADSHEET_ID}/edit"
-SOURCE_URL_XLSX = f"https://docs.google.com/spreadsheets/d/{SOURCE_SPREADSHEET_ID}/export?format=xlsx"
+SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
 #--- HELPER FUNCTIONS ---
-@st.cache_resource
-def get_gsheets_connection():
-    from streamlit_gsheets import GSheetsConnection
-    return st.connection("gsheets", type=GSheetsConnection)
-
-@st.cache_data(ttl=3600)
-def pull_template_and_placeholders():
+@st.cache_data(ttl=60) # Backend cache limits Google Sheets API hits
+def pull_raw_backend_data():
     try:
-        r = requests.get(TEMPLATE_URL, timeout=30)
-        if r.status_code == 200:
-            template_bytes = io.BytesIO(r.content)
-            temp_wb = load_workbook(template_bytes)
-            placeholders = get_placeholders(temp_wb.active)
-            template_bytes.seek(0)
-            return template_bytes.getvalue(), placeholders
+        r1 = requests.get(SOURCE_URL, timeout=30)
+        r2 = requests.get(TEMPLATE_URL, timeout=30)
+        if r1.status_code == 200 and r2.status_code == 200:
+            return io.BytesIO(r1.content), io.BytesIO(r2.content)
     except:
         pass
     return None, None
-
-@st.cache_data(ttl=3600)
-def pull_media_data_from_xlsx():
-    try:
-        res = requests.get(SOURCE_URL_XLSX, timeout=30)
-        if res.status_code == 200:
-            src_wb = load_workbook(io.BytesIO(res.content), data_only=True)
-            media_ws = None
-            for sheet_name in src_wb.sheetnames:
-                if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
-                    media_ws = src_wb[sheet_name]
-                    break
-            
-            if not media_ws:
-                media_ws = src_wb.active
-                
-            media_data_list = []
-            for row_cells in media_ws.iter_rows(values_only=False):
-                t_area = str(get_cell_val_safe(row_cells, 13)).strip()
-                s_name = str(get_cell_val_safe(row_cells, 15)).strip()
-                if t_area and s_name and t_area.upper() != "TRADE AREA":
-                    media_data_list.append({
-                        'TRADE AREA': t_area, 'SITE NAME': s_name,
-                        '__DIRECT_TCT': get_cell_val_safe(row_cells, 2), '__DIRECT_LOT_PLAN': get_cell_val_safe(row_cells, 3),
-                        '__DIRECT_BLDG_PLAN': get_cell_val_safe(row_cells, 4), '__DIRECT_TAX_MAP': get_cell_val_safe(row_cells, 5),
-                        '__DIRECT_PHOTO_1': get_cell_val_safe(row_cells, 7), '__DIRECT_PHOTO_2': get_cell_val_safe(row_cells, 8),
-                        '__DIRECT_PHOTO_3': get_cell_val_safe(row_cells, 9), '__DIRECT_PHOTO_4': get_cell_val_safe(row_cells, 10),
-                        '__DIRECT_PHOTO_5': get_cell_val_safe(row_cells, 11),
-                    })
-            return media_data_list
-    except:
-        pass
-    return []
 
 def clean_and_extract_url(cell_value):
     if cell_value is None: return ""
@@ -384,43 +341,6 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
     wb.save(wb_buffer)
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
-
-def process_source_data():
-    conn = get_gsheets_connection()
-    try:
-        # 1. Pull main data directly from the spreadsheet ID (Extremely fast, cached 10m)
-        df = conn.read(spreadsheet=SOURCE_URL, ttl=600)
-        if df is None or df.empty:
-            return None, []
-            
-        # Clean column names
-        df.columns = [str(c).strip().upper() for c in df.columns]
-        df = df.loc[:, ~df.columns.str.contains('^$')]
-        
-        # Extract URLs from all cells using your existing logic
-        for col in df.columns:
-            df[col] = df[col].apply(lambda x: clean_and_extract_url(x))
-            
-        # Filter out completely empty rows
-        df = df[df.apply(lambda row: any(str(val).strip() != "" for val in row), axis=1)]
-        
-        def create_site_display(row):
-            site_no = row.get('SITE NO', '')
-            site_name = row.get('SITE NAME', '')
-            if pd.notna(site_no) and str(site_no).strip() != '':
-                try: return f"{int(float(str(site_no)))} - {site_name}"
-                except: return f"{site_no} - {site_name}"
-            return str(site_name)
-        
-        df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
-        
-        # 2. Pull media data from .xlsx (Cached for 1 hour to avoid heavy parsing on every load)
-        media_data_list = pull_media_data_from_xlsx()
-                
-        return df, media_data_list
-    except Exception as e:
-        st.error(f"Error pulling data from Google Sheets: {e}")
-        return None, []
 
 #--- COMPLETE HTML BLUEPRINT ---
 HTML_FRAMEWORK = """
@@ -582,14 +502,69 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
-# --- MASTER DATA INJECTION INTO SESSION MEMORY ---
+# --- 2. SINGLETON DATA LOAD & CACHE (Triggers only ONCE per session) ---
+def process_loaded_data(source_bytes, template_bytes):
+    src_wb = load_workbook(source_bytes, data_only=False)
+    src_ws = src_wb.active
+    raw_rows = list(src_ws.iter_rows(values_only=False))
+    header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
+    parsed_data_list = []
+    for r in raw_rows[1:]:
+        row_dict = {}
+        has_val = False
+        for idx, cell in enumerate(r):
+            if idx < len(header_row) and header_row[idx]:
+                cleaned_val = clean_and_extract_url(cell.value)
+                row_dict[header_row[idx]] = cleaned_val
+                if cleaned_val != "": has_val = True
+        if has_val: parsed_data_list.append(row_dict)
+    
+    df = pd.DataFrame(parsed_data_list)
+    df = df.loc[:, ~df.columns.str.contains('^$')]
+    
+    def create_site_display(row):
+        site_no = row.get('SITE NO', '')
+        site_name = row.get('SITE NAME', '')
+        if pd.notna(site_no) and site_no != '':
+            try: return f"{int(float(str(site_no)))} - {site_name}"
+            except: return f"{site_no} - {site_name}"
+        return str(site_name)
+    
+    df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
+    
+    media_data_list = []
+    media_ws = None
+    for sheet_name in src_wb.sheetnames:
+        if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
+            media_ws = src_wb[sheet_name]
+            break
+    if not media_ws: media_ws = src_ws
+    for r in media_ws.iter_rows(values_only=False):
+        t_area = str(get_cell_val_safe(r, 13)).strip()
+        s_name = str(get_cell_val_safe(r, 15)).strip()
+        if t_area and s_name and t_area.upper() != "TRADE AREA":
+            media_data_list.append({
+                'TRADE AREA': t_area, 'SITE NAME': s_name,
+                '__DIRECT_TCT': get_cell_val_safe(r, 2), '__DIRECT_LOT_PLAN': get_cell_val_safe(r, 3),
+                '__DIRECT_BLDG_PLAN': get_cell_val_safe(r, 4), '__DIRECT_TAX_MAP': get_cell_val_safe(r, 5),
+                '__DIRECT_PHOTO_1': get_cell_val_safe(r, 7), '__DIRECT_PHOTO_2': get_cell_val_safe(r, 8),
+                '__DIRECT_PHOTO_3': get_cell_val_safe(r, 9), '__DIRECT_PHOTO_4': get_cell_val_safe(r, 10),
+                '__DIRECT_PHOTO_5': get_cell_val_safe(r, 11),
+            })
+            
+    temp_wb = load_workbook(template_bytes)
+    placeholders = get_placeholders(temp_wb.active)
+    template_bytes_raw = template_bytes.getvalue()
+    template_bytes.seek(0)
+    
+    return df, placeholders, template_bytes_raw, media_data_list
+
+# Master Data Injection into Session Memory
 if "master_data" not in st.session_state:
     with st.spinner("Loading Data..."):
-        template_bytes_raw, placeholders = pull_template_and_placeholders()
-        df, media_data_list = process_source_data()
-        
-        if df is not None and template_bytes_raw is not None:
-            st.session_state.master_data = (df, placeholders, template_bytes_raw, media_data_list)
+        raw_source, raw_template = pull_raw_backend_data()
+        if raw_source and raw_template:
+            st.session_state.master_data = process_loaded_data(raw_source, raw_template)
         else:
             st.session_state.master_data = (None, None, None, None)
 
