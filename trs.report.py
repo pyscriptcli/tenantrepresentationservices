@@ -647,6 +647,8 @@ def load_data():
             })
     temp_wb = load_workbook(template_data)
     placeholders = get_placeholders(temp_wb.active)
+    # Extract the raw content to resolve the NameError
+    template_bytes_raw = template_data.getvalue()
     template_data.seek(0)
     return df, placeholders, template_bytes_raw, media_data_list
 
