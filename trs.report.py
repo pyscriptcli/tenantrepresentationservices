@@ -251,7 +251,7 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- LOGIN VERIFICATION LOGIC ---
+--- LOGIN VERIFICATION LOGIC ---
 TARGET_HASH = "6e7dfba0b39da481db37c3263c61cac6"
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
@@ -260,29 +260,24 @@ def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
 if not st.session_state.authenticated:
-    # Initialize password visibility state
+    # Initialize session state for password visibility
     if 'show_pwd' not in st.session_state:
         st.session_state.show_pwd = False
-
+        
     r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
     with r1_col2:
         st.markdown("<h3 style='text-align: center; margin-top:50px;'>Access Required</h3>", unsafe_allow_html=True)
         
-        # Determine password input type based on toggle state
+        # Use a compact checkbox to toggle visibility natively without breaking layout
+        show_password = st.checkbox("Show Password", value=st.session_state.show_pwd, key="pwd_toggle")
+        if show_password != st.session_state.show_pwd:
+            st.session_state.show_pwd = show_password
+            
+        # Determine input type based on toggle state
         pwd_type = "default" if st.session_state.show_pwd else "password"
+        password_input = st.text_input("Enter password:", type=pwd_type, label_visibility="collapsed")
         
-        # Create columns for password input and eye icon toggle
-        pwd_col, eye_col = st.columns([0.85, 0.15])
-        with pwd_col:
-            password_input = st.text_input("Enter password:", type=pwd_type, label_visibility="collapsed")
-        with eye_col:
-            # Black and white Material Design eye icons
-            eye_icon = ":material/visibility_off:" if st.session_state.show_pwd else ":material/visibility:"
-            if st.button("", icon=eye_icon, key="toggle_pwd", help="Show/Hide Password"):
-                st.session_state.show_pwd = not st.session_state.show_pwd
-                st.rerun()
-                
-        if st.button("Login", use_container_width=True) or password_input:
+        if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
             if check_password(password_input):
                 st.session_state.authenticated = True
                 st.cache_data.clear()
