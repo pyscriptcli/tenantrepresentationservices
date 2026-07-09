@@ -27,6 +27,11 @@ st.markdown("""
 
 * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
 
+/* Hide the label of the password input on the login screen */
+div[data-testid="stTextInput"] label {
+    display: none !important;
+}
+
 /* 1. FIXED: MAIN VIEWPORT WITH OUTER SCROLLBAR ONLY */
 html, body {
     overflow-y: auto !important; /* ENABLES OUTER SCROLLBAR */
