@@ -15,7 +15,7 @@ import base64
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="trs.sitesourcing.viewer",
+    page_title="trs-site-report",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -27,7 +27,7 @@ st.markdown("""
 
 * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
 
-/* 1. FIXED: MAIN VIEWPORT WITH OUTER SCROLLBAR ONLY */
+/* 1. MAIN VIEWPORT wSCROLLBAR */
 html, body {
     overflow-y: auto !important; /* ENABLES OUTER SCROLLBAR */
     overflow-x: hidden !important;
@@ -37,7 +37,7 @@ html, body {
     background-color: #ffffff !important;
 }
 
-/* 2. NUKE STREAMLIT HEADER & PADDING GHOSTS */
+/* 2. REMOVED STREAMLIT HEADER & PADDING*/
 header[data-testid="stHeader"], 
 [data-testid="stHeader"], 
 .stApp > header,
@@ -50,7 +50,7 @@ div[data-testid="stDecoration"] {
     opacity: 0 !important;
 }
 
-/* 3. FIXED: ALLOW SCROLLING WITH INCREASED GLOBAL HEIGHT (+100px) */
+/* 3. VERTICAL PAGE SCROLLING */
 .stApp,
 .appview-container, 
 .main, 
@@ -263,7 +263,7 @@ if not st.session_state.authenticated:
     r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
     with r1_col2:
         st.markdown(" <h3 style='text-align: center; margin-top:50px;' >Access Required </h3> ", unsafe_allow_html=True)
-        password_input = st.text_input("Enter password: ", type="password", label_visibility="collapsed")
+        password_input = st.text_input("Enter password: ", type="password", label_visibility="")
         if st.button("Login", use_container_width=True) or password_input:
             if check_password(password_input):
                 st.session_state.authenticated = True
