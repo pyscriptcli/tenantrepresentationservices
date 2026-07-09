@@ -32,6 +32,11 @@ div[data-testid="stTextInput"] label {
     display: none !important;
 }
 
+/* Hide the broken visibility text/icon inside the password input */
+div[data-testid="stTextInput"] button {
+    display: none !important;
+}
+
 /* 1. FIXED: MAIN VIEWPORT WITH OUTER SCROLLBAR ONLY */
 html, body {
     overflow-y: auto !important; /* ENABLES OUTER SCROLLBAR */
