@@ -758,14 +758,6 @@ if selected_ta and selected_site_display:
                     val = site_row_data.get(key_string.upper(), "")
                     if pd.isna(val) or val is None: return ""
                     return str(val).strip()
-        
-        # --- TAB 1: SITE INFORMATION REPORT ---
-        with tab_report:
-            try:
-                def process_val(key_string):
-                    val = site_row_data.get(key_string.upper(), "")
-                    if pd.isna(val) or val is None: return ""
-                    return str(val).strip()
                 rendered_view = HTML_FRAMEWORK
                 rendered_view = rendered_view.replace("_TRADE_AREA_", process_val("TRADE AREA"))
                 rendered_view = rendered_view.replace("_SITE_NAME_", process_val("SITE NAME"))
