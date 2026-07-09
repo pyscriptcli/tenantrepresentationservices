@@ -113,7 +113,7 @@ div[data-testid="stTabs"] {
 div[data-testid="stHorizontalBlock"] { 
     gap: 0.5rem !important; 
     align-items: flex-end !important; 
-    background: #f0f4f9;
+    background: #ffffff;
     padding: 0.4rem 0.5rem !important; 
     border-radius: 8px;
     margin-top: 0px !important; 
