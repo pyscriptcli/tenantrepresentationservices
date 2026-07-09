@@ -12,7 +12,6 @@ import hashlib
 from openpyxl import load_workbook
 import streamlit.components.v1 as components
 import base64
-from datetime import datetime
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -121,16 +120,14 @@ div[data-testid="stHorizontalBlock"] {
     margin-bottom: 10px !important;
 }
 
-/* Hard pixel alignment lock for the button wrappers */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3),
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4) {
+/* Hard pixel alignment lock for the export column element wrapper */
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) {
     align-self: flex-end !important;
     padding-bottom: 4px !important;
 }
 
 /* Force Streamlit's inner widget wrapper to drop any hidden margin blocks */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"],
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4) div[data-testid="stElementWrapper"] {
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"] {
     margin-bottom: 0px !important;
     padding-bottom: 0px !important;
 }
@@ -283,12 +280,26 @@ if 'authenticated' not in st.session_state:
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
+# --- Step 1 & 2: Init App & Display Login ---
+if not st.session_state.authenticated:
+    r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
+    with r1_col2:
+        st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
+        password_input = st.text_input("", placeholder="Enter password", type="password")
+        if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
+            if check_password(password_input):
+                st.session_state.authenticated = True
+                st.rerun()
+            else:
+                st.error("Invalid token string provided.")
+    st.stop() # Stop execution here if not authenticated to prevent unauthenticated data loads
+
 #--- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
 #--- HELPER FUNCTIONS ---
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=60) # Caches the raw file download separately for efficiency
 def download_file(url):
     try:
         response = requests.get(url, timeout=30)
@@ -297,22 +308,18 @@ def download_file(url):
         return None
 
 def clean_and_extract_url(cell_value):
-    """Bypasses formula blocks like =IMAGE("url") to get the clean direct link string."""
     if cell_value is None:
         return ""
     val_str = str(cell_value).strip()
-    # Check if nested inside an IMAGE formula layout
     formula_match = re.search(r'IMAGE\s*\(\s*["\'](https://[^"\']+)["\']', val_str, re.IGNORECASE)
     if formula_match:
         return formula_match.group(1)
-    # Standard URL match fallback
     url_match = re.search(r'(https://[^\s"\']+)', val_str)
     if url_match:
         return url_match.group(1)
     return val_str
 
 def get_cell_val_safe(row_cells, index):
-    """Safely fetch and clean a cell value by fixed column index. Checks hyperlinks too."""
     if index < len(row_cells):
         cell = row_cells[index]
         if cell.hyperlink and cell.hyperlink.target:
@@ -321,7 +328,6 @@ def get_cell_val_safe(row_cells, index):
     return ""
 
 def extract_google_drive_id(clean_url):
-    """Extracts unique file ID from verified URL strings."""
     if not clean_url:
         return None
     match = re.search(r'(?:id=|/d/|/uc?.*?id=)([a-zA-Z0-9_-]{25,})', clean_url)
@@ -356,7 +362,7 @@ def parse_site_number(site_display_str):
     match = re.match(r"^(\d+)", site_display_str)
     return int(match.group(1)) if match else float('inf')
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=60, show_spinner=False)
 def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders):
     ta_data = df[df["TRADE AREA"] == trade_area]
     wb = load_workbook(io.BytesIO(template_bytes_raw))
@@ -563,8 +569,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
-#--- LOAD DATA ASSETS ---
-@st.cache_data(ttl=3600, show_spinner=True) # Use Streamlit's built-in spinner for initial load
+# --- Step 3: Initialize/Load Data (With 60s TTL) ---
+@st.cache_data(ttl=60, show_spinner=True) 
 def load_data():
     source_bytes = download_file(SOURCE_URL)
     template_data = download_file(TEMPLATE_URL)
@@ -628,27 +634,9 @@ def load_data():
     template_bytes_raw = template_data.getvalue()
     template_data.seek(0)
     
-    # Track metadata timestamp safely in session state without mutating cache keys
-    if "last_refresh_time" not in st.session_state:
-        st.session_state.last_refresh_time = datetime.now().strftime("%I:%M %p, %B %d, %Y")
-        
     return df, placeholders, template_bytes_raw, media_data_list
 
-# --- MAIN LOGIC BEGINS ---
-
-if not st.session_state.authenticated:
-    r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
-    with r1_col2:
-        st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
-        password_input = st.text_input("", placeholder="Enter password", type="password")
-        if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
-            if check_password(password_input):
-                st.session_state.authenticated = True
-                st.rerun()
-            else:
-                st.error("Invalid token string provided.")
-    st.stop()
-
+# Load the authenticated user's data
 df, placeholders, template_bytes_raw, media_data_list = load_data()
 
 if df is None or template_bytes_raw is None:
@@ -663,8 +651,8 @@ default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in tr
 
 deploy_workspace_security_protocols()
 
-#--- ROW 1: CONTROLS ROW (4-COLUMN GRID ALIGNMENT MATRIX) ---
-col1, col2, col3, col4 = st.columns([1.5, 1.5, 1.0, 1.0])
+# --- Step 4: Display Report (3-COLUMN GRID) ---
+col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
 with col1:
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
 
@@ -691,16 +679,7 @@ with col3:
             use_container_width=True
         )
 
-with col4:
-    if st.button("Refresh Data", use_container_width=True):
-        st.cache_data.clear()
-        st.session_state.last_refresh_time = datetime.now().strftime("%I:%M %p, %B %d, %Y")
-        st.rerun()
-    # Safely present the inline italic text immediately beneath the action frame
-    refresh_ts = st.session_state.get("last_refresh_time", datetime.now().strftime("%I:%M %p, %B %d, %Y"))
-    st.markdown(f"<div style='text-align: center; font-size: 0.7rem; color: #5f6368; font-style: italic; margin-top: -6px;'>updated as of {refresh_ts}</div>", unsafe_allow_html=True)
-
-#--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
+#--- MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta and selected_site_display:
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     site_row_data = site_data.iloc[0] if not site_data.empty else None
