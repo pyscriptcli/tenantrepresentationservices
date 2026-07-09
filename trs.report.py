@@ -681,9 +681,20 @@ with col2:
         sites_in_ta = []
         default_site_index = 0
         
-    # Set the label visibility to "visible" for the property selector
     selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
     
+with col3:
+    if selected_ta:
+        # Transparent element spacing matrix to push button into linear alignment
+        st.markdown("<p style='margin: 0 0 -5px 0; font-size: 0.75rem;'>&nbsp;</p>", unsafe_allow_html=True)
+        st.download_button(
+            label="Export",
+            data=generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders),
+            file_name=f"{selected_ta}_Full_Report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta and selected_site_display:
     spinner_placeholder = st.empty()
