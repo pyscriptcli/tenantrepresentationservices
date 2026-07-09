@@ -13,16 +13,16 @@ from openpyxl import load_workbook
 import streamlit.components.v1 as components
 import base64
 
-# --- PAGE CONFIGURATION ---
+--- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="trs.sitesourcing.viewer",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & OUTER SCROLLBAR) ---
+--- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & OUTER SCROLLBAR) ---
 st.markdown("""
-<style>
+<style >
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
 
 * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
@@ -165,7 +165,7 @@ div[data-testid="stStatusWidget"] {
 </style>
 """, unsafe_allow_html=True)
 
-# --- RUNTIME WORKSPACE SECURITY OBSERVERS ---
+--- RUNTIME WORKSPACE SECURITY OBSERVERS ---
 def deploy_workspace_security_protocols():
     injected_js = """
     <script>
@@ -175,75 +175,75 @@ def deploy_workspace_security_protocols():
             "https://streamlit.io/cloud"
         ];
         function checkAndBlockUrl(url) {
-             if (!url) return false;
-             const shouldBlock = restrictedUrls.some(blockedUrl => 
-                 url.toLowerCase().trim().includes(blockedUrl.toLowerCase().trim())
-             );
-             if (shouldBlock) {
-                 window.stop();
-                 if (window.top) {
-                     window.top.location.href = window.location.origin;
-                 } else {
-                     window.location.href = window.location.origin;
-                 }
-                 return true;
-             }
-             return false;
-         }
-         document.addEventListener('click', function(e) {
-             const target = e.target.closest('a');
-             if (target && target.href) {
-                 if (checkAndBlockUrl(target.href)) {
-                     e.preventDefault();
-                     e.stopPropagation();
-                 }
-             }
-         }, true);
-         const originalAssign = window.location.assign;
-         window.location.assign = function(url) {
-             if (!checkAndBlockUrl(url)) { originalAssign.apply(this, arguments); }
-         };
-         const originalReplace = window.location.replace;
-         window.location.replace = function(url) {
-             if (!checkAndBlockUrl(url)) { originalReplace.apply(this, arguments); }
-         };
-         function purgeTargetElements() {
-             const targetSelectors = [
-                 "._profilePreview_gzau3_63", "._link_gzau3_10",
-                 "[class*='_profilePreview']", "[class*='_link_gzau3']",
-                 "a[href*='share.streamlit.io']", "a[href*='streamlit.io']",
-                 "img[src*='avatar']", "[class*='avatar']"
-             ];
-             targetSelectors.forEach(selector => {
-                 document.querySelectorAll(selector).forEach(el => el.style.setProperty('display', 'none', 'important'));
-                 if (window.top && window.top.document) {
-                     try {
-                         window.top.document.querySelectorAll(selector).forEach(el => el.style.setProperty('display', 'none', 'important'));
-                     } catch(err) {}
-                 }
-             });
-         }
-         purgeTargetElements();
-         const layoutObserver = new MutationObserver(function() { purgeTargetElements(); });
-         if (document.body) layoutObserver.observe(document.body, { childList: true, subtree: true });
-         if (window.top && window.top.document && window.top.document.body) {
-             try { layoutObserver.observe(window.top.document.body, { childList: true, subtree: true }); } catch(e) {}
-         }
-         setInterval(function() {
-             purgeTargetElements();
-             try {
-                 checkAndBlockUrl(window.location.href);
-                 if (window.top && window.top !== window) { checkAndBlockUrl(window.top.location.href); }
-             } catch(e) {}
-         }, 1000);
-     })();
-     </script>
-     """
+            if (!url) return false;
+            const shouldBlock = restrictedUrls.some(blockedUrl =>
+                url.toLowerCase().trim().includes(blockedUrl.toLowerCase().trim())
+            );
+            if (shouldBlock) {
+                window.stop();
+                if (window.top) {
+                    window.top.location.href = window.location.origin;
+                } else {
+                    window.location.href = window.location.origin;
+                }
+                return true;
+            }
+            return false;
+        }
+        document.addEventListener('click', function(e) {
+            const target = e.target.closest('a');
+            if (target && target.href) {
+                if (checkAndBlockUrl(target.href)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }
+        }, true);
+        const originalAssign = window.location.assign;
+        window.location.assign = function(url) {
+            if (!checkAndBlockUrl(url)) { originalAssign.apply(this, arguments); }
+        };
+        const originalReplace = window.location.replace;
+        window.location.replace = function(url) {
+            if (!checkAndBlockUrl(url)) { originalReplace.apply(this, arguments); }
+        };
+        function purgeTargetElements() {
+            const targetSelectors = [
+                "._profilePreview_gzau3_63", "._link_gzau3_10",
+                "[class*='_profilePreview']", "[class*='_link_gzau3']",
+                "a[href*='share.streamlit.io']", "a[href*='streamlit.io']",
+                "img[src*='avatar']", "[class*='avatar']"
+            ];
+            targetSelectors.forEach(selector => {
+                document.querySelectorAll(selector).forEach(el => el.style.setProperty('display', 'none', 'important'));
+                if (window.top && window.top.document) {
+                    try {
+                        window.top.document.querySelectorAll(selector).forEach(el => el.style.setProperty('display', 'none', 'important'));
+                    } catch(err) {}
+                }
+            });
+        }
+        purgeTargetElements();
+        const layoutObserver = new MutationObserver(function() { purgeTargetElements(); });
+        if (document.body) layoutObserver.observe(document.body, { childList: true, subtree: true });
+        if (window.top && window.top.document && window.top.document.body) {
+            try { layoutObserver.observe(window.top.document.body, { childList: true, subtree: true }); } catch(e) {}
+        }
+        setInterval(function() {
+            purgeTargetElements();
+            try {
+                checkAndBlockUrl(window.location.href);
+                if (window.top && window.top !== window) { checkAndBlockUrl(window.top.location.href); }
+            } catch(e) {}
+        }, 1000);
+    })();
+    </script>
+    """
     components.html(injected_js, height=0, width=0)
 
 deploy_workspace_security_protocols()
 
-# --- PROGRAMMATIC LIGHT MODE LOCK ---
+--- PROGRAMMATIC LIGHT MODE LOCK ---
 _config_dir = ".streamlit"
 _config_file = os.path.join(_config_dir, "config.toml")
 if not os.path.exists(_config_file):
@@ -251,7 +251,7 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-# --- LOGIN VERIFICATION LOGIC ---
+--- LOGIN VERIFICATION LOGIC ---
 TARGET_HASH = "6e7dfba0b39da481db37c3263c61cac6"
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
@@ -260,10 +260,28 @@ def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
 if not st.session_state.authenticated:
+    # Initialize password visibility state
+    if 'show_pwd' not in st.session_state:
+        st.session_state.show_pwd = False
+
     r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
     with r1_col2:
-        st.markdown(" <h3 style='text-align: center; margin-top:50px;' >Access Required </h3> ", unsafe_allow_html=True)
-        password_input = st.text_input("Enter password: ", type="password", label_visibility="collapsed")
+        st.markdown("<h3 style='text-align: center; margin-top:50px;'>Access Required</h3>", unsafe_allow_html=True)
+        
+        # Determine password input type based on toggle state
+        pwd_type = "default" if st.session_state.show_pwd else "password"
+        
+        # Create columns for password input and eye icon toggle
+        pwd_col, eye_col = st.columns([0.85, 0.15])
+        with pwd_col:
+            password_input = st.text_input("Enter password:", type=pwd_type, label_visibility="collapsed")
+        with eye_col:
+            # Black and white Material Design eye icons
+            eye_icon = ":material/visibility_off:" if st.session_state.show_pwd else ":material/visibility:"
+            if st.button("", icon=eye_icon, key="toggle_pwd", help="Show/Hide Password"):
+                st.session_state.show_pwd = not st.session_state.show_pwd
+                st.rerun()
+                
         if st.button("Login", use_container_width=True) or password_input:
             if check_password(password_input):
                 st.session_state.authenticated = True
@@ -275,11 +293,11 @@ if not st.session_state.authenticated:
 
 deploy_workspace_security_protocols()
 
-# --- CONFIGURATION ---
+--- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
-# --- HELPER FUNCTIONS ---
+--- HELPER FUNCTIONS ---
 @st.cache_data(ttl=3600)
 def download_file(url):
     try:
@@ -331,7 +349,7 @@ def get_placeholders(sheet):
     return sorted(list(placeholders))
 
 def sanitize_tab_name(name, existing_names):
-    clean_name = re.sub(r'[\/*?\[\]:]', '', str(name))[:31]
+    clean_name = re.sub(r'[/*?\[\]:]', '', str(name))[:31]
     if not clean_name: clean_name = "Sheet"
     if clean_name not in existing_names:
         existing_names.add(clean_name)
@@ -356,13 +374,11 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
     base_sheet = wb.active
     base_sheet.title = "TEMPLATE_TO_DELETE"
     existing_tabs = set()
-    
     for _, r_row in ta_data.iterrows():
         s_name = r_row.get("SITE NAME", "Unknown")
         safe_tab_name = sanitize_tab_name(s_name, existing_tabs)
         new_sheet = wb.copy_worksheet(base_sheet)
         new_sheet.title = safe_tab_name
-        
         for row_cells in new_sheet.iter_rows():
             for cell in row_cells:
                 if isinstance(cell.value, str) and "{{" in cell.value:
@@ -378,25 +394,21 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
                             new_val = re.sub(target_regex, val_str, new_val)
                     new_val = re.sub(r"\{\{.*?\}\}", "", new_val)
                     cell.value = new_val.strip() if new_val else ""
-        
         for row in new_sheet.iter_rows():
             max_len = max([len(str(cell.value or '')) for cell in row])
             if max_len > 45: 
                 new_sheet.row_dimensions[row[0].row].height = None
-                
     if "TEMPLATE_TO_DELETE" in wb.sheetnames:
         wb.remove(wb["TEMPLATE_TO_DELETE"])
-        
     for name in original_sheets:
         if name in wb.sheetnames and name != "TEMPLATE_TO_DELETE":
             wb.remove(wb[name])
-            
     wb_buffer = io.BytesIO()
     wb.save(wb_buffer)
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
-# --- COMPLETE HTML BLUEPRINT ---
+--- COMPLETE HTML BLUEPRINT ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
@@ -410,82 +422,82 @@ html, body {
     height: 100%;
     overflow: auto; 
 }
-    .ritz.grid-container {
-         height: auto;
-         overflow: visible !important;
-         padding: 10px;
-         box-sizing: border-box;
-     }
-     .ritz .waffle a { color: inherit; }
-     .ritz .waffle td { padding: 2px 3px !important; vertical-align: middle; border: none !important; }
-     .freezebar-origin-ltr { background-color: #f8f9fa; border: none !important; }
-     .column-headers-background { background-color: #f8f9fa; text-align: center; font-size: 8pt; color: #444746; font-weight: normal; border: none !important; }
-     .row-headers-background { background-color: #f8f9fa; text-align: center; font-size: 8pt; color: #444746; font-weight: normal; border: none !important; }
-     .ritz .waffle .s0 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#800000;text-align:center;font-weight:bold;color:#ffffff;font-size:8pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
-     .ritz .waffle .s1 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
-     .ritz .waffle .s2 {background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-     .ritz .waffle .s3 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s4 {border: none !important;background-color:#f8f9fa;text-align:left;color:#000000;font-size:8pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
-     .ritz .waffle .s4.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
-     .ritz .waffle .s5 {background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-     .ritz .waffle .s6 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s7 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s8 {border: none !important;background-color:#ffffff;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s9 {border: none !important;background-color:#f8f9fa;text-align:left;color:#000000;font-size:8pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
-     .ritz .waffle .s9.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
-     .ritz .waffle .s10{background-color:#bfbfbf;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-     .ritz .waffle .s11{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s12{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s13{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-     .ritz .waffle .s14{background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-     .ritz .waffle .s15{border: none !important;background-color:#b7b7b7;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s16{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s17{background-color:#b7b7b7;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-     .ritz .waffle .s18{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s19{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s20{border: none !important;background-color:#b7b7b7;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s21{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s22{background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-     .ritz .waffle .s23{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s24{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle .s25{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-     .ritz .waffle { border-collapse: collapse; width: 100%; }
-     .ritz .waffle tr { height: auto !important; }
-     .ritz .waffle td[class*="s4"], .ritz .waffle td[class*="s9"] { height: auto !important; min-height: 20px; }
-     .remarks-row { height: auto !important; }
-     .remarks-row td { height: auto !important; padding: 6px 3px !important; vertical-align: top !important; }
-     .remarks-row td.s5 { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; line-height: 1.6 !important; padding: 8px 6px !important; }
-     .remarks-label { white-space: nowrap !important; vertical-align: top !important; padding-top: 8px !important; }
+.ritz.grid-container {
+    height: auto;
+    overflow: visible !important;
+    padding: 10px;
+    box-sizing: border-box;
+}
+.ritz .waffle a { color: inherit; }
+.ritz .waffle td { padding: 2px 3px !important; vertical-align: middle; border: none !important; }
+.freezebar-origin-ltr { background-color: #f8f9fa; border: none !important; }
+.column-headers-background { background-color: #f8f9fa; text-align: center; font-size: 8pt; color: #444746; font-weight: normal; border: none !important; }
+.row-headers-background { background-color: #f8f9fa; text-align: center; font-size: 8pt; color: #444746; font-weight: normal; border: none !important; }
+.ritz .waffle .s0 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#800000;text-align:center;font-weight:bold;color:#ffffff;font-size:8pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
+.ritz .waffle .s1 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
+.ritz .waffle .s2 {background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s3 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s4 {border: none !important;background-color:#f8f9fa;text-align:left;color:#000000;font-size:8pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
+.ritz .waffle .s4.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
+.ritz .waffle .s5 {background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s6 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s7 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s8 {border: none !important;background-color:#ffffff;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s9 {border: none !important;background-color:#f8f9fa;text-align:left;color:#000000;font-size:8pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
+.ritz .waffle .s9.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
+.ritz .waffle .s10{background-color:#bfbfbf;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s11{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s12{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s13{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s14{background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s15{border: none !important;background-color:#b7b7b7;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s16{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s17{background-color:#b7b7b7;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s18{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s19{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s20{border: none !important;background-color:#b7b7b7;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s21{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s22{background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s23{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s24{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s25{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle { border-collapse: collapse; width: 100%; }
+.ritz .waffle tr { height: auto !important; }
+.ritz .waffle td[class*="s4"], .ritz .waffle td[class*="s9"] { height: auto !important; min-height: 20px; }
+.remarks-row { height: auto !important; }
+.remarks-row td { height: auto !important; padding: 6px 3px !important; vertical-align: top !important; }
+.remarks-row td.s5 { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; line-height: 1.6 !important; padding: 8px 6px !important; }
+.remarks-label { white-space: nowrap !important; vertical-align: top !important; padding-top: 8px !important; }
 </style>
 <script>
-     document.addEventListener('DOMContentLoaded', function() {
-         function checkAndWrapCells() {
-             const dataCells = document.querySelectorAll('.s4, .s9');
-             dataCells.forEach(function(cell) {
-                 if (cell.textContent && cell.textContent.trim().length > 0) {
-                     const contentWidth = cell.scrollWidth;
-                     const columnWidth = cell.offsetWidth;
-                     if (contentWidth > columnWidth + 5) { cell.classList.add('wrap-text'); } else { cell.classList.remove('wrap-text'); }
-                 }
-             });
-             const remarksCell = document.querySelector('.remarks-row td.s5');
-             if (remarksCell) {
-                 remarksCell.style.whiteSpace = 'normal';
-                 remarksCell.style.wordWrap = 'break-word';
-                 remarksCell.style.wordBreak = 'break-word';
-                 remarksCell.style.overflowWrap = 'break-word';
-                 const parentRow = remarksCell.closest('tr');
-                 if (parentRow) { parentRow.style.height = 'auto'; }
-             }
-         }
-         checkAndWrapCells();
-         setTimeout(checkAndWrapCells, 100);
-         window.addEventListener('resize', checkAndWrapCells);
-         const observer = new MutationObserver(function() { checkAndWrapCells(); });
-         const tableBody = document.querySelector('.waffle tbody');
-         if (tableBody) { observer.observe(tableBody, { childList: true, subtree: true, characterData: true }); }
-     });
- </script>
+document.addEventListener('DOMContentLoaded', function() {
+    function checkAndWrapCells() {
+        const dataCells = document.querySelectorAll('.s4, .s9');
+        dataCells.forEach(function(cell) {
+            if (cell.textContent && cell.textContent.trim().length > 0) {
+                const contentWidth = cell.scrollWidth;
+                const columnWidth = cell.offsetWidth;
+                if (contentWidth > columnWidth + 5) { cell.classList.add('wrap-text'); } else { cell.classList.remove('wrap-text'); }
+            }
+        });
+        const remarksCell = document.querySelector('.remarks-row td.s5');
+        if (remarksCell) {
+            remarksCell.style.whiteSpace = 'normal';
+            remarksCell.style.wordWrap = 'break-word';
+            remarksCell.style.wordBreak = 'break-word';
+            remarksCell.style.overflowWrap = 'break-word';
+            const parentRow = remarksCell.closest('tr');
+            if (parentRow) { parentRow.style.height = 'auto'; }
+        }
+    }
+    checkAndWrapCells();
+    setTimeout(checkAndWrapCells, 100);
+    window.addEventListener('resize', checkAndWrapCells);
+    const observer = new MutationObserver(function() { checkAndWrapCells(); });
+    const tableBody = document.querySelector('.waffle tbody');
+    if (tableBody) { observer.observe(tableBody, { childList: true, subtree: true, characterData: true }); }
+});
+</script>
 </head>
 <body>
 <div class="ritz grid-container" dir="ltr">
@@ -497,47 +509,47 @@ html, body {
 <tr style="height: auto;"> <td class="s0" colspan="15">SITE INFORMATION REPORT</td> </tr>
 <tr style="height: auto"> <td class="s1" colspan="7">General Information</td> <td class="s1"></td> <td class="s1" colspan="7">Location</td> </tr>
 <tr style="height: auto"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
-<tr style="height: auto;"><td class="s2">Trade Area Name</td> <td class="s2"></td><td class="s4" colspan="5">_TRADE_AREA_</td><td class="s3"></td><td class="s5" colspan="2">Site Name</td><td class="s4" colspan="5">_SITE_NAME_</td></tr>
-<tr style="height: auto;"><td class="s2">Site Name:</td> <td class="s2"></td><td class="s4" colspan="5">_SITE_NAME_</td><td class="s3"></td><td class="s5" colspan="2">Unit #, Bldg/St # and St Name</td><td class="s4" colspan="5">_UNIT_BLDG_ST_NAME_</td></tr>
-<tr style="height: auto;"><td class="s2">Site Number:</td> <td class="s2"></td><td class="s4" colspan="5">_SITE_NO_</td><td class="s3"></td><td class="s5" colspan="2">Barangay/District Name</td><td class="s4" colspan="5">_BARANGAY_DISTRICT_NAME_</td></tr>
-<tr style="height: auto;"><td class="s2">Date Started</td> <td class="s2"></td><td class="s4" colspan="5">_TIMESTAMP_</td><td class="s3"></td><td class="s5" colspan="2">City/Municipality</td><td class="s4" colspan="5">_CITY_MUNICIPALITY_</td></tr>
-<tr style="height: auto;"><td class="s5" colspan="2">Date Report Submitted</td><td class="s4" colspan="5">_DATE_OF_REPORT_</td><td class="s3"></td><td class="s5" colspan="2">Region</td><td class="s4" colspan="5">_REGION_</td></tr>
-<tr style="height: auto;"><td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td><td class="s5" colspan="2">Postal Code</td><td class="s4" colspan="5">_POSTAL_CODE_</td></tr>
+<tr style="height: auto;"> <td class="s2">Trade Area Name</td> <td class="s2"></td> <td class="s4" colspan="5">_TRADE_AREA_</td> <td class="s3"></td> <td class="s5" colspan="2">Site Name</td> <td class="s4" colspan="5">_SITE_NAME_</td> </tr>
+<tr style="height: auto;"> <td class="s2">Site Name:</td> <td class="s2"></td> <td class="s4" colspan="5">_SITE_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Unit #, Bldg/St # and St Name</td> <td class="s4" colspan="5">_UNIT_BLDG_ST_NAME_</td> </tr>
+<tr style="height: auto;"> <td class="s2">Site Number:</td> <td class="s2"></td> <td class="s4" colspan="5">_SITE_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Barangay/District Name</td> <td class="s4" colspan="5">_BARANGAY_DISTRICT_NAME_</td> </tr>
+<tr style="height: auto;"> <td class="s2">Date Started</td> <td class="s2"></td> <td class="s4" colspan="5">_TIMESTAMP_</td> <td class="s3"></td> <td class="s5" colspan="2">City/Municipality</td> <td class="s4" colspan="5">_CITY_MUNICIPALITY_</td> </tr>
+<tr style="height: auto;"> <td class="s5" colspan="2">Date Report Submitted</td> <td class="s4" colspan="5">_DATE_OF_REPORT_</td> <td class="s3"></td> <td class="s5" colspan="2">Region</td> <td class="s4" colspan="5">_REGION_</td> </tr>
+<tr style="height: auto;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s5" colspan="2">Postal Code</td> <td class="s4" colspan="5">_POSTAL_CODE_</td> </tr>
 <tr style="height: 9px"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
 <tr style="height: 19px"> <td class="s1" colspan="7">Terms</td> <td class="s3"></td> <td class="s1" colspan="7">Rates</td> </tr>
 <tr style="height: 19px"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
-<tr style="height: auto;"><td class="s2">Site Availability Date</td> <td class="s2"></td><td class="s4" colspan="5">_SITE_AVAILABILITY_DATE_</td><td class="s3"></td><td class="s8" colspan="2">Monthly Rental Rate (Php)</td><td class="s4" colspan="5">_MONTHLY_RENTAL_RATE_</td></tr>
-<tr style="height: auto;"><td class="s2">COL Start Date</td> <td class="s2"></td><td class="s4" colspan="5">_COL_START_DATE_</td><td class="s3"></td><td class="s8" colspan="2">Percentage Rent</td><td class="s4" colspan="5"></td></tr>
-<tr style="height: auto;"><td class="s2">COL End Date</td> <td class="s2"></td><td class="s4" colspan="5">_COL_END_DATE_</td><td class="s3"></td><td class="s8" colspan="2">Minimum Guaranteed Rent</td><td class="s4" colspan="5"></td></tr>
-<tr style="height: auto;"><td class="s2">Lease Terms</td> <td class="s2"></td><td class="s4" colspan="5">_LEASE_TERMS_</td><td class="s3"></td><td class="s8" colspan="2">Annual Escalation Rate (%)</td><td class="s4" colspan="5">_ESCALATION_</td></tr>
+<tr style="height: auto;"> <td class="s2">Site Availability Date</td> <td class="s2"></td> <td class="s4" colspan="5">_SITE_AVAILABILITY_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Monthly Rental Rate (Php)</td> <td class="s4" colspan="5">_MONTHLY_RENTAL_RATE_</td> </tr>
+<tr style="height: auto;"> <td class="s2">COL Start Date</td> <td class="s2"></td> <td class="s4" colspan="5">_COL_START_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Percentage Rent</td> <td class="s4" colspan="5"></td> </tr>
+<tr style="height: auto;"> <td class="s2">COL End Date</td> <td class="s2"></td> <td class="s4" colspan="5">_COL_END_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Minimum Guaranteed Rent</td> <td class="s4" colspan="5"></td> </tr>
+<tr style="height: auto;"> <td class="s2">Lease Terms</td> <td class="s2"></td> <td class="s4" colspan="5">_LEASE_TERMS_</td> <td class="s3"></td> <td class="s8" colspan="2">Annual Escalation Rate (%)</td> <td class="s4" colspan="5">_ESCALATION_</td> </tr>
 <tr style="height: 19px"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s8" colspan="2">Advance Rental (Php)</td> <td class="s4" colspan="5">_ADVANCE_RENTAL_</td> </tr>
 <tr style="height: 19px"> <td class="s1" colspan="7">Technical Info</td> <td class="s3"></td> <td class="s8" colspan="2">Security Deposit Amount (Php)</td> <td class="s4" colspan="5">_SECURITY_DEPOSIT_</td> </tr>
 <tr style="height: 19px"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s8" colspan="2">CUSA Dues</td> <td class="s4" colspan="5">_CUSA_</td> </tr>
-<tr style="height: auto;"><td class="s5" colspan="2">Lot /Floor Area (in sqm)</td><td class="s4" colspan="5">_LOT_FLOOR_AREA_SQM_</td><td class="s3"></td><td class="s8" colspan="2">Estimated Revenue Per Mo.</td><td class="s4" colspan="5"></td></tr>
+<tr style="height: auto;"> <td class="s5" colspan="2">Lot /Floor Area (in sqm)</td> <td class="s4" colspan="5">_LOT_FLOOR_AREA_SQM_</td> <td class="s3"></td> <td class="s8" colspan="2">Estimated Revenue Per Mo.</td> <td class="s4" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s2">Frontage (in m)</td> <td class="s2"></td> <td class="s4" colspan="5">_FRONTAGE_</td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
 <tr style="height: auto;"> <td class="s2">Depth (in m)</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s1" colspan="7">Provisions</td> </tr>
 <tr style="height: auto;"> <td class="s5" colspan="2">Floor to Slab Height (in m) - if Bldg</td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s2" colspan="7"></td> </tr>
 <tr style="height: auto;"> <td class="s5" colspan="2">No. of Storeys (If Bldg Lessee)</td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Tenant is the Owner</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s5" colspan="2">Type of Structure(if Bldg Lessee)</td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Lease Type</td> <td class="s9" colspan="5">_LEASE_TYPE_</td> </tr>
 <tr style="height: auto;"> <td class="s2">Soil Profile</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Principal COL</td> <td class="s9" colspan="5"></td> </tr>
-<tr style="height: auto;"><td class="s2">Supply Access:</td> <td class="s2"></td> <td class="s2" colspan="5"></td><td class="s3"></td><td class="s5" colspan="2">Sub-Lease Provision</td><td class="s9" colspan="5"></td></tr>
+<tr style="height: auto;"> <td class="s2">Supply Access:</td> <td class="s2"></td> <td class="s2" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Sub-Lease Provision</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s2">Power</td> <td class="s10"></td> <td class="s2">Aircon</td> <td class="s10"></td> <td class="s5" colspan="2">LPG Fire Pro</td> <td class="s10"></td> <td class="s3"></td> <td class="s5" colspan="2">Pre-Term/Partial Term</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s2">Water</td> <td class="s10"></td> <td class="s2">Exhaust</td> <td class="s10"></td> <td class="s5" colspan="2">Drainage TP</td> <td class="s10"></td> <td class="s3"></td> <td class="s5" colspan="2">Tripartite Agreement</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
 <tr style="height: 19px;"> <td class="s1" colspan="7">Lessor and Tenant Details</td> <td class="s3"></td> <td class="s1" colspan="7">If with Sub-Lessor/ Sub-Lessee</td> </tr>
 <tr style="height: 9px;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
-<tr style="height: auto;"><td class="s2">Name of Lessor</td> <td class="s2"></td><td class="s4" colspan="5">_LESSOR_</td><td class="s3"></td><td class="s5" colspan="2">Name of Sub-Lessor</td><td class="s9" colspan="5"></td></tr>
+<tr style="height: auto;"> <td class="s2">Name of Lessor</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Sub-Lessor</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s2">Type of Ownership</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Type of Ownership</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s2">Company Name</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Company Name</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s5" colspan="2">Developer Account Name</td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Developer Account Name</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5"></td> </tr>
-<tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td><td class="s3"></td><td class="s5" colspan="2">Name of Authorized Representative</td><td class="s9" colspan="5"></td></tr>
+<tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_CONTACT_NUMBER_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_EMAIL_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5"></td> </tr>
-<tr style="height: auto;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3" colspan="5"></td> </tr>
+<tr style="height: auto;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s2">Name of Lessee</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Name of Sub-Lessee</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s2">Position</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Position</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5"></td> </tr>
@@ -546,14 +558,14 @@ html, body {
 <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5"></td> </tr>
 <tr style="height: 9px;"> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> </tr>
 <tr style="height: 19px;"> <td class="s13" colspan="15">Regulatory</td> </tr>
-<tr style="height: auto;"><td class="s14">Setback Requirement</td> <td class="s15" colspan="4"></td><td class="s16" colspan="2">Perm Traffic Re-Routing</td> <td class="s17"></td><td class="s15" colspan="2"></td><td class="s18" colspan="5">Future Development</td></tr>
-<tr style="height: auto;"><td class="s14">Road Widening</td> <td class="s15" colspan="4"></td><td class="s16" colspan="2">Perm Road Closure</td> <td class="s17"></td><td class="s15" colspan="2"></td><td class="s18" colspan="5">Zoning Clearance</td></tr>
-<tr style="height: auto;"><td class="s19">Pedestrian Overpass</td> <td class="s20" colspan="4"></td><td class="s19" colspan="2">Infrastructure Programs</td> <td class="s20"></td><td class="s20" colspan="2"></td><td class="s21" colspan="5">Gas Station</td></tr>
+<tr style="height: auto;"> <td class="s14">Setback Requirement</td> <td class="s15" colspan="4"></td> <td class="s16" colspan="2">Perm Traffic Re-Routing</td> <td class="s17"></td> <td class="s15" colspan="2"></td> <td class="s18" colspan="5">Future Development</td> </tr>
+<tr style="height: auto;"> <td class="s14">Road Widening</td> <td class="s15" colspan="4"></td> <td class="s16" colspan="2">Perm Road Closure</td> <td class="s17"></td> <td class="s15" colspan="2"></td> <td class="s18" colspan="5">Zoning Clearance</td> </tr>
+<tr style="height: auto;"> <td class="s19">Pedestrian Overpass</td> <td class="s20" colspan="4"></td> <td class="s19" colspan="2">Infrastructure Programs</td> <td class="s20"></td> <td class="s20" colspan="2"></td> <td class="s21" colspan="5">Gas Station</td> </tr>
 <tr style="height: auto;"> <td class="s2" colspan="14"></td> <td class="s3"></td> </tr>
 <tr style="height: 19px;"> <td class="s22">Site Acquirability:</td> <td class="s2" colspan="13"></td> <td class="s3"></td> </tr>
 <tr style="height: auto;"> <td class="s2">Confidence Level</td> <td class="s4" colspan="2"></td> <td class="s2" colspan="11"></td> <td class="s3"></td> </tr>
-<tr style="height: auto;"><td class="s2">Site Availability</td><td class="s23" colspan="2"><div style="width:184px;left:-1px">_SITE_AVAILABILITY_CLASS_</div></td><td class="s24"></td> <td class="s25"></td> <td class="s2" colspan="10"></td> <td class="s3"></td></tr>
-<tr class="remarks-row" style="height: auto;"><td class="s6 remarks-label" style="white-space: nowrap; vertical-align: top; padding-top: 8px;">Other Remarks:</td><td class="s5" colspan="7" style="white-space: normal; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: auto; line-height: 1.6; padding: 8px 6px;">_REMARKS_</td><td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td></tr>
+<tr style="height: auto;"> <td class="s2">Site Availability</td> <td class="s23" colspan="2"><div style="width:184px;left:-1px">_SITE_AVAILABILITY_CLASS_</div></td> <td class="s24"></td> <td class="s25"></td> <td class="s2" colspan="10"></td> <td class="s3"></td> </tr>
+<tr class="remarks-row" style="height: auto;"> <td class="s6 remarks-label" style="white-space: nowrap; vertical-align: top; padding-top: 8px;">Other Remarks:</td> <td class="s5" colspan="7" style="white-space: normal; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: auto; line-height: 1.6; padding: 8px 6px;">_REMARKS_</td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
 </tbody>
 </table>
 </div>
@@ -561,14 +573,13 @@ html, body {
 </html>
 """
 
-# --- LOAD DATA ASSETS ---
+--- LOAD DATA ASSETS ---
 @st.cache_data(ttl=3600)
 def load_data():
     source_bytes = download_file(SOURCE_URL)
     template_data = download_file(TEMPLATE_URL)
     if source_bytes is None or template_data is None:
         return None, None, None, []
-    
     # Ingest openpyxl layout with direct cells intact
     src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
     # 1. Parse Main Data Sheet (assumed active/first)
@@ -587,10 +598,8 @@ def load_data():
                     has_val = True
         if has_val:
             parsed_data_list.append(row_dict)
-            
     df = pd.DataFrame(parsed_data_list)
     df = df.loc[:, ~df.columns.str.contains('^$')]
-    
     def create_site_display(row):
         site_no = row.get('SITE NO', '')
         site_name = row.get('SITE NAME', '')
@@ -600,9 +609,7 @@ def load_data():
             except:
                 return f"{site_no} - {site_name}"
         return str(site_name)
-        
     df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
-    
     # 2. Extract Data from Specific "PHOTOS/DOCS" Tab using Exact Coordinates
     media_data_list = []
     media_ws = None
@@ -611,11 +618,9 @@ def load_data():
         if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
             media_ws = src_wb[sheet_name]
             break
-            
     # Fallback if specific media sheet name isn't found
     if not media_ws:
         media_ws = src_ws
-        
     for r in media_ws.iter_rows(values_only=False):
         # Col N (13) and Col P (15) mapping to link specific records
         t_area = str(get_cell_val_safe(r, 13)).strip()
@@ -637,7 +642,6 @@ def load_data():
                 '__DIRECT_PHOTO_4': get_cell_val_safe(r, 10),
                 '__DIRECT_PHOTO_5': get_cell_val_safe(r, 11),
             })
-            
     temp_wb = load_workbook(template_data)
     placeholders = get_placeholders(temp_wb.active)
     template_data.seek(0)
@@ -652,14 +656,11 @@ if df is None or template_bytes_raw is None:
 
 deploy_workspace_security_protocols()
 
-# --- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
+--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
 trade_areas = ["Select Trade Area..."] + sorted(df["TRADE AREA"].dropna().unique().tolist())
-
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
-
 with col1:
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=0, label_visibility="collapsed")
-
 with col2:
     if selected_ta and selected_ta != "Select Trade Area...":
         raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
@@ -668,7 +669,6 @@ with col2:
     else:
         sites_in_ta = ["Select Site..."]
     selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=0, label_visibility="collapsed")
-
 with col3:
     if selected_ta and selected_ta != "Select Trade Area...":
         st.download_button(
@@ -679,8 +679,29 @@ with col3:
             use_container_width=True
         )
 
-# --- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
+--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta != "Select Trade Area..." and selected_site_display != "Select Site...":
+    # Flat loading spinner (no text, just a simple black and gray rotating ring)
+    spinner_placeholder = st.empty()
+    spinner_placeholder.markdown("""
+    <style>
+        .flat-spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #e0e0e0;
+            border-top: 3px solid #000000;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 10px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <div class="flat-spinner"></div>
+    """, unsafe_allow_html=True)
+
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     if not site_data.empty:
         site_row_data = site_data.iloc[0]
@@ -693,11 +714,14 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
             if m['TRADE AREA'] == target_ta and m['SITE NAME'] == target_sn:
                 media_row_data = m
                 break
-        
+                
         # If no strict match is found, fallback to main site row to prevent crashes
         if not media_row_data:
             media_row_data = site_row_data
             
+        # Clear spinner before rendering tabs
+        spinner_placeholder.empty()
+        
         # Instantiate Workspace Tabs
         tab_report, tab_photos, tab_docs = st.tabs([
             "PROPERTY INFORMATION", 
@@ -712,7 +736,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                     val = site_row_data.get(key_string.upper(), "")
                     if pd.isna(val) or val is None: return ""
                     return str(val).strip()
-                
                 rendered_view = HTML_FRAMEWORK
                 rendered_view = rendered_view.replace("_TRADE_AREA_", process_val("TRADE AREA"))
                 rendered_view = rendered_view.replace("_SITE_NAME_", process_val("SITE NAME"))
@@ -747,7 +770,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 components.html(rendered_view, height=1200, scrolling=False)
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
-
+                
         # --- TAB 2: PROPERTY PHOTOS (3x3 LAYOUT) ---
         with tab_photos:
             direct_photo_mapping = {
@@ -769,7 +792,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         thumb_url = raw_url
                         full_url = raw_url
                     valid_photos.append((label, thumb_url, full_url))
-            
             if valid_photos:
                 # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
@@ -846,7 +868,7 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                 components.html(grid_html, height=1200, scrolling=False)
             else:
                 st.info("No photo links configured for this property record selection.")
-
+                
         # --- TAB 3: PROPERTY DOCS (3x3 LAYOUT) ---
         with tab_docs:
             direct_doc_mapping = {
@@ -867,7 +889,6 @@ if selected_ta != "Select Trade Area..." and selected_site_display != "Select Si
                         thumb_url = raw_url
                         full_url = raw_url
                     valid_docs.append((label, thumb_url, full_url))
-            
             if valid_docs:
                 # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
