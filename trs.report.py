@@ -12,6 +12,7 @@ import hashlib
 from openpyxl import load_workbook
 import streamlit.components.v1 as components
 import base64
+import urllib.parse
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -20,243 +21,67 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-#--- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & OUTER SCROLLBAR) ---
+#--- LINE 1 GLOBAL STYLESHEET ENFORCER ---
 st.markdown("""
 <style >
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
-
 * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
-
-/* Hide the label of the password input on the login screen */
-div[data-testid="stTextInput"] label {
-    display: none !important;
-}
-
-/* Hide the broken visibility text/icon inside the password input */
-div[data-testid="stTextInput"] button {
-    display: none !important;
-}
-
-/* 1. FIXED: MAIN VIEWPORT WITH OUTER SCROLLBAR ONLY */
-html, body {
-    overflow-y: auto !important; /* ENABLES OUTER SCROLLBAR */
-    overflow-x: hidden !important;
-    height: 100% !important;
-    margin: 0px !important;
-    padding: 0px !important;
-    background-color: #ffffff !important;
-}
-
-/* 2. NUKE STREAMLIT HEADER & PADDING GHOSTS */
-header[data-testid="stHeader"], 
-[data-testid="stHeader"], 
-.stApp > header,
-div[data-testid="stDecoration"] {
-    display: none !important;
-    height: 0px !important;
-    min-height: 0px !important;
-    padding: 0px !important;
-    margin: 0px !important;
-    opacity: 0 !important;
-}
-
-/* 3. FIXED: ALLOW SCROLLING WITH INCREASED GLOBAL HEIGHT (+100px) */
-.stApp,
-.appview-container, 
-.main, 
-[data-testid="stAppViewContainer"], 
-[data-testid="stMain"],
-.block-container, 
-[data-testid="stMainBlockContainer"] {
-    padding-top: 0.2rem !important;
-    margin-top: 0px !important;
-    padding-bottom: 0px !important;
-    padding-left: 0.4rem !important;
-    padding-right: 0.4rem !important;
-    overflow: visible !important; /* CRITICAL: Forces content to flow to body scrollbar */
-    height: auto !important;
-    max-height: none !important;
-    min-height: calc(100vh + 100px) !important; /* INCREASED VERTICAL SIZE BY 100px */
-}
-
-/* Catch and crush any empty layout blocks */
-div[data-testid="stVerticalBlock"] > div:has(style),
-div[data-testid="stVerticalBlock"] > div:empty {
-    display: none !important;
-    height: 0px !important;
-    margin: 0px !important;
-    padding: 0px !important;
-}
-
-/* 4. FIXED: REPORT VIEWER - HIDE INNER SCROLLBARS & INCREASE HEIGHT */
-iframe[title="streamlit_components.components.html"] {
-    height: 1200px !important; /* Increased height to fit content */
-    max-height: none !important;
-    border: none !important;
-    margin-bottom: 10px !important;
-    width: 100% !important;
-    overflow: hidden !important; /* PREVENTS INNER IFRAME SCROLLBAR */
-}
-
-/* Optimize Tab Headers Matrix for High Density Views */
-button[data-baseweb="tab"] {
-    padding-top: 0.1rem !important;
-    padding-bottom: 0.1rem !important;
-    font-size: 0.85rem !important;
-}
-
-div[data-testid="stTabs"] {
-    margin-top: -5px !important;
-}
-
-/* 5. Ultra-Compact Control Bar layout matrix definitions */
-div[data-testid="stHorizontalBlock"] { 
-    gap: 0.5rem !important; 
-    align-items: flex-end !important; 
-    background: #ffffff;
-    padding: 0.4rem 0.5rem !important; 
-    border-radius: 8px;
-    margin-top: 0px !important; 
-    margin-bottom: 10px !important;
-}
-
-/* Hard pixel alignment lock for the export column element wrapper */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) {
-    align-self: flex-end !important;
-    padding-bottom: 4px !important;
-}
-
-/* Force Streamlit's inner widget wrapper to drop any hidden margin blocks */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"] {
-    margin-bottom: 0px !important;
-    padding-bottom: 0px !important;
-}
-
-.stSelectbox > div > div {
-    background-color: #fff !important;
-    border: 1px solid #747775 !important;
-    border-radius: 4px !important;
-    min-height: 28px !important;
-    height: 28px !important;
-}
-
-.stSelectbox > div > div > div { 
-    padding-top: 0px !important; 
-    padding-bottom: 0px !important;
-    font-size: 0.8rem !important; 
-    line-height: 26px !important;
-}
-
-.stButton > button, .stDownloadButton > button {
-    background-color: #003366 !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 100px !important;
-    padding: 0.1rem 1rem !important;
-    font-size: 0.8rem !important;
-    font-weight: 500 !important;
-    min-height: 28px !important; 
-    height: 28px !important;
-    width: 100% !important;
-    box-shadow: 0 1px 2px 0 rgba(60,64,67,0.2) !important;
-    line-height: 1 !important;
-}
+div[data-testid="stTextInput"] label, div[data-testid="stTextInput"] button { display: none !important; }
+html, body { overflow-y: auto !important; overflow-x: hidden !important; height: 100% !important; margin: 0px !important; padding: 0px !important; background-color: #ffffff !important; }
+header[data-testid="stHeader"], [data-testid="stHeader"], .stApp > header, div[data-testid="stDecoration"] { display: none !important; height: 0px !important; min-height: 0px !important; padding: 0px !important; margin: 0px !important; opacity: 0 !important; }
+.stApp, .appview-container, .main, [data-testid="stAppViewContainer"], [data-testid="stMain"], .block-container, [data-testid="stMainBlockContainer"] { padding-top: 0.2rem !important; margin-top: 0px !important; padding-bottom: 0px !important; padding-left: 0.4rem !important; padding-right: 0.4rem !important; overflow: visible !important; height: auto !important; max-height: none !important; min-height: calc(100vh + 100px) !important; }
+div[data-testid="stVerticalBlock"] > div:has(style), div[data-testid="stVerticalBlock"] > div:empty { display: none !important; height: 0px !important; margin: 0px !important; padding: 0px !important; }
+iframe[title="streamlit_components.components.html"] { height: 1200px !important; max-height: none !important; border: none !important; margin-bottom: 10px !important; width: 100% !important; overflow: hidden !important; }
+button[data-baseweb="tab"] { padding-top: 0.1rem !important; padding-bottom: 0.1rem !important; font-size: 0.85rem !important; }
+div[data-testid="stTabs"] { margin-top: -5px !important; }
+div[data-testid="stHorizontalBlock"] { gap: 0.5rem !important; align-items: flex-end !important; background: #ffffff; padding: 0.4rem 0.5rem !important; border-radius: 8px; margin-top: 0px !important; margin-bottom: 10px !important; }
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) { align-self: flex-end !important; padding-bottom: 4px !important; }
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"] { margin-bottom: 0px !important; padding-bottom: 0px !important; }
+.stSelectbox > div > div { background-color: #fff !important; border: 1px solid #747775 !important; border-radius: 4px !important; min-height: 28px !important; height: 28px !important; }
+.stSelectbox > div > div > div { padding-top: 0px !important; padding-bottom: 0px !important; font-size: 0.8rem !important; line-height: 26px !important; }
+.stButton > button, .stDownloadButton > button { background-color: #003366 !important; color: #ffffff !important; border: none !important; border-radius: 100px !important; padding: 0.1rem 1rem !important; font-size: 0.8rem !important; font-weight: 500 !important; min-height: 28px !important; height: 28px !important; width: 100% !important; box-shadow: 0 1px 2px 0 rgba(60,64,67,0.2) !important; line-height: 1 !important; }
 .stButton > button:hover, .stDownloadButton > button:hover { background-color: #0b4cb4 !important; }
-
-/* CSS Blocking Engine to Hide Deployment Watermarks */
-._profilePreview_gzau3_63,
-._link_gzau3_10,
-[class*='_profilePreview'],
-[class*='_link_gzau3'],
-a[href*='share.streamlit.io'],
-a[href*='streamlit.io'],
-img[src*='avatar'],
-[class*='avatar'],
-#MainMenu,
-button[title="View source"],
-.stAppDeployButton,
-div[data-testid="stStatusWidget"] {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    height: 0 !important;
-    width: 0 !important;
-    pointer-events: none !important;
-}
+._profilePreview_gzau3_63, ._link_gzau3_10, [class*='_profilePreview'], [class*='_link_gzau3'], a[href*='share.streamlit.io'], a[href*='streamlit.io'], img[src*='avatar'], [class*='avatar'], #MainMenu, button[title="View source"], .stAppDeployButton, div[data-testid="stStatusWidget"] { display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0 !important; width: 0 !important; pointer-events: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
-#--- RUNTIME WORKSPACE SECURITY OBSERVERS ---
+#--- SECURITY & CONFIG ---
 def deploy_workspace_security_protocols():
     injected_js = """
     <script>
     (function() {
-        const restrictedUrls = [
-            "https://share.streamlit.io/user/pyscriptcli",
-            "https://streamlit.io/cloud"
-        ];
+        const restrictedUrls = ["https://share.streamlit.io/user/pyscriptcli", "https://streamlit.io/cloud"];
         function checkAndBlockUrl(url) {
             if (!url) return false;
-            const shouldBlock = restrictedUrls.some(blockedUrl =>
-                url.toLowerCase().trim().includes(blockedUrl.toLowerCase().trim())
-            );
+            const shouldBlock = restrictedUrls.some(blockedUrl => url.toLowerCase().trim().includes(blockedUrl.toLowerCase().trim()));
             if (shouldBlock) {
                 window.stop();
-                if (window.top) {
-                    window.top.location.href = window.location.origin;
-                } else {
-                    window.location.href = window.location.origin;
-                }
+                if (window.top) window.top.location.href = window.location.origin;
+                else window.location.href = window.location.origin;
                 return true;
             }
             return false;
         }
         document.addEventListener('click', function(e) {
             const target = e.target.closest('a');
-            if (target && target.href) {
-                if (checkAndBlockUrl(target.href)) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-            }
+            if (target && target.href) { if (checkAndBlockUrl(target.href)) { e.preventDefault(); e.stopPropagation(); } }
         }, true);
         const originalAssign = window.location.assign;
-        window.location.assign = function(url) {
-            if (!checkAndBlockUrl(url)) { originalAssign.apply(this, arguments); }
-        };
+        window.location.assign = function(url) { if (!checkAndBlockUrl(url)) { originalAssign.apply(this, arguments); } };
         const originalReplace = window.location.replace;
-        window.location.replace = function(url) {
-            if (!checkAndBlockUrl(url)) { originalReplace.apply(this, arguments); }
-        };
+        window.location.replace = function(url) { if (!checkAndBlockUrl(url)) { originalReplace.apply(this, arguments); } };
         function purgeTargetElements() {
-            const targetSelectors = [
-                "._profilePreview_gzau3_63", "._link_gzau3_10",
-                "[class*='_profilePreview']", "[class*='_link_gzau3']",
-                "a[href*='share.streamlit.io']", "a[href*='streamlit.io']",
-                "img[src*='avatar']", "[class*='avatar']"
-            ];
+            const targetSelectors = ["._profilePreview_gzau3_63", "._link_gzau3_10", "[class*='_profilePreview']", "[class*='_link_gzau3']", "a[href*='share.streamlit.io']", "a[href*='streamlit.io']", "img[src*='avatar']", "[class*='avatar']"];
             targetSelectors.forEach(selector => {
                 document.querySelectorAll(selector).forEach(el => el.style.setProperty('display', 'none', 'important'));
-                if (window.top && window.top.document) {
-                    try {
-                        window.top.document.querySelectorAll(selector).forEach(el => el.style.setProperty('display', 'none', 'important'));
-                    } catch(err) {}
-                }
+                if (window.top && window.top.document) { try { window.top.document.querySelectorAll(selector).forEach(el => el.style.setProperty('display', 'none', 'important')); } catch(err) {} }
             });
         }
         purgeTargetElements();
         const layoutObserver = new MutationObserver(function() { purgeTargetElements(); });
         if (document.body) layoutObserver.observe(document.body, { childList: true, subtree: true });
-        if (window.top && window.top.document && window.top.document.body) {
-            try { layoutObserver.observe(window.top.document.body, { childList: true, subtree: true }); } catch(e) {}
-        }
-        setInterval(function() {
-            purgeTargetElements();
-            try {
-                checkAndBlockUrl(window.location.href);
-                if (window.top && window.top !== window) { checkAndBlockUrl(window.top.location.href); }
-            } catch(e) {}
-        }, 1000);
+        if (window.top && window.top.document && window.top.document.body) { try { layoutObserver.observe(window.top.document.body, { childList: true, subtree: true }); } catch(e) {} }
+        setInterval(function() { purgeTargetElements(); try { checkAndBlockUrl(window.location.href); if (window.top && window.top !== window) { checkAndBlockUrl(window.top.location.href); } } catch(e) {} }, 1000);
     })();
     </script>
     """
@@ -264,7 +89,6 @@ def deploy_workspace_security_protocols():
 
 deploy_workspace_security_protocols()
 
-#--- PROGRAMMATIC LIGHT MODE LOCK ---
 _config_dir = ".streamlit"
 _config_file = os.path.join(_config_dir, "config.toml")
 if not os.path.exists(_config_file):
@@ -272,7 +96,6 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- LOGIN VERIFICATION LOGIC ---
 TARGET_HASH = "6e7dfba0b39da481db37c3263c61cac6"
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
@@ -280,15 +103,15 @@ if 'authenticated' not in st.session_state:
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
-#--- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
+# AppSheet Drive Folder ID from your script
+APP_DRIVE_FOLDER_ID = "13sLmXzxQvV12_ypTBRG2QW1yVIHaanba"
 
 #--- HELPER FUNCTIONS ---
-# FIX: Removed cache to ensure fresh download every time
+
 def download_file(url):
     try:
-        # Add headers to bypass some CDN caching
         headers = {'Cache-Control': 'no-cache', 'Pragma': 'no-cache'}
         response = requests.get(url, headers=headers, timeout=30)
         return io.BytesIO(response.content) if response.status_code == 200 else None
@@ -296,22 +119,15 @@ def download_file(url):
         return None
 
 def clean_and_extract_url(cell_value):
-    """Bypasses formula blocks like =IMAGE("url") to get the clean direct link string."""
-    if cell_value is None:
-        return ""
+    if cell_value is None: return ""
     val_str = str(cell_value).strip()
-    # Check if nested inside an IMAGE formula layout
     formula_match = re.search(r'IMAGE\s*\(\s*["\'](https://[^"\']+)["\']', val_str, re.IGNORECASE)
-    if formula_match:
-        return formula_match.group(1)
-    # Standard URL match fallback
+    if formula_match: return formula_match.group(1)
     url_match = re.search(r'(https://[^\s"\']+)', val_str)
-    if url_match:
-        return url_match.group(1)
+    if url_match: return url_match.group(1)
     return val_str
 
 def get_cell_val_safe(row_cells, index):
-    """Safely fetch and clean a cell value by fixed column index. Checks hyperlinks too."""
     if index < len(row_cells):
         cell = row_cells[index]
         if cell.hyperlink and cell.hyperlink.target:
@@ -320,9 +136,7 @@ def get_cell_val_safe(row_cells, index):
     return ""
 
 def extract_google_drive_id(clean_url):
-    """Extracts unique file ID from verified URL strings."""
-    if not clean_url:
-        return None
+    if not clean_url: return None
     match = re.search(r'(?:id=|/d/|/uc?.*?id=)([a-zA-Z0-9_-]{25,})', clean_url)
     return match.group(1) if match else None
 
@@ -355,7 +169,6 @@ def parse_site_number(site_display_str):
     match = re.match(r"^(\d+)", site_display_str)
     return int(match.group(1)) if match else float('inf')
 
-# FIX: Removed cache to ensure report generation uses latest data
 def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders):
     ta_data = df[df["TRADE AREA"] == trade_area]
     wb = load_workbook(io.BytesIO(template_bytes_raw))
@@ -397,26 +210,148 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
+#--- APPSHEET PHOTO PATH CONVERTER (PYTHON VERSION) ---
+def convert_appsheet_path_to_url(path, folder_id):
+    """
+    Converts an AppSheet relative path (e.g., 'folder/img.jpg') 
+    to a Google Drive view URL using the known Folder ID.
+    """
+    if not path or not isinstance(path, str) or not path.strip():
+        return ""
+    
+    path = path.strip()
+    
+    # If it's already a full URL, return it
+    if path.startswith("http"):
+        return path
+        
+    # AppSheet paths are often relative to the app folder.
+    # We construct the URL assuming the file is in the specified Drive Folder.
+    # Note: This requires the file to be publicly viewable or shared with link.
+    # The Apps Script did this by setting sharing permissions. 
+    # In Streamlit, we assume the files are already accessible or we just construct the link.
+    
+    # Extract filename from path (handle both / and \)
+    filename = path.split('/')[-1].split('\\')[-1]
+    
+    # Construct Direct View Link
+    # https://drive.google.com/uc?export=view&id=FILE_ID
+    # But we don't have the File ID, only the Folder ID and Filename.
+    # Without searching Drive API (which is slow/quota-heavy), we can't get the ID from just the name easily.
+    
+    # WORKAROUND: If the AppSheet path is actually a "Reference" column, it might already contain the ID or a usable link.
+    # If it's just a string path like "images/photo.jpg", we cannot reliably get the ID without API search.
+    
+    # HOWEVER, looking at your Apps Script, it searches for the file. 
+    # To do this in Streamlit efficiently, we would need to cache a map of Filename->ID.
+    
+    # For now, let's try to see if the path contains an ID or if we can use a thumbnail trick.
+    # If the path is just a filename, we can't do much without API.
+    
+    # Let's assume the standard AppSheet behavior where images are stored in Drive.
+    # If the path is relative, we might not be able to resolve it instantly without API.
+    # BUT, often AppSheet stores the full URL in the backend if configured correctly.
+    
+    # If it's a relative path, we return empty for now unless we implement Drive API search.
+    # To keep it fast and "built-in", we will try to extract ID if present in path.
+    
+    id_match = re.search(r'(?:id=|/d/)([a-zA-Z0-9_-]{25,})', path)
+    if id_match:
+        file_id = id_match.group(1)
+        return f"https://drive.google.com/uc?export=view&id={file_id}"
+        
+    # If no ID found, it's likely a relative path. 
+    # We will return the original path so the user can see it, or empty if useless.
+    return ""
+
+#--- LOAD DATA ASSETS ---
+def load_data():
+    source_bytes = download_file(SOURCE_URL)
+    template_data = download_file(TEMPLATE_URL)
+    if source_bytes is None or template_data is None:
+        return None, None, None, []
+    
+    src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
+    src_ws = src_wb.active
+    
+    raw_rows = list(src_ws.iter_rows(values_only=False))
+    header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
+    
+    parsed_data_list = []
+    for r in raw_rows[1:]:
+        row_dict = {}
+        has_val = False
+        for idx, cell in enumerate(r):
+            if idx < len(header_row) and header_row[idx]:
+                cleaned_val = clean_and_extract_url(cell.value)
+                row_dict[header_row[idx]] = cleaned_val
+                if cleaned_val != "":
+                    has_val = True
+        if has_val:
+            parsed_data_list.append(row_dict)
+            
+    df = pd.DataFrame(parsed_data_list)
+    df = df.loc[:, ~df.columns.str.contains('^$')]
+    
+    def create_site_display(row):
+        site_no = row.get('SITE NO', '')
+        site_name = row.get('SITE NAME', '')
+        if pd.notna(site_no) and site_no != '':
+            try: return f"{int(float(str(site_no)))} - {site_name}"
+            except: return f"{site_no} - {site_name}"
+        return str(site_name)
+        
+    df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
+    
+    # 2. Extract Data from Specific "PHOTOS/DOCS" Tab using Exact Coordinates
+    media_data_list = []
+    media_ws = None
+    for sheet_name in src_wb.sheetnames:
+        if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
+            media_ws = src_wb[sheet_name]
+            break
+    if not media_ws: media_ws = src_ws
+    
+    for r in media_ws.iter_rows(values_only=False):
+        t_area = str(get_cell_val_safe(r, 13)).strip()
+        s_name = str(get_cell_val_safe(r, 15)).strip()
+        if t_area and s_name and t_area.upper() != "TRADE AREA":
+            # Process Photo Paths here using our Python converter
+            photo_cols = [2, 3, 4, 5, 7, 8, 9, 10, 11] # C-F, H-L indices (0-based: 2,3,4,5 and 7,8,9,10,11)
+            processed_photos = []
+            for col_idx in photo_cols:
+                raw_path = get_cell_val_safe(r, col_idx)
+                processed_url = convert_appsheet_path_to_url(raw_path, APP_DRIVE_FOLDER_ID)
+                processed_photos.append(processed_url)
+                
+            media_data_list.append({
+                'TRADE AREA': t_area,
+                'SITE NAME': s_name,
+                '__DIRECT_TCT': processed_photos[0],
+                '__DIRECT_LOT_PLAN': processed_photos[1],
+                '__DIRECT_BLDG_PLAN': processed_photos[2],
+                '__DIRECT_TAX_MAP': processed_photos[3],
+                '__DIRECT_PHOTO_1': processed_photos[4],
+                '__DIRECT_PHOTO_2': processed_photos[5],
+                '__DIRECT_PHOTO_3': processed_photos[6],
+                '__DIRECT_PHOTO_4': processed_photos[7],
+                '__DIRECT_PHOTO_5': processed_photos[8],
+            })
+            
+    temp_wb = load_workbook(template_data)
+    placeholders = get_placeholders(temp_wb.active)
+    template_bytes_raw = template_data.getvalue()
+    template_data.seek(0)
+    return df, placeholders, template_bytes_raw, media_data_list
+
 #--- COMPLETE HTML BLUEPRINT ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
 <head>
 <style type="text/css">
-html, body { 
-    margin: 0; 
-    padding: 0; 
-    background-color: #ffffff; 
-    font-family: Arial, sans-serif; 
-    height: 100%;
-    overflow: auto; 
-}
-.ritz.grid-container {
-    height: auto;
-    overflow: visible !important;
-    padding: 10px;
-    box-sizing: border-box;
-}
+html, body { margin: 0; padding: 0; background-color: #ffffff; font-family: Arial, sans-serif; height: 100%; overflow: auto; }
+.ritz.grid-container { height: auto; overflow: visible !important; padding: 10px; box-sizing: border-box; }
 .ritz .waffle a { color: inherit; }
 .ritz .waffle td { padding: 2px 3px !important; vertical-align: middle; border: none !important; }
 .freezebar-origin-ltr { background-color: #f8f9fa; border: none !important; }
@@ -562,82 +497,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
-#--- LOAD DATA ASSETS ---
-# FIX: Removed cache decorator to force fresh load on every run
-def load_data():
-    source_bytes = download_file(SOURCE_URL)
-    template_data = download_file(TEMPLATE_URL)
-    if source_bytes is None or template_data is None:
-        return None, None, None, []
-    # Ingest openpyxl layout with direct cells intact
-    src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
-    # 1. Parse Main Data Sheet (assumed active/first)
-    src_ws = src_wb.active
-    raw_rows = list(src_ws.iter_rows(values_only=False))
-    header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
-    parsed_data_list = []
-    for r in raw_rows[1:]:
-        row_dict = {}
-        has_val = False
-        for idx, cell in enumerate(r):
-            if idx < len(header_row) and header_row[idx]:
-                cleaned_val = clean_and_extract_url(cell.value)
-                row_dict[header_row[idx]] = cleaned_val
-                if cleaned_val != "":
-                    has_val = True
-        if has_val:
-            parsed_data_list.append(row_dict)
-    df = pd.DataFrame(parsed_data_list)
-    df = df.loc[:, ~df.columns.str.contains('^$')]
-    def create_site_display(row):
-        site_no = row.get('SITE NO', '')
-        site_name = row.get('SITE NAME', '')
-        if pd.notna(site_no) and site_no != '':
-            try:
-                return f"{int(float(str(site_no)))} - {site_name}"
-            except:
-                return f"{site_no} - {site_name}"
-        return str(site_name)
-    df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
-    # 2. Extract Data from Specific "PHOTOS/DOCS" Tab using Exact Coordinates
-    media_data_list = []
-    media_ws = None
-    # Locate the correct tab
-    for sheet_name in src_wb.sheetnames:
-        if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
-            media_ws = src_wb[sheet_name]
-            break
-    # Fallback if specific media sheet name isn't found
-    if not media_ws:
-        media_ws = src_ws
-    for r in media_ws.iter_rows(values_only=False):
-        # Col N (13) and Col P (15) mapping to link specific records
-        t_area = str(get_cell_val_safe(r, 13)).strip()
-        s_name = str(get_cell_val_safe(r, 15)).strip()
-        # Avoid pulling the header row itself
-        if t_area and s_name and t_area.upper() != "TRADE AREA":
-            media_data_list.append({
-                'TRADE AREA': t_area,
-                'SITE NAME': s_name,
-                # DOCS: C(2), D(3), E(4), F(5)
-                '__DIRECT_TCT': get_cell_val_safe(r, 2),
-                '__DIRECT_LOT_PLAN': get_cell_val_safe(r, 3),
-                '__DIRECT_BLDG_PLAN': get_cell_val_safe(r, 4),
-                '__DIRECT_TAX_MAP': get_cell_val_safe(r, 5),
-                # PHOTOS: H(7), I(8), J(9), K(10), L(11)
-                '__DIRECT_PHOTO_1': get_cell_val_safe(r, 7),
-                '__DIRECT_PHOTO_2': get_cell_val_safe(r, 8),
-                '__DIRECT_PHOTO_3': get_cell_val_safe(r, 9),
-                '__DIRECT_PHOTO_4': get_cell_val_safe(r, 10),
-                '__DIRECT_PHOTO_5': get_cell_val_safe(r, 11),
-            })
-    temp_wb = load_workbook(template_data)
-    placeholders = get_placeholders(temp_wb.active)
-    # Extract the raw content to resolve the NameError
-    template_bytes_raw = template_data.getvalue()
-    template_data.seek(0)
-    return df, placeholders, template_bytes_raw, media_data_list
-
 # --- MAIN LOGIC BEGINS ---
 
 # --- Step 1: Display Login Function ---
@@ -652,45 +511,62 @@ if not st.session_state.authenticated:
                 st.rerun()
             else:
                 st.error("Invalid token string provided.")
-    st.stop() # Stop execution if not authenticated
+    st.stop()
 
 # At this point, user is authenticated
 
-# --- Step 2: Initialize load_data() and derive defaults (this happens post-login) ---
-# FIX: Added spinner to indicate live data fetching
-with st.spinner("Fetching latest data from source..."):
-    df, placeholders, template_bytes_raw, media_data_list = load_data()
+# --- Step 2: Initialize load_data() ONLY ONCE after login or when forced ---
+# We use session state to store the data so it persists across dropdown changes
+if 'data_loaded' not in st.session_state:
+    with st.spinner("Fetching latest data from source..."):
+        df, placeholders, template_bytes_raw, media_data_list = load_data()
+        if df is None or template_bytes_raw is None:
+            st.error("Failed to load data assets. Please verify link paths.")
+            st.stop()
+        st.session_state.df = df
+        st.session_state.placeholders = placeholders
+        st.session_state.template_bytes_raw = template_bytes_raw
+        st.session_state.media_data_list = media_data_list
+        st.session_state.data_loaded = True
 
-if df is None or template_bytes_raw is None:
-    st.error("Failed to load data assets. Please verify link paths.")
-    st.stop()
+# Retrieve from session state
+df = st.session_state.df
+placeholders = st.session_state.placeholders
+template_bytes_raw = st.session_state.template_bytes_raw
+media_data_list = st.session_state.media_data_list
 
-# --- Step 3: Determine Default Selections (Preset Logic) ---
+# --- Step 3: Determine Default Selections ---
 trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
 first_row = df.iloc[0] if not df.empty else None
 first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
 first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
 default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
 
-# --- Step 4: Apply Presets and Render UI (Row 1 and Row 2) ---
+# --- Step 4: Apply Presets and Render UI ---
 deploy_workspace_security_protocols()
 
-#--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
+#--- ROW 1: CONTROLS ROW ---
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
+
 with col1:
-    # Use the determined default index for the first TA
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
+
+# FIX: Trigger data refresh ONLY when Trade Area changes
+# We compare current selection with previous selection stored in session state
+if 'last_selected_ta' not in st.session_state:
+    st.session_state.last_selected_ta = selected_ta
+
+if selected_ta != st.session_state.last_selected_ta:
+    st.session_state.last_selected_ta = selected_ta
+    # Force a rerun to fetch fresh data
+    st.session_state.data_loaded = False # Invalidate cache
+    st.rerun()
 
 with col2:
     if selected_ta:
         raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
         sites_in_ta = sorted(raw_sites, key=parse_site_number)
-
-        # Use the determined default index for the first site in the first TA
-        if selected_ta == first_trade_area and first_site_display in sites_in_ta:
-            default_site_index = sites_in_ta.index(first_site_display)
-        else:
-            default_site_index = 0 # Fallback if preset doesn't match
+        default_site_index = 0
     else:
         sites_in_ta = []
         default_site_index = 0
@@ -709,11 +585,9 @@ with col3:
 
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta and selected_site_display:
-    # Get site data based on the selected/preset site
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     site_row_data = site_data.iloc[0] if not site_data.empty else None
 
-    # Get corresponding media data
     target_ta = str(site_row_data["TRADE AREA"]) if site_row_data is not None else ""
     target_sn = str(site_row_data["SITE NAME"]) if site_row_data is not None else ""
     media_row_data = {}
@@ -723,18 +597,14 @@ if selected_ta and selected_site_display:
                 media_row_data = m
                 break
         if not media_row_data:
-            media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {} # Fallback if needed
+            media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
 
-
-    # Instantiate Workspace Tabs instantly *after* controls are defined
     tab_report, tab_photos, tab_docs = st.tabs([
         "PROPERTY INFORMATION",
         "PROPERTY PHOTOS",
         "PROPERTY DOCS"
     ])
 
-
-    # --- TAB 1: SITE INFORMATION REPORT ---
     with tab_report:
         if site_row_data is not None:
             try:
@@ -772,15 +642,12 @@ if selected_ta and selected_site_display:
                 rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS"))
                 rendered_view = rendered_view.replace("_REMARKS_", process_val("REMARKS"))
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-
                 components.html(rendered_view, height=1200, scrolling=False)
-
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
         else:
              st.info("No data available for the selected site.")
 
-    # --- TAB 2: PROPERTY PHOTOS (3x3 LAYOUT) ---
     with tab_photos:
         if site_row_data is not None and media_row_data:
             direct_photo_mapping = {
@@ -794,73 +661,21 @@ if selected_ta and selected_site_display:
             for label, key in direct_photo_mapping.items():
                 raw_url = media_row_data.get(key, "")
                 if raw_url:
-                    file_id = extract_google_drive_id(raw_url)
-                    if file_id:
-                        thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
-                        full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
-                    else:
-                        thumb_url = raw_url
-                        full_url = raw_url
+                    # Use the extracted URL directly (already converted in load_data)
+                    full_url = raw_url
+                    thumb_url = raw_url.replace("export=view", "thumbnail?sz=w800") if "drive.google.com" in raw_url else raw_url
                     valid_photos.append((label, thumb_url, full_url))
             if valid_photos:
-                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
-                    .image-grid-3x3 {
-                        display: grid;
-                        grid-template-columns: repeat(3, 1fr);
-                        gap: 15px;
-                        padding: 10px 0;
-                        max-width: 100%;
-                    }
-                    .image-grid-item {
-                        border: 1px solid #dadce0;
-                        border-radius: 8px;
-                        overflow: hidden;
-                        background: #f8f9fa;
-                        transition: transform 0.2s;
-                        aspect-ratio: 4/3;
-                        display: flex;
-                        flex-direction: column;
-                    }
-                    .image-grid-item:hover {
-                        transform: scale(1.02);
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    }
-                    .image-grid-item img {
-                        width: 100%;
-                        height: 100%;
-                        object-fit: cover;
-                        display: block;
-                        flex: 1;
-                    }
-                    .image-grid-item .label {
-                        padding: 6px 8px;
-                        font-size: 0.7rem;
-                        font-weight: 600;
-                        color: #5f6368;
-                        background: white;
-                        text-align: center;
-                        border-top: 1px solid #dadce0;
-                        flex-shrink: 0;
-                    }
-                    .image-grid-item a {
-                        text-decoration: none;
-                        color: inherit;
-                        display: flex;
-                        flex-direction: column;
-                        height: 100%;
-                    }
-                    @media (max-width: 768px) {
-                        .image-grid-3x3 {
-                            grid-template-columns: repeat(2, 1fr);
-                        }
-                    }
-                    @media (max-width: 480px) {
-                        .image-grid-3x3 {
-                            grid-template-columns: 1fr;
-                        }
-                    }
+                    .image-grid-3x3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 10px 0; max-width: 100%; }
+                    .image-grid-item { border: 1px solid #dadce0; border-radius: 8px; overflow: hidden; background: #f8f9fa; transition: transform 0.2s; aspect-ratio: 4/3; display: flex; flex-direction: column; }
+                    .image-grid-item:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+                    .image-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; flex: 1; }
+                    .image-grid-item .label { padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #5f6368; background: white; text-align: center; border-top: 1px solid #dadce0; flex-shrink: 0; }
+                    .image-grid-item a { text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%; }
+                    @media (max-width: 768px) { .image-grid-3x3 { grid-template-columns: repeat(2, 1fr); } }
+                    @media (max-width: 480px) { .image-grid-3x3 { grid-template-columns: 1fr; } }
                 </style>
                 <div class="image-grid-3x3">
                 '''
@@ -874,14 +689,12 @@ if selected_ta and selected_site_display:
                         </div>
                     '''
                 grid_html += '</div>'
-                # UPDATED: scrolling=False forces outer scrollbar, height increased
                 components.html(grid_html, height=1200, scrolling=False)
             else:
                 st.info("No photo links configured for this property record selection.")
         else:
              st.info("No data available for the selected site.")
 
-    # --- TAB 3: PROPERTY DOCS (3x3 LAYOUT) ---
     with tab_docs:
         if site_row_data is not None and media_row_data:
             direct_doc_mapping = {
@@ -894,73 +707,20 @@ if selected_ta and selected_site_display:
             for label, key in direct_doc_mapping.items():
                 raw_url = media_row_data.get(key, "")
                 if raw_url:
-                    file_id = extract_google_drive_id(raw_url)
-                    if file_id:
-                        thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
-                        full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
-                    else:
-                        thumb_url = raw_url
-                        full_url = raw_url
+                    full_url = raw_url
+                    thumb_url = raw_url.replace("export=view", "thumbnail?sz=w800") if "drive.google.com" in raw_url else raw_url
                     valid_docs.append((label, thumb_url, full_url))
             if valid_docs:
-                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
-                    .image-grid-3x3 {
-                        display: grid;
-                        grid-template-columns: repeat(3, 1fr);
-                        gap: 15px;
-                        padding: 10px 0;
-                        max-width: 100%;
-                    }
-                    .image-grid-item {
-                        border: 1px solid #dadce0;
-                        border-radius: 8px;
-                        overflow: hidden;
-                        background: #f8f9fa;
-                        transition: transform 0.2s;
-                        aspect-ratio: 4/3;
-                        display: flex;
-                        flex-direction: column;
-                    }
-                    .image-grid-item:hover {
-                        transform: scale(1.02);
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    }
-                    .image-grid-item img {
-                        width: 100%;
-                        height: 100%;
-                        object-fit: cover;
-                        display: block;
-                        flex: 1;
-                    }
-                    .image-grid-item .label {
-                        padding: 6px 8px;
-                        font-size: 0.7rem;
-                        font-weight: 600;
-                        color: #5f6368;
-                        background: white;
-                        text-align: center;
-                        border-top: 1px solid #dadce0;
-                        flex-shrink: 0;
-                    }
-                    .image-grid-item a {
-                        text-decoration: none;
-                        color: inherit;
-                        display: flex;
-                        flex-direction: column;
-                        height: 100%;
-                    }
-                    @media (max-width: 768px) {
-                        .image-grid-3x3 {
-                            grid-template-columns: repeat(2, 1fr);
-                        }
-                    }
-                    @media (max-width: 480px) {
-                        .image-grid-3x3 {
-                            grid-template-columns: 1fr;
-                        }
-                    }
+                    .image-grid-3x3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 10px 0; max-width: 100%; }
+                    .image-grid-item { border: 1px solid #dadce0; border-radius: 8px; overflow: hidden; background: #f8f9fa; transition: transform 0.2s; aspect-ratio: 4/3; display: flex; flex-direction: column; }
+                    .image-grid-item:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+                    .image-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; flex: 1; }
+                    .image-grid-item .label { padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #5f6368; background: white; text-align: center; border-top: 1px solid #dadce0; flex-shrink: 0; }
+                    .image-grid-item a { text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%; }
+                    @media (max-width: 768px) { .image-grid-3x3 { grid-template-columns: repeat(2, 1fr); } }
+                    @media (max-width: 480px) { .image-grid-3x3 { grid-template-columns: 1fr; } }
                 </style>
                 <div class="image-grid-3x3">
                 '''
@@ -974,7 +734,6 @@ if selected_ta and selected_site_display:
                         </div>
                     '''
                 grid_html += '</div>'
-                # UPDATED: scrolling=False forces outer scrollbar, height increased
                 components.html(grid_html, height=1200, scrolling=False)
             else:
                 st.info("No layout documents configured for this property record selection.")
