@@ -12,7 +12,6 @@ import hashlib
 from openpyxl import load_workbook
 import streamlit.components.v1 as components
 import base64
-import time
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -286,8 +285,7 @@ SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7i
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
 #--- HELPER FUNCTIONS ---
-# FIX: Reduced TTL to 60 seconds for higher freshness priority
-@st.cache_data(ttl=60)
+# FIX: Removed cache to ensure fresh download every time
 def download_file(url):
     try:
         # Add headers to bypass some CDN caching
@@ -357,8 +355,7 @@ def parse_site_number(site_display_str):
     match = re.match(r"^(\d+)", site_display_str)
     return int(match.group(1)) if match else float('inf')
 
-# FIX: Reduced TTL to 60 seconds for report generation consistency
-@st.cache_data(ttl=60, show_spinner=False)
+# FIX: Removed cache to ensure report generation uses latest data
 def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders):
     ta_data = df[df["TRADE AREA"] == trade_area]
     wb = load_workbook(io.BytesIO(template_bytes_raw))
@@ -566,10 +563,8 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 #--- LOAD DATA ASSETS ---
-# FIX: Reduced TTL to 60 seconds for higher freshness priority
-@st.cache_data(ttl=60, show_spinner=True) 
+# FIX: Removed cache decorator to force fresh load on every run
 def load_data():
-    # The spinner is handled by @st.cache_data when the cache is missed
     source_bytes = download_file(SOURCE_URL)
     template_data = download_file(TEMPLATE_URL)
     if source_bytes is None or template_data is None:
@@ -654,8 +649,6 @@ if not st.session_state.authenticated:
         if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
             if check_password(password_input):
                 st.session_state.authenticated = True
-                # Clear cache on successful login if needed, though typically not necessary just for auth
-                # st.cache_data.clear() 
                 st.rerun()
             else:
                 st.error("Invalid token string provided.")
@@ -664,8 +657,9 @@ if not st.session_state.authenticated:
 # At this point, user is authenticated
 
 # --- Step 2: Initialize load_data() and derive defaults (this happens post-login) ---
-# The @st.cache_data decorator ensures this runs efficiently (from cache if possible)
-df, placeholders, template_bytes_raw, media_data_list = load_data()
+# FIX: Added spinner to indicate live data fetching
+with st.spinner("Fetching latest data from source..."):
+    df, placeholders, template_bytes_raw, media_data_list = load_data()
 
 if df is None or template_bytes_raw is None:
     st.error("Failed to load data assets. Please verify link paths.")
@@ -680,14 +674,6 @@ default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in tr
 
 # --- Step 4: Apply Presets and Render UI (Row 1 and Row 2) ---
 deploy_workspace_security_protocols()
-
-# FIX: Add a manual refresh button for immediate data updates
-with st.sidebar:
-    st.markdown("### Data Controls")
-    if st.button("🔄 Force Refresh Data", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
-    st.caption("Auto-refreshes every 60s")
 
 #--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
