@@ -952,7 +952,7 @@ if selected_ta and selected_site_display:
                 rendered_view = rendered_view.replace("_REMARKS_", process_val("REMARKS"))
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
 
-                components.html(rendered_view, height=2000, scrolling=False)
+                components.html(rendered_view, height=1600, scrolling=False)
 
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
