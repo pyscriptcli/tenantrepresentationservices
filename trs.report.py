@@ -12,10 +12,6 @@ import hashlib
 from openpyxl import load_workbook
 import streamlit.components.v1 as components
 import base64
-import json
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -288,50 +284,9 @@ def check_password(password):
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
-#--- GOOGLE DRIVE API HELPER ---
-def get_drive_service():
-    """Initialize Google Drive service using service account credentials from secrets"""
-    try:
-        # Check if we have service account credentials in secrets
-        if 'gcp_service_account' in st.secrets:
-            credentials = service_account.Credentials.from_service_account_info(
-                st.secrets['gcp_service_account'],
-                scopes=['https://www.googleapis.com/auth/drive.readonly']
-            )
-            return build('drive', 'v3', credentials=credentials)
-        else:
-            # Fallback: use API key if available
-            api_key = st.secrets.get('google_drive_api_key', '')
-            if api_key:
-                return build('drive', 'v3', developerKey=api_key)
-            return None
-    except Exception as e:
-        st.warning(f"Google Drive API not configured: {e}")
-        return None
-
-def extract_google_drive_id(clean_url):
-    """Extracts unique file ID from verified URL strings."""
-    if not clean_url:
-        return None
-    match = re.search(r'(?:id=|/d/|/uc?.*?id=)([a-zA-Z0-9_-]{25,})', clean_url)
-    return match.group(1) if match else None
-
-def get_thumbnail_url(file_id):
-    """Get thumbnail URL for a Google Drive file"""
-    if file_id:
-        return f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
-    return None
-
-def get_full_image_url(file_id):
-    """Get full image URL for a Google Drive file"""
-    if file_id:
-        return f"https://drive.google.com/uc?export=view&id={file_id}"
-    return None
-
 #--- HELPER FUNCTIONS ---
 def download_file(url):
     try:
-        # Add headers to bypass some CDN caching
         headers = {'Cache-Control': 'no-cache', 'Pragma': 'no-cache'}
         response = requests.get(url, headers=headers, timeout=30)
         return io.BytesIO(response.content) if response.status_code == 200 else None
@@ -361,6 +316,13 @@ def get_cell_val_safe(row_cells, index):
             return clean_and_extract_url(cell.hyperlink.target)
         return clean_and_extract_url(cell.value)
     return ""
+
+def extract_google_drive_id(clean_url):
+    """Extracts unique file ID from verified URL strings."""
+    if not clean_url:
+        return None
+    match = re.search(r'(?:id=|/d/|/uc?.*?id=)([a-zA-Z0-9_-]{25,})', clean_url)
+    return match.group(1) if match else None
 
 def get_placeholders(sheet):
     placeholders = set()
@@ -431,89 +393,6 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
     wb.save(wb_buffer)
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
-
-#--- LOAD DATA ASSETS ---
-@st.cache_data(ttl=300)  # Cache for 5 minutes
-def load_data():
-    """Load data from Google Sheets - cached to prevent excessive downloads"""
-    source_bytes = download_file(SOURCE_URL)
-    template_data = download_file(TEMPLATE_URL)
-    if source_bytes is None or template_data is None:
-        return None, None, None, []
-    
-    # Ingest openpyxl layout with direct cells intact
-    src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
-    
-    # 1. Parse Main Data Sheet (assumed active/first)
-    src_ws = src_wb.active
-    raw_rows = list(src_ws.iter_rows(values_only=False))
-    header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
-    parsed_data_list = []
-    for r in raw_rows[1:]:
-        row_dict = {}
-        has_val = False
-        for idx, cell in enumerate(r):
-            if idx < len(header_row) and header_row[idx]:
-                cleaned_val = clean_and_extract_url(cell.value)
-                row_dict[header_row[idx]] = cleaned_val
-                if cleaned_val != "":
-                    has_val = True
-        if has_val:
-            parsed_data_list.append(row_dict)
-    df = pd.DataFrame(parsed_data_list)
-    df = df.loc[:, ~df.columns.str.contains('^$')]
-    
-    def create_site_display(row):
-        site_no = row.get('SITE NO', '')
-        site_name = row.get('SITE NAME', '')
-        if pd.notna(site_no) and site_no != '':
-            try:
-                return f"{int(float(str(site_no)))} - {site_name}"
-            except:
-                return f"{site_no} - {site_name}"
-        return str(site_name)
-    df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
-    
-    # 2. Extract Data from Specific "PHOTOS/DOCS" Tab using Exact Coordinates
-    media_data_list = []
-    media_ws = None
-    # Locate the correct tab
-    for sheet_name in src_wb.sheetnames:
-        if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
-            media_ws = src_wb[sheet_name]
-            break
-    # Fallback if specific media sheet name isn't found
-    if not media_ws:
-        media_ws = src_ws
-    
-    for r in media_ws.iter_rows(values_only=False):
-        # Col N (13) and Col P (15) mapping to link specific records
-        t_area = str(get_cell_val_safe(r, 13)).strip()
-        s_name = str(get_cell_val_safe(r, 15)).strip()
-        # Avoid pulling the header row itself
-        if t_area and s_name and t_area.upper() != "TRADE AREA":
-            media_data_list.append({
-                'TRADE AREA': t_area,
-                'SITE NAME': s_name,
-                # DOCS: C(2), D(3), E(4), F(5)
-                '__DIRECT_TCT': get_cell_val_safe(r, 2),
-                '__DIRECT_LOT_PLAN': get_cell_val_safe(r, 3),
-                '__DIRECT_BLDG_PLAN': get_cell_val_safe(r, 4),
-                '__DIRECT_TAX_MAP': get_cell_val_safe(r, 5),
-                # PHOTOS: H(7), I(8), J(9), K(10), L(11)
-                '__DIRECT_PHOTO_1': get_cell_val_safe(r, 7),
-                '__DIRECT_PHOTO_2': get_cell_val_safe(r, 8),
-                '__DIRECT_PHOTO_3': get_cell_val_safe(r, 9),
-                '__DIRECT_PHOTO_4': get_cell_val_safe(r, 10),
-                '__DIRECT_PHOTO_5': get_cell_val_safe(r, 11),
-            })
-    
-    temp_wb = load_workbook(template_data)
-    placeholders = get_placeholders(temp_wb.active)
-    # Extract the raw content
-    template_bytes_raw = template_data.getvalue()
-    template_data.seek(0)
-    return df, placeholders, template_bytes_raw, media_data_list
 
 #--- COMPLETE HTML BLUEPRINT ---
 HTML_FRAMEWORK = """
@@ -680,6 +559,80 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
+#--- LOAD DATA ASSETS ---
+def load_data():
+    source_bytes = download_file(SOURCE_URL)
+    template_data = download_file(TEMPLATE_URL)
+    if source_bytes is None or template_data is None:
+        return None, None, None, []
+    
+    src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
+    src_ws = src_wb.active
+    
+    raw_rows = list(src_ws.iter_rows(values_only=False))
+    header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
+    
+    parsed_data_list = []
+    for r in raw_rows[1:]:
+        row_dict = {}
+        has_val = False
+        for idx, cell in enumerate(r):
+            if idx < len(header_row) and header_row[idx]:
+                cleaned_val = clean_and_extract_url(cell.value)
+                row_dict[header_row[idx]] = cleaned_val
+                if cleaned_val != "":
+                    has_val = True
+        if has_val:
+            parsed_data_list.append(row_dict)
+            
+    df = pd.DataFrame(parsed_data_list)
+    df = df.loc[:, ~df.columns.str.contains('^$')]
+    
+    def create_site_display(row):
+        site_no = row.get('SITE NO', '')
+        site_name = row.get('SITE NAME', '')
+        if pd.notna(site_no) and site_no != '':
+            try: return f"{int(float(str(site_no)))} - {site_name}"
+            except: return f"{site_no} - {site_name}"
+        return str(site_name)
+        
+    df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
+    
+    # 2. Extract Data from Specific "PHOTOS/DOCS" Tab using Exact Coordinates
+    media_data_list = []
+    media_ws = None
+    for sheet_name in src_wb.sheetnames:
+        if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
+            media_ws = src_wb[sheet_name]
+            break
+    if not media_ws: media_ws = src_ws
+    
+    for r in media_ws.iter_rows(values_only=False):
+        t_area = str(get_cell_val_safe(r, 13)).strip()
+        s_name = str(get_cell_val_safe(r, 15)).strip()
+        if t_area and s_name and t_area.upper() != "TRADE AREA":
+            # FIX: Use clean_and_extract_url to pull the actual URL from the cell/formula
+            # This bypasses the need for complex Apps Script path conversion
+            media_data_list.append({
+                'TRADE AREA': t_area,
+                'SITE NAME': s_name,
+                '__DIRECT_TCT': get_cell_val_safe(r, 2),
+                '__DIRECT_LOT_PLAN': get_cell_val_safe(r, 3),
+                '__DIRECT_BLDG_PLAN': get_cell_val_safe(r, 4),
+                '__DIRECT_TAX_MAP': get_cell_val_safe(r, 5),
+                '__DIRECT_PHOTO_1': get_cell_val_safe(r, 7),
+                '__DIRECT_PHOTO_2': get_cell_val_safe(r, 8),
+                '__DIRECT_PHOTO_3': get_cell_val_safe(r, 9),
+                '__DIRECT_PHOTO_4': get_cell_val_safe(r, 10),
+                '__DIRECT_PHOTO_5': get_cell_val_safe(r, 11),
+            })
+            
+    temp_wb = load_workbook(template_data)
+    placeholders = get_placeholders(temp_wb.active)
+    template_bytes_raw = template_data.getvalue()
+    template_data.seek(0)
+    return df, placeholders, template_bytes_raw, media_data_list
+
 # --- MAIN LOGIC BEGINS ---
 
 # --- Step 1: Display Login Function ---
@@ -694,66 +647,58 @@ if not st.session_state.authenticated:
                 st.rerun()
             else:
                 st.error("Invalid token string provided.")
-    st.stop() # Stop execution if not authenticated
+    st.stop()
 
 # At this point, user is authenticated
 
-# --- Step 2: Initialize session state for data ---
-if 'df' not in st.session_state:
-    st.session_state.df = None
-    st.session_state.placeholders = None
-    st.session_state.template_bytes_raw = None
-    st.session_state.media_data_list = None
-    st.session_state.trade_areas = []
-    st.session_state.data_loaded = False
-
-# --- Step 3: Load data only once after login ---
-if not st.session_state.data_loaded:
+# --- Step 2: Initialize load_data() ONLY ONCE after login ---
+# FIX: Removed automatic refetch on TA change. Data loads once post-login.
+if 'data_loaded' not in st.session_state:
     with st.spinner("Fetching latest data from source..."):
         df, placeholders, template_bytes_raw, media_data_list = load_data()
-        if df is not None and template_bytes_raw is not None:
-            st.session_state.df = df
-            st.session_state.placeholders = placeholders
-            st.session_state.template_bytes_raw = template_bytes_raw
-            st.session_state.media_data_list = media_data_list
-            st.session_state.trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
-            st.session_state.data_loaded = True
-        else:
+        if df is None or template_bytes_raw is None:
             st.error("Failed to load data assets. Please verify link paths.")
             st.stop()
+        st.session_state.df = df
+        st.session_state.placeholders = placeholders
+        st.session_state.template_bytes_raw = template_bytes_raw
+        st.session_state.media_data_list = media_data_list
+        st.session_state.data_loaded = True
 
-# --- Step 4: Use session state data ---
+# Retrieve from session state
 df = st.session_state.df
 placeholders = st.session_state.placeholders
 template_bytes_raw = st.session_state.template_bytes_raw
 media_data_list = st.session_state.media_data_list
-trade_areas = st.session_state.trade_areas
 
-# --- Step 5: Determine Default Selections (Preset Logic) ---
+# --- Step 3: Determine Default Selections ---
+trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
 first_row = df.iloc[0] if not df.empty else None
 first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
 first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
 default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
 
-# --- Step 6: Apply Presets and Render UI (Row 1 and Row 2) ---
+# --- Step 4: Apply Presets and Render UI ---
 deploy_workspace_security_protocols()
 
-#--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
+# FIX: Added manual refresh button in sidebar for on-demand freshness
+with st.sidebar:
+    if st.button("🔄 Refresh Data", use_container_width=True):
+        st.session_state.data_loaded = False
+        st.rerun()
+
+#--- ROW 1: CONTROLS ROW ---
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
+
 with col1:
-    # Use the determined default index for the first TA
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
 
+# FIX: Removed TA change trigger. Dropdown changes now only filter local data.
 with col2:
     if selected_ta:
         raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
         sites_in_ta = sorted(raw_sites, key=parse_site_number)
-
-        # Use the determined default index for the first site in the first TA
-        if selected_ta == first_trade_area and first_site_display in sites_in_ta:
-            default_site_index = sites_in_ta.index(first_site_display)
-        else:
-            default_site_index = 0 # Fallback if preset doesn't match
+        default_site_index = 0
     else:
         sites_in_ta = []
         default_site_index = 0
@@ -772,11 +717,9 @@ with col3:
 
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta and selected_site_display:
-    # Get site data based on the selected/preset site
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     site_row_data = site_data.iloc[0] if not site_data.empty else None
 
-    # Get corresponding media data
     target_ta = str(site_row_data["TRADE AREA"]) if site_row_data is not None else ""
     target_sn = str(site_row_data["SITE NAME"]) if site_row_data is not None else ""
     media_row_data = {}
@@ -786,16 +729,14 @@ if selected_ta and selected_site_display:
                 media_row_data = m
                 break
         if not media_row_data:
-            media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {} # Fallback if needed
+            media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
 
-    # Instantiate Workspace Tabs instantly *after* controls are defined
     tab_report, tab_photos, tab_docs = st.tabs([
         "PROPERTY INFORMATION",
         "PROPERTY PHOTOS",
         "PROPERTY DOCS"
     ])
 
-    # --- TAB 1: SITE INFORMATION REPORT ---
     with tab_report:
         if site_row_data is not None:
             try:
@@ -833,15 +774,12 @@ if selected_ta and selected_site_display:
                 rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS"))
                 rendered_view = rendered_view.replace("_REMARKS_", process_val("REMARKS"))
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-
                 components.html(rendered_view, height=1200, scrolling=False)
-
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
         else:
              st.info("No data available for the selected site.")
 
-    # --- TAB 2: PROPERTY PHOTOS (3x3 LAYOUT) ---
     with tab_photos:
         if site_row_data is not None and media_row_data:
             direct_photo_mapping = {
@@ -855,73 +793,21 @@ if selected_ta and selected_site_display:
             for label, key in direct_photo_mapping.items():
                 raw_url = media_row_data.get(key, "")
                 if raw_url:
-                    file_id = extract_google_drive_id(raw_url)
-                    if file_id:
-                        thumb_url = get_thumbnail_url(file_id)
-                        full_url = get_full_image_url(file_id)
-                    else:
-                        thumb_url = raw_url
-                        full_url = raw_url
+                    # Use extracted URL directly
+                    full_url = raw_url
+                    thumb_url = raw_url.replace("export=view", "thumbnail?sz=w800") if "drive.google.com" in raw_url else raw_url
                     valid_photos.append((label, thumb_url, full_url))
             if valid_photos:
-                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
-                    .image-grid-3x3 {
-                        display: grid;
-                        grid-template-columns: repeat(3, 1fr);
-                        gap: 15px;
-                        padding: 10px 0;
-                        max-width: 100%;
-                    }
-                    .image-grid-item {
-                        border: 1px solid #dadce0;
-                        border-radius: 8px;
-                        overflow: hidden;
-                        background: #f8f9fa;
-                        transition: transform 0.2s;
-                        aspect-ratio: 4/3;
-                        display: flex;
-                        flex-direction: column;
-                    }
-                    .image-grid-item:hover {
-                        transform: scale(1.02);
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    }
-                    .image-grid-item img {
-                        width: 100%;
-                        height: 100%;
-                        object-fit: cover;
-                        display: block;
-                        flex: 1;
-                    }
-                    .image-grid-item .label {
-                        padding: 6px 8px;
-                        font-size: 0.7rem;
-                        font-weight: 600;
-                        color: #5f6368;
-                        background: white;
-                        text-align: center;
-                        border-top: 1px solid #dadce0;
-                        flex-shrink: 0;
-                    }
-                    .image-grid-item a {
-                        text-decoration: none;
-                        color: inherit;
-                        display: flex;
-                        flex-direction: column;
-                        height: 100%;
-                    }
-                    @media (max-width: 768px) {
-                        .image-grid-3x3 {
-                            grid-template-columns: repeat(2, 1fr);
-                        }
-                    }
-                    @media (max-width: 480px) {
-                        .image-grid-3x3 {
-                            grid-template-columns: 1fr;
-                        }
-                    }
+                    .image-grid-3x3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 10px 0; max-width: 100%; }
+                    .image-grid-item { border: 1px solid #dadce0; border-radius: 8px; overflow: hidden; background: #f8f9fa; transition: transform 0.2s; aspect-ratio: 4/3; display: flex; flex-direction: column; }
+                    .image-grid-item:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+                    .image-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; flex: 1; }
+                    .image-grid-item .label { padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #5f6368; background: white; text-align: center; border-top: 1px solid #dadce0; flex-shrink: 0; }
+                    .image-grid-item a { text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%; }
+                    @media (max-width: 768px) { .image-grid-3x3 { grid-template-columns: repeat(2, 1fr); } }
+                    @media (max-width: 480px) { .image-grid-3x3 { grid-template-columns: 1fr; } }
                 </style>
                 <div class="image-grid-3x3">
                 '''
@@ -941,7 +827,6 @@ if selected_ta and selected_site_display:
         else:
              st.info("No data available for the selected site.")
 
-    # --- TAB 3: PROPERTY DOCS (3x3 LAYOUT) ---
     with tab_docs:
         if site_row_data is not None and media_row_data:
             direct_doc_mapping = {
@@ -954,73 +839,20 @@ if selected_ta and selected_site_display:
             for label, key in direct_doc_mapping.items():
                 raw_url = media_row_data.get(key, "")
                 if raw_url:
-                    file_id = extract_google_drive_id(raw_url)
-                    if file_id:
-                        thumb_url = get_thumbnail_url(file_id)
-                        full_url = get_full_image_url(file_id)
-                    else:
-                        thumb_url = raw_url
-                        full_url = raw_url
+                    full_url = raw_url
+                    thumb_url = raw_url.replace("export=view", "thumbnail?sz=w800") if "drive.google.com" in raw_url else raw_url
                     valid_docs.append((label, thumb_url, full_url))
             if valid_docs:
-                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
-                    .image-grid-3x3 {
-                        display: grid;
-                        grid-template-columns: repeat(3, 1fr);
-                        gap: 15px;
-                        padding: 10px 0;
-                        max-width: 100%;
-                    }
-                    .image-grid-item {
-                        border: 1px solid #dadce0;
-                        border-radius: 8px;
-                        overflow: hidden;
-                        background: #f8f9fa;
-                        transition: transform 0.2s;
-                        aspect-ratio: 4/3;
-                        display: flex;
-                        flex-direction: column;
-                    }
-                    .image-grid-item:hover {
-                        transform: scale(1.02);
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    }
-                    .image-grid-item img {
-                        width: 100%;
-                        height: 100%;
-                        object-fit: cover;
-                        display: block;
-                        flex: 1;
-                    }
-                    .image-grid-item .label {
-                        padding: 6px 8px;
-                        font-size: 0.7rem;
-                        font-weight: 600;
-                        color: #5f6368;
-                        background: white;
-                        text-align: center;
-                        border-top: 1px solid #dadce0;
-                        flex-shrink: 0;
-                    }
-                    .image-grid-item a {
-                        text-decoration: none;
-                        color: inherit;
-                        display: flex;
-                        flex-direction: column;
-                        height: 100%;
-                    }
-                    @media (max-width: 768px) {
-                        .image-grid-3x3 {
-                            grid-template-columns: repeat(2, 1fr);
-                        }
-                    }
-                    @media (max-width: 480px) {
-                        .image-grid-3x3 {
-                            grid-template-columns: 1fr;
-                        }
-                    }
+                    .image-grid-3x3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 10px 0; max-width: 100%; }
+                    .image-grid-item { border: 1px solid #dadce0; border-radius: 8px; overflow: hidden; background: #f8f9fa; transition: transform 0.2s; aspect-ratio: 4/3; display: flex; flex-direction: column; }
+                    .image-grid-item:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+                    .image-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; flex: 1; }
+                    .image-grid-item .label { padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #5f6368; background: white; text-align: center; border-top: 1px solid #dadce0; flex-shrink: 0; }
+                    .image-grid-item a { text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%; }
+                    @media (max-width: 768px) { .image-grid-3x3 { grid-template-columns: repeat(2, 1fr); } }
+                    @media (max-width: 480px) { .image-grid-3x3 { grid-template-columns: 1fr; } }
                 </style>
                 <div class="image-grid-3x3">
                 '''
