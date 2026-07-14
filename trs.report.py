@@ -836,19 +836,19 @@ with col2:
 
     selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
 
-with col3:
-    # # Format timestamp for button label
-    # if st.session_state.data_timestamp:
-    #     timestamp_str = st.session_state.data_timestamp.strftime("%b %d %I:%M%p")
-    #     # Remove leading zero from hour if present
-    #     if timestamp_str.startswith("0"):
-    #         timestamp_str = timestamp_str[1:]
-    #     button_label = f"Refresh Data"
-    # else:
-    #     button_label = "Refresh"
-    
-    # if st.button(button_label, use_container_width=True, key="refresh_button"):
-    #     force_refresh_data()
+    with col3:
+        # # Format timestamp for button label
+        # if st.session_state.data_timestamp:
+        #     timestamp_str = st.session_state.data_timestamp.strftime("%b %d %I:%M%p")
+        #     # Remove leading zero from hour if present
+        #     if timestamp_str.startswith("0"):
+        #         timestamp_str = timestamp_str[1:]
+        #     button_label = f"Refresh Data"
+        # else:
+        #     button_label = "Refresh"
+        
+        # if st.button(button_label, use_container_width=True, key="refresh_button"):
+        #     force_refresh_data()
 
 with col4:
     if selected_ta:
