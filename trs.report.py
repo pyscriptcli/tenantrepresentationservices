@@ -896,15 +896,16 @@ if selected_ta and selected_site_display:
                     if pd.isna(val) or val is None: 
                         return ""
                     
-                    # Handle numeric values - convert to whole number
+                    # Handle numeric values - convert to whole number with thousand separators
                     if isinstance(val, (int, float)):
-                        # If it's a whole number (like 2.0, 4.0), convert to int
+                        # If it's a whole number (like 2.0, 4.0), convert to int with thousand separators
                         if isinstance(val, float) and val.is_integer():
-                            return str(int(val))
+                            return f"{int(val):,}"
                         elif isinstance(val, int):
-                            return str(val)
+                            return f"{val:,}"
                         else:
-                            return str(val)
+                            # For decimal numbers, format with thousand separators
+                            return f"{val:,.2f}" if val % 1 != 0 else f"{int(val):,}"
                     
                     # Handle string values that might be numbers with decimals
                     if isinstance(val, str):
@@ -912,11 +913,12 @@ if selected_ta and selected_site_display:
                         try:
                             # Try to convert to float first
                             num_val = float(val)
-                            # If it's a whole number, return as int
+                            # If it's a whole number, return as int with thousand separators
                             if num_val.is_integer():
-                                return str(int(num_val))
+                                return f"{int(num_val):,}"
                             else:
-                                return str(num_val)
+                                # For decimal numbers, format with thousand separators
+                                return f"{num_val:,.2f}" if num_val % 1 != 0 else f"{int(num_val):,}"
                         except ValueError:
                             pass
                         
