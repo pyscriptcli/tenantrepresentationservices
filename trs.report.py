@@ -479,15 +479,22 @@ html, body {
 .remarks-row td.s5 { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; line-height: 1.6 !important; padding: 8px 6px !important; }
 .remarks-label { white-space: nowrap !important; vertical-align: top !important; padding-top: 8px !important; }
 
-/* Ensure the iframe container allows vertical scrolling */
+/* Hide iframe scrollbars - this is the key fix */
 iframe[title="streamlit_components.components.html"] {
-    height: 1200px !important;
+    height: auto !important;
+    min-height: 600px !important;
     max-height: none !important;
     border: none !important;
     margin-bottom: 10px !important;
     width: 100% !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    overflow: hidden !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
+iframe[title="streamlit_components.components.html"]::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
 }
 </style>
 <script>
@@ -562,6 +569,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.documentElement.style.overflowY = 'auto';
         document.documentElement.style.overflowX = 'hidden';
         
+        // Hide scrollbars on the iframe
+        const iframe = window.frameElement;
+        if (iframe) {
+            iframe.style.overflow = 'hidden';
+            iframe.style.scrollbarWidth = 'none';
+            iframe.style.msOverflowStyle = 'none';
+        }
+        
         // Calculate and set the scaler height to allow scrolling
         const tableHeight = table.scrollHeight;
         if (scale < 1) {
@@ -594,6 +609,18 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('load', function() {
         setTimeout(scaleReportToFit, 200);
     });
+    
+    // Force hide scrollbars on the iframe
+    function hideIframeScrollbars() {
+        const iframe = window.frameElement;
+        if (iframe) {
+            iframe.style.overflow = 'hidden';
+            iframe.scrolling = 'no';
+            iframe.setAttribute('scrolling', 'no');
+        }
+    }
+    hideIframeScrollbars();
+    setTimeout(hideIframeScrollbars, 50);
 });
 </script>
 </head>
@@ -674,7 +701,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </body>
 </html>
 """
-
 #--- LOAD DATA ASSETS ---
 @st.cache_data(ttl=3600, show_spinner=True) # Use Streamlit's built-in spinner for initial load
 def load_data():
