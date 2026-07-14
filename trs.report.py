@@ -412,7 +412,7 @@ html, body {
 /* NEW: Container that scales the entire table to fit width */
 .report-wrapper {
     width: 100%;
-    overflow: visible;
+    overflow: hidden !important; /* Prevent horizontal scrollbar */
     display: flex;
     justify-content: center;
     padding: 0;
@@ -422,6 +422,7 @@ html, body {
     transform-origin: top left;
     width: 100%;
     display: inline-block;
+    overflow: visible;
 }
 .ritz.grid-container {
     height: auto;
@@ -484,47 +485,68 @@ document.addEventListener('DOMContentLoaded', function() {
         const table = document.querySelector('.waffle');
         if (!table) return;
         
-        // Force table to render at full width temporarily to measure
+        // Get container width (available space)
+        const containerWidth = wrapper.parentElement ? wrapper.parentElement.clientWidth : window.innerWidth;
+        const availableWidth = containerWidth - 40; // Account for padding and margins
+        
+        // Reset table to auto width to measure natural size
         table.style.width = 'auto';
         const naturalWidth = table.scrollWidth;
         table.style.width = '100%';
         
-        // Get the container width
-        const containerWidth = wrapper.parentElement ? wrapper.parentElement.clientWidth : window.innerWidth;
-        const availableWidth = containerWidth - 20; // Account for padding
-        
-        // Calculate scale factor if needed
+        // Calculate scale factor
         let scale = 1;
         if (naturalWidth > availableWidth) {
-            scale = availableWidth / naturalWidth;
-            // Ensure we don't scale too small
-            if (scale < 0.5) scale = 0.5;
+            scale = (availableWidth / naturalWidth) * 0.95; // 95% to give slight margin
+            // Ensure we don't scale too small (minimum 0.4)
+            if (scale < 0.4) scale = 0.4;
         }
         
-        // Apply scaling
-        scaler.style.transform = 'scale(' + scale + ')';
-        scaler.style.transformOrigin = 'top left';
-        scaler.style.width = (scale < 1) ? (100 / scale) + '%' : '100%';
-        
-        // Adjust container height to account for scaling
+        // Apply scaling to the scaler element
         if (scale < 1) {
-            const tableHeight = table.scrollHeight;
-            container.style.height = (tableHeight * scale) + 'px';
+            scaler.style.transform = 'scale(' + scale + ')';
+            scaler.style.transformOrigin = 'top left';
+            // Adjust width to compensate for scaling
+            scaler.style.width = (100 / scale) + '%';
+            scaler.style.marginBottom = '0px';
+        } else {
+            scaler.style.transform = 'none';
+            scaler.style.width = '100%';
+            scaler.style.marginBottom = '0px';
         }
+        
+        // Ensure the wrapper doesn't show scrollbars
+        wrapper.style.overflow = 'hidden';
+        wrapper.style.width = '100%';
+        
+        // Adjust container to prevent overflow
+        container.style.overflow = 'visible';
+        container.style.width = '100%';
     }
     
-    // Run on load and resize
-    setTimeout(scaleReportToFit, 50);
-    window.addEventListener('resize', scaleReportToFit);
+    // Run on load
+    setTimeout(scaleReportToFit, 100);
+    
+    // Run on resize
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(scaleReportToFit, 100);
+    });
     
     // Also run when content changes
     const observer = new MutationObserver(function() { 
-        setTimeout(scaleReportToFit, 50);
+        setTimeout(scaleReportToFit, 100);
     });
     const tableBody = document.querySelector('.waffle tbody');
     if (tableBody) { 
         observer.observe(tableBody, { childList: true, subtree: true, characterData: true }); 
     }
+    
+    // Additional check after images load
+    window.addEventListener('load', function() {
+        setTimeout(scaleReportToFit, 200);
+    });
 });
 </script>
 </head>
