@@ -203,6 +203,15 @@ iframe[title="streamlit_components.components.html"]::-webkit-scrollbar {
     width: 0 !important;
     height: 0 !important;
 }
+
+/* Style for the timestamp */
+.data-timestamp {
+    font-size: 0.75rem !important;
+    color: #5f6368 !important;
+    padding: 4px 0 0 4px !important;
+    margin: 0 !important;
+    font-weight: 400 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -298,6 +307,8 @@ if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 if 'data_timestamp' not in st.session_state:
     st.session_state.data_timestamp = None
+if 'refresh_trigger' not in st.session_state:
+    st.session_state.refresh_trigger = 0
 
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
@@ -769,10 +780,14 @@ def load_data():
 
 def force_refresh_data():
     """Force refresh by clearing cache and reloading"""
-    with st.spinner("🔄 Refreshing data from Google Sheets..."):
-        st.cache_data.clear()
-        time.sleep(0.5)  # Small delay to ensure cache is cleared
-        st.rerun()
+    # Clear the cache
+    st.cache_data.clear()
+    # Update the refresh trigger to force a rerun
+    st.session_state.refresh_trigger += 1
+    # Clear the stored timestamp
+    st.session_state.data_timestamp = None
+    # Rerun the app
+    st.rerun()
 
 # --- MAIN LOGIC BEGINS ---
 
@@ -794,7 +809,9 @@ if not st.session_state.authenticated:
 
 # --- Step 2: Initialize load_data() and derive defaults (this happens post-login) ---
 # The @st.cache_data decorator ensures this runs efficiently (from cache if possible)
-data = load_data()
+with st.spinner("Loading data..."):
+    data = load_data()
+
 df, placeholders, template_bytes_raw, media_data_list, data_timestamp = data
 
 if df is None or template_bytes_raw is None:
@@ -839,7 +856,7 @@ with col2:
     selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
 
 with col3:
-    # Refresh button with spinner
+    # Refresh button
     if st.button("🔄 Refresh", use_container_width=True, key="refresh_button"):
         force_refresh_data()
 
@@ -854,9 +871,9 @@ with col4:
             key="export_button"
         )
 
-# Display last updated timestamp below the controls
+# Display last updated timestamp
 if st.session_state.data_timestamp:
-    st.caption(f"📅 Data as of: {st.session_state.data_timestamp.strftime('%B %d, %Y at %I:%M %p')}")
+    st.caption(f"📅 Updated as of {st.session_state.data_timestamp.strftime('%B %d, %Y at %I:%M %p')}")
 
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta and selected_site_display:
