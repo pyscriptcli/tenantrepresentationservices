@@ -12,6 +12,8 @@ import hashlib
 from openpyxl import load_workbook
 import streamlit.components.v1 as components
 import base64
+from datetime import datetime
+import time
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -183,6 +185,24 @@ div[data-testid="stStatusWidget"] {
     width: 0 !important;
     pointer-events: none !important;
 }
+
+/* Hide iframe scrollbars */
+iframe[title="streamlit_components.components.html"] {
+    height: auto !important;
+    min-height: 600px !important;
+    max-height: none !important;
+    border: none !important;
+    margin-bottom: 10px !important;
+    width: 100% !important;
+    overflow: hidden !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
+iframe[title="streamlit_components.components.html"]::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -276,6 +296,8 @@ if not os.path.exists(_config_file):
 TARGET_HASH = "6e7dfba0b39da481db37c3263c61cac6"
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
+if 'data_timestamp' not in st.session_state:
+    st.session_state.data_timestamp = None
 
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
@@ -283,6 +305,7 @@ def check_password(password):
 #--- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
+CACHE_TTL = 86400  # 24 hours in seconds
 
 #--- HELPER FUNCTIONS ---
 @st.cache_data(ttl=3600)
@@ -478,24 +501,6 @@ html, body {
 .remarks-row td { height: auto !important; padding: 6px 3px !important; vertical-align: top !important; }
 .remarks-row td.s5 { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; line-height: 1.6 !important; padding: 8px 6px !important; }
 .remarks-label { white-space: nowrap !important; vertical-align: top !important; padding-top: 8px !important; }
-
-/* Hide iframe scrollbars - this is the key fix */
-iframe[title="streamlit_components.components.html"] {
-    height: auto !important;
-    min-height: 600px !important;
-    max-height: none !important;
-    border: none !important;
-    margin-bottom: 10px !important;
-    width: 100% !important;
-    overflow: hidden !important;
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
-}
-iframe[title="streamlit_components.components.html"]::-webkit-scrollbar {
-    display: none !important;
-    width: 0 !important;
-    height: 0 !important;
-}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -569,14 +574,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.documentElement.style.overflowY = 'auto';
         document.documentElement.style.overflowX = 'hidden';
         
-        // Hide scrollbars on the iframe
-        const iframe = window.frameElement;
-        if (iframe) {
-            iframe.style.overflow = 'hidden';
-            iframe.style.scrollbarWidth = 'none';
-            iframe.style.msOverflowStyle = 'none';
-        }
-        
         // Calculate and set the scaler height to allow scrolling
         const tableHeight = table.scrollHeight;
         if (scale < 1) {
@@ -609,18 +606,6 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('load', function() {
         setTimeout(scaleReportToFit, 200);
     });
-    
-    // Force hide scrollbars on the iframe
-    function hideIframeScrollbars() {
-        const iframe = window.frameElement;
-        if (iframe) {
-            iframe.style.overflow = 'hidden';
-            iframe.scrolling = 'no';
-            iframe.setAttribute('scrolling', 'no');
-        }
-    }
-    hideIframeScrollbars();
-    setTimeout(hideIframeScrollbars, 50);
 });
 </script>
 </head>
@@ -701,14 +686,16 @@ document.addEventListener('DOMContentLoaded', function() {
 </body>
 </html>
 """
+
 #--- LOAD DATA ASSETS ---
-@st.cache_data(ttl=3600, show_spinner=True) # Use Streamlit's built-in spinner for initial load
+@st.cache_data(ttl=CACHE_TTL, show_spinner="Loading site data from Google Sheets...")
 def load_data():
-    # The spinner is handled by @st.cache_data when the cache is missed
+    """Load data with 24-hour caching and timestamp tracking"""
     source_bytes = download_file(SOURCE_URL)
     template_data = download_file(TEMPLATE_URL)
     if source_bytes is None or template_data is None:
-        return None, None, None, []
+        return None, None, None, [], None
+    
     # Ingest openpyxl layout with direct cells intact
     src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
     # 1. Parse Main Data Sheet (assumed active/first)
@@ -776,7 +763,16 @@ def load_data():
     # Extract the raw content to resolve the NameError
     template_bytes_raw = template_data.getvalue()
     template_data.seek(0)
-    return df, placeholders, template_bytes_raw, media_data_list
+    
+    # Return data with timestamp
+    return df, placeholders, template_bytes_raw, media_data_list, datetime.now()
+
+def force_refresh_data():
+    """Force refresh by clearing cache and reloading"""
+    with st.spinner("🔄 Refreshing data from Google Sheets..."):
+        st.cache_data.clear()
+        time.sleep(0.5)  # Small delay to ensure cache is cleared
+        st.rerun()
 
 # --- MAIN LOGIC BEGINS ---
 
@@ -789,8 +785,6 @@ if not st.session_state.authenticated:
         if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
             if check_password(password_input):
                 st.session_state.authenticated = True
-                # Clear cache on successful login if needed, though typically not necessary just for auth
-                # st.cache_data.clear() 
                 st.rerun()
             else:
                 st.error("Invalid token string provided.")
@@ -800,11 +794,15 @@ if not st.session_state.authenticated:
 
 # --- Step 2: Initialize load_data() and derive defaults (this happens post-login) ---
 # The @st.cache_data decorator ensures this runs efficiently (from cache if possible)
-df, placeholders, template_bytes_raw, media_data_list = load_data()
+data = load_data()
+df, placeholders, template_bytes_raw, media_data_list, data_timestamp = data
 
 if df is None or template_bytes_raw is None:
     st.error("Failed to load data assets. Please verify link paths.")
     st.stop()
+
+# Store timestamp in session state
+st.session_state.data_timestamp = data_timestamp
 
 # --- Step 3: Determine Default Selections (Preset Logic) ---
 trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
@@ -817,7 +815,9 @@ default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in tr
 deploy_workspace_security_protocols()
 
 #--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
-col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
+# Use 4 columns: Trade Area, Site Name, Refresh Button, Export Button
+col1, col2, col3, col4 = st.columns([1.2, 1.2, 0.8, 0.8])
+
 with col1:
     # Use the determined default index for the first TA
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
@@ -839,14 +839,24 @@ with col2:
     selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
 
 with col3:
+    # Refresh button with spinner
+    if st.button("🔄 Refresh", use_container_width=True, key="refresh_button"):
+        force_refresh_data()
+
+with col4:
     if selected_ta:
         st.download_button(
-            label="Export Trade Area",
+            label="Export",
             data=generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders),
             file_name=f"{selected_ta}_Site_Information_Report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
+            use_container_width=True,
+            key="export_button"
         )
+
+# Display last updated timestamp below the controls
+if st.session_state.data_timestamp:
+    st.caption(f"📅 Data as of: {st.session_state.data_timestamp.strftime('%B %d, %Y at %I:%M %p')}")
 
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta and selected_site_display:
@@ -1053,7 +1063,6 @@ if selected_ta and selected_site_display:
                         </div>
                     '''
                 grid_html += '</div>'
-                # UPDATED: scrolling=False forces outer scrollbar, height increased
                 components.html(grid_html, height=1200, scrolling=False)
             else:
                 st.info("No photo links configured for this property record selection.")
@@ -1153,7 +1162,6 @@ if selected_ta and selected_site_display:
                         </div>
                     '''
                 grid_html += '</div>'
-                # UPDATED: scrolling=False forces outer scrollbar, height increased
                 components.html(grid_html, height=1200, scrolling=False)
             else:
                 st.info("No layout documents configured for this property record selection.")
