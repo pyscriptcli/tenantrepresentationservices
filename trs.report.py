@@ -742,28 +742,41 @@ if selected_ta and selected_site_display:
                     if pd.isna(val) or val is None: 
                         return ""
                     
-                    # Handle numeric values - convert to whole number if it's a float
-                    if isinstance(val, float):
-                        # If it's a whole number (like 2.0), convert to int
-                        if val.is_integer():
+                    # Handle numeric values - convert to whole number
+                    if isinstance(val, (int, float)):
+                        # If it's a whole number (like 2.0, 4.0), convert to int
+                        if isinstance(val, float) and val.is_integer():
                             return str(int(val))
+                        elif isinstance(val, int):
+                            return str(val)
                         else:
                             return str(val)
                     
-                    # Handle datetime values
-                    if hasattr(val, 'strftime'):
-                        return val.strftime('%B %d, %Y')
-                    
-                    # Handle string values that might be dates
+                    # Handle string values that might be numbers with decimals
                     if isinstance(val, str):
-                        # Try to parse as datetime if it looks like a date string
+                        # Check if it's a number string like "4.0" or "4.00"
                         try:
-                            # Check if it's a date string like "2026-07-14 00:00:00"
+                            # Try to convert to float first
+                            num_val = float(val)
+                            # If it's a whole number, return as int
+                            if num_val.is_integer():
+                                return str(int(num_val))
+                            else:
+                                return str(num_val)
+                        except ValueError:
+                            pass
+                        
+                        # Check if it's a date string
+                        try:
                             if re.match(r'\d{4}-\d{2}-\d{2}', val):
                                 date_obj = pd.to_datetime(val)
                                 return date_obj.strftime('%B %d, %Y')
                         except:
                             pass
+                    
+                    # Handle datetime objects
+                    if hasattr(val, 'strftime'):
+                        return val.strftime('%B %d, %Y')
                     
                     return str(val).strip()
                 
