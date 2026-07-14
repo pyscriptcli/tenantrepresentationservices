@@ -860,11 +860,9 @@ default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in tr
 deploy_workspace_security_protocols()
 
 #--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
-# Use 4 columns: Trade Area, Site Name, Refresh Button, Export Button
-col1, col2, col3, col4 = st.columns([1.2, 1.2, 0.8, 0.8])
+col1, col2, col3, col4 = st.columns([1.2, 1.2, 0.9, 0.9])
 
 with col1:
-    # Use the determined default index for the first TA
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
 
 with col2:
@@ -872,11 +870,10 @@ with col2:
         raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
         sites_in_ta = sorted(raw_sites, key=parse_site_number)
 
-        # Use the determined default index for the first site in the first TA
         if selected_ta == first_trade_area and first_site_display in sites_in_ta:
             default_site_index = sites_in_ta.index(first_site_display)
         else:
-            default_site_index = 0 # Fallback if preset doesn't match
+            default_site_index = 0
     else:
         sites_in_ta = []
         default_site_index = 0
@@ -884,16 +881,8 @@ with col2:
     selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
 
 with col3:
-    # Refresh button
     if st.button("🔄 Refresh", use_container_width=True, key="refresh_button"):
         force_refresh_data()
-    
-    # Display timestamp below the refresh button
-    if st.session_state.data_timestamp:
-        st.markdown(
-            f'<p class="timestamp-text">Updated as of {st.session_state.data_timestamp.strftime("%B %d, %Y at %I:%M %p")}</p>',
-            unsafe_allow_html=True
-        )
 
 with col4:
     if selected_ta:
@@ -906,6 +895,11 @@ with col4:
             key="export_button"
         )
 
+# Timestamp row - directly below the refresh button
+timestamp_col1, timestamp_col2, timestamp_col3, timestamp_col4 = st.columns([1.2, 1.2, 0.9, 0.9])
+with timestamp_col3:
+    if st.session_state.data_timestamp:
+        st.caption(f"Updated as of {st.session_state.data_timestamp.strftime('%B %d, %Y at %I:%M %p')}")
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta and selected_site_display:
     # Get site data based on the selected/preset site
