@@ -123,13 +123,13 @@ div[data-testid="stHorizontalBlock"] {
 }
 
 /* Hard pixel alignment lock for the export column element wrapper */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) {
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4) {
     align-self: flex-end !important;
     padding-bottom: 4px !important;
 }
 
 /* Force Streamlit's inner widget wrapper to drop any hidden margin blocks */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"] {
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4) div[data-testid="stElementWrapper"] {
     margin-bottom: 0px !important;
     padding-bottom: 0px !important;
 }
@@ -205,12 +205,45 @@ iframe[title="streamlit_components.components.html"]::-webkit-scrollbar {
 }
 
 /* Style for the timestamp */
-.data-timestamp {
-    font-size: 0.75rem !important;
+.timestamp-text {
+    font-size: 0.7rem !important;
+    font-style: italic !important;
     color: #5f6368 !important;
-    padding: 4px 0 0 4px !important;
-    margin: 0 !important;
-    font-weight: 400 !important;
+    margin-top: 2px !important;
+    padding-left: 2px !important;
+}
+
+/* Loading spinner overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    flex-direction: column;
+}
+.loading-overlay .spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #003366;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.loading-overlay .loading-text {
+    margin-top: 20px;
+    font-size: 1.2rem;
+    color: #003366;
+    font-weight: 500;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -307,8 +340,8 @@ if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 if 'data_timestamp' not in st.session_state:
     st.session_state.data_timestamp = None
-if 'refresh_trigger' not in st.session_state:
-    st.session_state.refresh_trigger = 0
+if 'is_loading' not in st.session_state:
+    st.session_state.is_loading = False
 
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
@@ -699,7 +732,7 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 #--- LOAD DATA ASSETS ---
-@st.cache_data(ttl=CACHE_TTL, show_spinner="Loading site data from Google Sheets...")
+@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
 def load_data():
     """Load data with 24-hour caching and timestamp tracking"""
     source_bytes = download_file(SOURCE_URL)
@@ -780,13 +813,8 @@ def load_data():
 
 def force_refresh_data():
     """Force refresh by clearing cache and reloading"""
-    # Clear the cache
     st.cache_data.clear()
-    # Update the refresh trigger to force a rerun
-    st.session_state.refresh_trigger += 1
-    # Clear the stored timestamp
     st.session_state.data_timestamp = None
-    # Rerun the app
     st.rerun()
 
 # --- MAIN LOGIC BEGINS ---
@@ -808,18 +836,18 @@ if not st.session_state.authenticated:
 # At this point, user is authenticated
 
 # --- Step 2: Initialize load_data() and derive defaults (this happens post-login) ---
-# The @st.cache_data decorator ensures this runs efficiently (from cache if possible)
-with st.spinner("Loading data..."):
+# Show loading spinner while data loads
+with st.spinner("Loading Data..."):
     data = load_data()
-
-df, placeholders, template_bytes_raw, media_data_list, data_timestamp = data
+    df, placeholders, template_bytes_raw, media_data_list, data_timestamp = data
 
 if df is None or template_bytes_raw is None:
     st.error("Failed to load data assets. Please verify link paths.")
     st.stop()
 
-# Store timestamp in session state
-st.session_state.data_timestamp = data_timestamp
+# Store timestamp in session state if not set or if it's None
+if st.session_state.data_timestamp is None and data_timestamp is not None:
+    st.session_state.data_timestamp = data_timestamp
 
 # --- Step 3: Determine Default Selections (Preset Logic) ---
 trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
@@ -859,6 +887,13 @@ with col3:
     # Refresh button
     if st.button("🔄 Refresh", use_container_width=True, key="refresh_button"):
         force_refresh_data()
+    
+    # Display timestamp below the refresh button
+    if st.session_state.data_timestamp:
+        st.markdown(
+            f'<p class="timestamp-text">Updated as of {st.session_state.data_timestamp.strftime("%B %d, %Y at %I:%M %p")}</p>',
+            unsafe_allow_html=True
+        )
 
 with col4:
     if selected_ta:
@@ -870,10 +905,6 @@ with col4:
             use_container_width=True,
             key="export_button"
         )
-
-# Display last updated timestamp
-if st.session_state.data_timestamp:
-    st.caption(f"📅 Updated as of {st.session_state.data_timestamp.strftime('%B %d, %Y at %I:%M %p')}")
 
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta and selected_site_display:
