@@ -409,20 +409,23 @@ html, body {
     height: 100%;
     overflow: auto; 
 }
-/* NEW: Container that scales the entire table to fit width */
+/* Container that scales and centers the entire table */
 .report-wrapper {
     width: 100%;
-    overflow: hidden !important; /* Prevent horizontal scrollbar */
+    overflow: hidden !important;
     display: flex;
     justify-content: center;
+    align-items: center;
     padding: 0;
     margin: 0;
+    min-height: 100%;
 }
 .report-scaler {
-    transform-origin: top left;
+    transform-origin: center center;
     width: 100%;
     display: inline-block;
     overflow: visible;
+    text-align: center;
 }
 .ritz.grid-container {
     height: auto;
@@ -430,40 +433,42 @@ html, body {
     padding: 10px;
     box-sizing: border-box;
     width: 100%;
+    display: inline-block;
+    text-align: left;
 }
 .ritz .waffle a { color: inherit; }
 .ritz .waffle td { padding: 2px 3px !important; vertical-align: middle; border: none !important; }
 .freezebar-origin-ltr { background-color: #f8f9fa; border: none !important; }
-.column-headers-background { background-color: #f8f9fa; text-align: center; font-size: 8pt; color: #444746; font-weight: normal; border: none !important; }
-.row-headers-background { background-color: #f8f9fa; text-align: center; font-size: 8pt; color: #444746; font-weight: normal; border: none !important; }
-.ritz .waffle .s0 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#800000;text-align:center;font-weight:bold;color:#ffffff;font-size:8pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
-.ritz .waffle .s1 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
-.ritz .waffle .s2 {background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s3 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s4 {border: none !important;background-color:#f8f9fa;text-align:left;color:#000000;font-size:8pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
+.column-headers-background { background-color: #f8f9fa; text-align: center; font-size: 10pt; color: #444746; font-weight: normal; border: none !important; }
+.row-headers-background { background-color: #f8f9fa; text-align: center; font-size: 10pt; color: #444746; font-weight: normal; border: none !important; }
+.ritz .waffle .s0 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#800000;text-align:center;font-weight:bold;color:#ffffff;font-size:10pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
+.ritz .waffle .s1 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
+.ritz .waffle .s2 {background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s3 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s4 {border: none !important;background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
 .ritz .waffle .s4.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
-.ritz .waffle .s5 {background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s6 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s7 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s8 {border: none !important;background-color:#ffffff;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s9 {border: none !important;background-color:#f8f9fa;text-align:left;color:#000000;font-size:8pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
+.ritz .waffle .s5 {background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s6 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s7 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s8 {border: none !important;background-color:#ffffff;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s9 {border: none !important;background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
 .ritz .waffle .s9.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
-.ritz .waffle .s10{background-color:#bfbfbf;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s11{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s12{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s13{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s14{background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s15{border: none !important;background-color:#b7b7b7;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s16{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s17{background-color:#b7b7b7;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s18{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s19{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s20{border: none !important;background-color:#b7b7b7;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s21{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s22{background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s23{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s24{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s25{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:8pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s10{background-color:#bfbfbf;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s11{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s12{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s13{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s14{background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s15{border: none !important;background-color:#b7b7b7;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s16{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s17{background-color:#b7b7b7;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s18{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s19{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s20{border: none !important;background-color:#b7b7b7;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s21{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s22{background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s23{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s24{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s25{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
 .ritz .waffle { border-collapse: collapse; width: 100%; }
 .ritz .waffle tr { height: auto !important; }
 .ritz .waffle td[class*="s4"], .ritz .waffle td[class*="s9"] { height: auto !important; min-height: 20px; }
@@ -498,26 +503,38 @@ document.addEventListener('DOMContentLoaded', function() {
         let scale = 1;
         if (naturalWidth > availableWidth) {
             scale = (availableWidth / naturalWidth) * 0.95; // 95% to give slight margin
-            // Ensure we don't scale too small (minimum 0.4)
+            // Ensure we don't scale too small
             if (scale < 0.4) scale = 0.4;
         }
         
-        // Apply scaling to the scaler element
+        // Apply scaling to the scaler element - centered
         if (scale < 1) {
             scaler.style.transform = 'scale(' + scale + ')';
-            scaler.style.transformOrigin = 'top left';
+            scaler.style.transformOrigin = 'center center';
             // Adjust width to compensate for scaling
             scaler.style.width = (100 / scale) + '%';
             scaler.style.marginBottom = '0px';
+            scaler.style.display = 'inline-block';
+            scaler.style.textAlign = 'center';
         } else {
             scaler.style.transform = 'none';
             scaler.style.width = '100%';
             scaler.style.marginBottom = '0px';
+            scaler.style.display = 'inline-block';
+            scaler.style.textAlign = 'center';
         }
+        
+        // Center the container
+        container.style.display = 'inline-block';
+        container.style.textAlign = 'left';
+        container.style.margin = '0 auto';
         
         // Ensure the wrapper doesn't show scrollbars
         wrapper.style.overflow = 'hidden';
         wrapper.style.width = '100%';
+        wrapper.style.display = 'flex';
+        wrapper.style.justifyContent = 'center';
+        wrapper.style.alignItems = 'center';
         
         // Adjust container to prevent overflow
         container.style.overflow = 'visible';
