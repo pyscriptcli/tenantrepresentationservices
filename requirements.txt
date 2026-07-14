@@ -24,3 +24,5 @@ httplib2>=0.22.0
 requests
 reportlab
 st-gsheets-connection
+folium
+streamlit-folium
