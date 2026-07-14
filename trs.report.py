@@ -12,6 +12,7 @@ import hashlib
 from openpyxl import load_workbook
 import streamlit.components.v1 as components
 import base64
+import time
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -285,10 +286,13 @@ SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7i
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
 #--- HELPER FUNCTIONS ---
-@st.cache_data(ttl=3600)
+# FIX: Reduced TTL to 60 seconds for higher freshness priority
+@st.cache_data(ttl=60)
 def download_file(url):
     try:
-        response = requests.get(url, timeout=30)
+        # Add headers to bypass some CDN caching
+        headers = {'Cache-Control': 'no-cache', 'Pragma': 'no-cache'}
+        response = requests.get(url, headers=headers, timeout=30)
         return io.BytesIO(response.content) if response.status_code == 200 else None
     except:
         return None
@@ -353,7 +357,8 @@ def parse_site_number(site_display_str):
     match = re.match(r"^(\d+)", site_display_str)
     return int(match.group(1)) if match else float('inf')
 
-@st.cache_data(ttl=600, show_spinner=False)
+# FIX: Reduced TTL to 60 seconds for report generation consistency
+@st.cache_data(ttl=60, show_spinner=False)
 def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders):
     ta_data = df[df["TRADE AREA"] == trade_area]
     wb = load_workbook(io.BytesIO(template_bytes_raw))
@@ -561,7 +566,8 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 #--- LOAD DATA ASSETS ---
-@st.cache_data(ttl=3600, show_spinner=True) # Use Streamlit's built-in spinner for initial load
+# FIX: Reduced TTL to 60 seconds for higher freshness priority
+@st.cache_data(ttl=60, show_spinner=True) 
 def load_data():
     # The spinner is handled by @st.cache_data when the cache is missed
     source_bytes = download_file(SOURCE_URL)
@@ -674,6 +680,14 @@ default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in tr
 
 # --- Step 4: Apply Presets and Render UI (Row 1 and Row 2) ---
 deploy_workspace_security_protocols()
+
+# FIX: Add a manual refresh button for immediate data updates
+with st.sidebar:
+    st.markdown("### Data Controls")
+    if st.button("🔄 Force Refresh Data", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+    st.caption("Auto-refreshes every 60s")
 
 #--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
 col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
