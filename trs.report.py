@@ -154,8 +154,8 @@ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4) di
     color: #ffffff !important;
     border: none !important;
     border-radius: 100px !important;
-    padding: 0.1rem 1rem !important;
-    font-size: 0.8rem !important;
+    padding: 0.1rem 0.5rem !important;
+    font-size: 0.7rem !important;
     font-weight: 500 !important;
     min-height: 28px !important; 
     height: 28px !important;
@@ -202,48 +202,6 @@ iframe[title="streamlit_components.components.html"]::-webkit-scrollbar {
     display: none !important;
     width: 0 !important;
     height: 0 !important;
-}
-
-/* Style for the timestamp */
-.timestamp-text {
-    font-size: 0.7rem !important;
-    font-style: italic !important;
-    color: #5f6368 !important;
-    margin-top: 2px !important;
-    padding-left: 2px !important;
-}
-
-/* Loading spinner overlay */
-.loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.9);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-    flex-direction: column;
-}
-.loading-overlay .spinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #003366;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    animation: spin 1s linear infinite;
-}
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-.loading-overlay .loading-text {
-    margin-top: 20px;
-    font-size: 1.2rem;
-    color: #003366;
-    font-weight: 500;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -340,8 +298,6 @@ if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 if 'data_timestamp' not in st.session_state:
     st.session_state.data_timestamp = None
-if 'is_loading' not in st.session_state:
-    st.session_state.is_loading = False
 
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
@@ -881,7 +837,17 @@ with col2:
     selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
 
 with col3:
-    if st.button("🔄 Refresh", use_container_width=True, key="refresh_button"):
+    # Format timestamp for button label
+    if st.session_state.data_timestamp:
+        timestamp_str = st.session_state.data_timestamp.strftime("%b %d %I:%M%p")
+        # Remove leading zero from hour if present
+        if timestamp_str.startswith("0"):
+            timestamp_str = timestamp_str[1:]
+        button_label = f"Refresh {timestamp_str}"
+    else:
+        button_label = "Refresh"
+    
+    if st.button(button_label, use_container_width=True, key="refresh_button"):
         force_refresh_data()
 
 with col4:
@@ -895,11 +861,6 @@ with col4:
             key="export_button"
         )
 
-# Timestamp row - directly below the refresh button
-timestamp_col1, timestamp_col2, timestamp_col3, timestamp_col4 = st.columns([1.2, 1.2, 0.9, 0.9])
-with timestamp_col3:
-    if st.session_state.data_timestamp:
-        st.caption(f"Updated as of {st.session_state.data_timestamp.strftime('%B %d, %Y at %I:%M %p')}")
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta and selected_site_display:
     # Get site data based on the selected/preset site
