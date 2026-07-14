@@ -407,21 +407,23 @@ html, body {
     background-color: #ffffff; 
     font-family: Arial, sans-serif; 
     height: 100%;
-    overflow: auto; 
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
 }
 /* Container that scales and centers the entire table */
 .report-wrapper {
     width: 100%;
-    overflow: hidden !important;
+    overflow-y: visible !important;
+    overflow-x: hidden !important;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
     padding: 0;
     margin: 0;
     min-height: 100%;
 }
 .report-scaler {
-    transform-origin: center center;
+    transform-origin: center top;
     width: 100%;
     display: inline-block;
     overflow: visible;
@@ -476,6 +478,17 @@ html, body {
 .remarks-row td { height: auto !important; padding: 6px 3px !important; vertical-align: top !important; }
 .remarks-row td.s5 { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; line-height: 1.6 !important; padding: 8px 6px !important; }
 .remarks-label { white-space: nowrap !important; vertical-align: top !important; padding-top: 8px !important; }
+
+/* Ensure the iframe container allows vertical scrolling */
+iframe[title="streamlit_components.components.html"] {
+    height: 1200px !important;
+    max-height: none !important;
+    border: none !important;
+    margin-bottom: 10px !important;
+    width: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -510,7 +523,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Apply scaling to the scaler element - centered
         if (scale < 1) {
             scaler.style.transform = 'scale(' + scale + ')';
-            scaler.style.transformOrigin = 'center center';
+            scaler.style.transformOrigin = 'center top';
             // Adjust width to compensate for scaling
             scaler.style.width = (100 / scale) + '%';
             scaler.style.marginBottom = '0px';
@@ -529,16 +542,33 @@ document.addEventListener('DOMContentLoaded', function() {
         container.style.textAlign = 'left';
         container.style.margin = '0 auto';
         
-        // Ensure the wrapper doesn't show scrollbars
-        wrapper.style.overflow = 'hidden';
+        // Allow vertical scrolling, hide horizontal
+        wrapper.style.overflowY = 'visible';
+        wrapper.style.overflowX = 'hidden';
         wrapper.style.width = '100%';
         wrapper.style.display = 'flex';
         wrapper.style.justifyContent = 'center';
-        wrapper.style.alignItems = 'center';
+        wrapper.style.alignItems = 'flex-start';
+        wrapper.style.minHeight = '100%';
         
-        // Adjust container to prevent overflow
-        container.style.overflow = 'visible';
+        // Adjust container to prevent horizontal overflow
+        container.style.overflowX = 'visible';
+        container.style.overflowY = 'visible';
         container.style.width = '100%';
+        
+        // Ensure the body allows vertical scrolling
+        document.body.style.overflowY = 'auto';
+        document.body.style.overflowX = 'hidden';
+        document.documentElement.style.overflowY = 'auto';
+        document.documentElement.style.overflowX = 'hidden';
+        
+        // Calculate and set the scaler height to allow scrolling
+        const tableHeight = table.scrollHeight;
+        if (scale < 1) {
+            scaler.style.height = (tableHeight * scale + 50) + 'px';
+        } else {
+            scaler.style.height = 'auto';
+        }
     }
     
     // Run on load
