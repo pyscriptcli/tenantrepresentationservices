@@ -12,13 +12,6 @@ import hashlib
 from openpyxl import load_workbook
 import streamlit.components.v1 as components
 import base64
-import json
-import folium
-from streamlit_folium import folium_static
-from folium.plugins import Draw
-import branca.colormap as cm
-import xml.etree.ElementTree as ET
-from urllib.parse import urlparse, parse_qs
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -27,9 +20,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-#--- GLOBAL STYLESHEET ENFORCER ---
+#--- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & OUTER SCROLLBAR) ---
 st.markdown("""
-<style>
+<style >
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
 
 * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
@@ -39,21 +32,22 @@ div[data-testid="stTextInput"] label {
     display: none !important;
 }
 
+/* Hide the broken visibility text/icon inside the password input */
 div[data-testid="stTextInput"] button {
     display: none !important;
 }
 
-/* Main viewport with outer scrollbar only */
+/* 1. FIXED: MAIN VIEWPORT WITH OUTER SCROLLBAR ONLY */
 html, body {
-    overflow-y: auto !important;
+    overflow-y: auto !important; /* ENABLES OUTER SCROLLBAR */
     overflow-x: hidden !important;
     height: 100% !important;
     margin: 0px !important;
     padding: 0px !important;
-    background-color: #f0f2f6 !important;
+    background-color: #ffffff !important;
 }
 
-/* Hide Streamlit header */
+/* 2. NUKE STREAMLIT HEADER & PADDING GHOSTS */
 header[data-testid="stHeader"], 
 [data-testid="stHeader"], 
 .stApp > header,
@@ -66,7 +60,7 @@ div[data-testid="stDecoration"] {
     opacity: 0 !important;
 }
 
-/* Main container styling */
+/* 3. FIXED: ALLOW SCROLLING WITH INCREASED GLOBAL HEIGHT (+100px) */
 .stApp,
 .appview-container, 
 .main, 
@@ -79,13 +73,43 @@ div[data-testid="stDecoration"] {
     padding-bottom: 0px !important;
     padding-left: 0.4rem !important;
     padding-right: 0.4rem !important;
-    overflow: visible !important;
+    overflow: visible !important; /* CRITICAL: Forces content to flow to body scrollbar */
     height: auto !important;
     max-height: none !important;
-    min-height: calc(100vh + 100px) !important;
+    min-height: calc(100vh + 100px) !important; /* INCREASED VERTICAL SIZE BY 100px */
 }
 
-/* Control bar styling */
+/* Catch and crush any empty layout blocks */
+div[data-testid="stVerticalBlock"] > div:has(style),
+div[data-testid="stVerticalBlock"] > div:empty {
+    display: none !important;
+    height: 0px !important;
+    margin: 0px !important;
+    padding: 0px !important;
+}
+
+/* 4. FIXED: REPORT VIEWER - HIDE INNER SCROLLBARS & INCREASE HEIGHT */
+iframe[title="streamlit_components.components.html"] {
+    height: 1200px !important; /* Increased height to fit content */
+    max-height: none !important;
+    border: none !important;
+    margin-bottom: 10px !important;
+    width: 100% !important;
+    overflow: hidden !important; /* PREVENTS INNER IFRAME SCROLLBAR */
+}
+
+/* Optimize Tab Headers Matrix for High Density Views */
+button[data-baseweb="tab"] {
+    padding-top: 0.1rem !important;
+    padding-bottom: 0.1rem !important;
+    font-size: 0.85rem !important;
+}
+
+div[data-testid="stTabs"] {
+    margin-top: -5px !important;
+}
+
+/* 5. Ultra-Compact Control Bar layout matrix definitions */
 div[data-testid="stHorizontalBlock"] { 
     gap: 0.5rem !important; 
     align-items: flex-end !important; 
@@ -94,7 +118,18 @@ div[data-testid="stHorizontalBlock"] {
     border-radius: 8px;
     margin-top: 0px !important; 
     margin-bottom: 10px !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* Hard pixel alignment lock for the export column element wrapper */
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) {
+    align-self: flex-end !important;
+    padding-bottom: 4px !important;
+}
+
+/* Force Streamlit's inner widget wrapper to drop any hidden margin blocks */
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"] {
+    margin-bottom: 0px !important;
+    padding-bottom: 0px !important;
 }
 
 .stSelectbox > div > div {
@@ -128,56 +163,7 @@ div[data-testid="stHorizontalBlock"] {
 }
 .stButton > button:hover, .stDownloadButton > button:hover { background-color: #0b4cb4 !important; }
 
-/* Tab styling */
-button[data-baseweb="tab"] {
-    padding-top: 0.3rem !important;
-    padding-bottom: 0.3rem !important;
-    font-size: 0.85rem !important;
-}
-
-div[data-testid="stTabs"] {
-    margin-top: -5px !important;
-}
-
-/* Map container */
-.folium-map {
-    border-radius: 8px;
-    border: 1px solid #e0e0e0;
-    overflow: hidden;
-}
-
-/* Popup styling */
-.popup-content {
-    font-family: 'Google Sans', sans-serif;
-    padding: 10px;
-    max-width: 300px;
-}
-
-.popup-content h4 {
-    margin: 0 0 8px 0;
-    color: #003366;
-    font-size: 14px;
-}
-
-.popup-content p {
-    margin: 4px 0;
-    font-size: 12px;
-    color: #333;
-}
-
-.popup-content .site-link {
-    display: inline-block;
-    margin-top: 8px;
-    padding: 4px 12px;
-    background-color: #003366;
-    color: white !important;
-    text-decoration: none;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-}
-
-/* Hide deployment watermarks */
+/* CSS Blocking Engine to Hide Deployment Watermarks */
 ._profilePreview_gzau3_63,
 ._link_gzau3_10,
 [class*='_profilePreview'],
@@ -290,8 +276,6 @@ if not os.path.exists(_config_file):
 TARGET_HASH = "6e7dfba0b39da481db37c3263c61cac6"
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
-    st.session_state.selected_site = None
-    st.session_state.active_tab = "PROPERTY INFORMATION"
 
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
@@ -299,7 +283,6 @@ def check_password(password):
 #--- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
-KML_URL = "https://www.google.com/maps/d/kml?mid=1CSUoDxCi-trQTTz_D6NjI3m0Kc5OQhM&1"
 
 #--- HELPER FUNCTIONS ---
 @st.cache_data(ttl=3600)
@@ -310,179 +293,23 @@ def download_file(url):
     except:
         return None
 
-@st.cache_data(ttl=3600)
-def fetch_kml_data():
-    """Fetch KML data from Google My Maps with better error handling"""
-    try:
-        # Try with a user-agent header
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        response = requests.get(KML_URL, headers=headers, timeout=30)
-        
-        if response.status_code == 200:
-            content = response.text
-            # Check if it's actually XML
-            if content.strip().startswith('<?xml') or content.strip().startswith('<kml'):
-                return content
-            else:
-                # Try to extract KML from HTML response (sometimes Google wraps it)
-                import re
-                kml_match = re.search(r'<kml[^>]*>.*?</kml>', content, re.DOTALL | re.IGNORECASE)
-                if kml_match:
-                    return kml_match.group(0)
-                # Check if it's a redirect to a different URL
-                redirect_match = re.search(r'window\.location\.href\s*=\s*["\']([^"\']+)["\']', content)
-                if redirect_match:
-                    redirect_url = redirect_match.group(1)
-                    response2 = requests.get(redirect_url, headers=headers, timeout=30)
-                    if response2.status_code == 200:
-                        return response2.text
-        return None
-    except Exception as e:
-        st.warning(f"KML fetch warning: {str(e)}")
-        return None
-
-def parse_kml_for_polygons(kml_content):
-    """Extract polygons and their properties from KML with better error handling"""
-    if not kml_content:
-        return []
-    
-    try:
-        # Clean the content
-        kml_content = kml_content.strip()
-        
-        # Try to parse with namespace
-        try:
-            ns = {'kml': 'http://www.opengis.net/kml/2.2'}
-            root = ET.fromstring(kml_content)
-        except:
-            # Try without namespace
-            ns = {}
-            # Remove namespace declarations
-            import re
-            cleaned = re.sub(r'xmlns[^=]*="[^"]*"', '', kml_content)
-            cleaned = re.sub(r'<kml:([^>]+)>', r'<\1>', cleaned)
-            cleaned = re.sub(r'</kml:([^>]+)>', r'</\1>', cleaned)
-            root = ET.fromstring(cleaned)
-            ns = {}
-        
-        polygons = []
-        
-        # Find all Placemarks (with or without namespace)
-        placemarks = []
-        if ns:
-            placemarks = root.findall('.//kml:Placemark', ns)
-        else:
-            placemarks = root.findall('.//Placemark')
-        
-        for placemark in placemarks:
-            # Get name
-            name_elem = None
-            if ns:
-                name_elem = placemark.find('kml:name', ns)
-            else:
-                name_elem = placemark.find('name')
-            name = name_elem.text if name_elem is not None else ""
-            
-            # Get coordinates
-            polygon_elem = None
-            if ns:
-                polygon_elem = placemark.find('.//kml:Polygon', ns)
-                if polygon_elem is None:
-                    multi_geom = placemark.find('.//kml:MultiGeometry', ns)
-                    if multi_geom is not None:
-                        polygon_elem = multi_geom.find('.//kml:Polygon', ns)
-            else:
-                polygon_elem = placemark.find('.//Polygon')
-                if polygon_elem is None:
-                    multi_geom = placemark.find('.//MultiGeometry')
-                    if multi_geom is not None:
-                        polygon_elem = multi_geom.find('.//Polygon')
-            
-            if polygon_elem is not None:
-                coords_elem = None
-                if ns:
-                    coords_elem = polygon_elem.find('.//kml:coordinates', ns)
-                    if coords_elem is None:
-                        outer_ring = polygon_elem.find('.//kml:outerBoundaryIs/kml:LinearRing', ns)
-                        if outer_ring is not None:
-                            coords_elem = outer_ring.find('.//kml:coordinates', ns)
-                else:
-                    coords_elem = polygon_elem.find('.//coordinates')
-                    if coords_elem is None:
-                        outer_ring = polygon_elem.find('.//outerBoundaryIs/LinearRing')
-                        if outer_ring is not None:
-                            coords_elem = outer_ring.find('.//coordinates')
-                
-                if coords_elem is not None and coords_elem.text:
-                    coords_text = coords_elem.text.strip()
-                    coords = []
-                    for coord in coords_text.split():
-                        parts = coord.strip().split(',')
-                        if len(parts) >= 2:
-                            try:
-                                coords.append([float(parts[1]), float(parts[0])])
-                            except ValueError:
-                                continue
-                    
-                    # Get extended data
-                    site_name = name
-                    trade_area = ""
-                    
-                    ext_data = None
-                    if ns:
-                        ext_data = placemark.find('.//kml:ExtendedData', ns)
-                    else:
-                        ext_data = placemark.find('.//ExtendedData')
-                    
-                    if ext_data is not None:
-                        data_items = []
-                        if ns:
-                            data_items = ext_data.findall('.//kml:Data', ns)
-                        else:
-                            data_items = ext_data.findall('.//Data')
-                        
-                        for data in data_items:
-                            name_attr = data.get('name')
-                            value_elem = None
-                            if ns:
-                                value_elem = data.find('.//kml:value', ns)
-                            else:
-                                value_elem = data.find('.//value')
-                            
-                            if name_attr and value_elem is not None and value_elem.text:
-                                if name_attr.upper() == "SITE_NAME":
-                                    site_name = value_elem.text
-                                elif name_attr.upper() == "TRADE_AREA":
-                                    trade_area = value_elem.text
-                    
-                    if coords and len(coords) >= 3:  # Need at least 3 points for a polygon
-                        polygons.append({
-                            'name': site_name or name,
-                            'trade_area': trade_area,
-                            'coordinates': coords,
-                            'description': name
-                        })
-        
-        return polygons
-    except Exception as e:
-        st.warning(f"Error parsing KML: {str(e)}")
-        return []
-
 def clean_and_extract_url(cell_value):
+    """Bypasses formula blocks like =IMAGE("url") to get the clean direct link string."""
     if cell_value is None:
         return ""
     val_str = str(cell_value).strip()
+    # Check if nested inside an IMAGE formula layout
     formula_match = re.search(r'IMAGE\s*\(\s*["\'](https://[^"\']+)["\']', val_str, re.IGNORECASE)
     if formula_match:
         return formula_match.group(1)
+    # Standard URL match fallback
     url_match = re.search(r'(https://[^\s"\']+)', val_str)
     if url_match:
         return url_match.group(1)
     return val_str
 
 def get_cell_val_safe(row_cells, index):
+    """Safely fetch and clean a cell value by fixed column index. Checks hyperlinks too."""
     if index < len(row_cells):
         cell = row_cells[index]
         if cell.hyperlink and cell.hyperlink.target:
@@ -491,6 +318,7 @@ def get_cell_val_safe(row_cells, index):
     return ""
 
 def extract_google_drive_id(clean_url):
+    """Extracts unique file ID from verified URL strings."""
     if not clean_url:
         return None
     match = re.search(r'(?:id=|/d/|/uc?.*?id=)([a-zA-Z0-9_-]{25,})', clean_url)
@@ -567,7 +395,7 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
-#--- COMPLETE HTML BLUEPRINT FOR SITE REPORT ---
+#--- COMPLETE HTML BLUEPRINT ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
@@ -733,20 +561,16 @@ document.addEventListener('DOMContentLoaded', function() {
 """
 
 #--- LOAD DATA ASSETS ---
-@st.cache_data(ttl=3600, show_spinner=True)
+@st.cache_data(ttl=3600, show_spinner=True) # Use Streamlit's built-in spinner for initial load
 def load_data():
+    # The spinner is handled by @st.cache_data when the cache is missed
     source_bytes = download_file(SOURCE_URL)
     template_data = download_file(TEMPLATE_URL)
-    kml_data = fetch_kml_data()
-    
     if source_bytes is None or template_data is None:
-        return None, None, None, [], []
-    
-    # Parse KML for polygons
-    polygons = parse_kml_for_polygons(kml_data) if kml_data else []
-    
-    # Ingest openpyxl layout
+        return None, None, None, []
+    # Ingest openpyxl layout with direct cells intact
     src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
+    # 1. Parse Main Data Sheet (assumed active/first)
     src_ws = src_wb.active
     raw_rows = list(src_ws.iter_rows(values_only=False))
     header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
@@ -764,7 +588,6 @@ def load_data():
             parsed_data_list.append(row_dict)
     df = pd.DataFrame(parsed_data_list)
     df = df.loc[:, ~df.columns.str.contains('^$')]
-    
     def create_site_display(row):
         site_no = row.get('SITE NO', '')
         site_name = row.get('SITE NAME', '')
@@ -775,128 +598,143 @@ def load_data():
                 return f"{site_no} - {site_name}"
         return str(site_name)
     df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
-    
-    # Extract media data
+    # 2. Extract Data from Specific "PHOTOS/DOCS" Tab using Exact Coordinates
     media_data_list = []
     media_ws = None
+    # Locate the correct tab
     for sheet_name in src_wb.sheetnames:
         if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
             media_ws = src_wb[sheet_name]
             break
+    # Fallback if specific media sheet name isn't found
     if not media_ws:
         media_ws = src_ws
-    
     for r in media_ws.iter_rows(values_only=False):
+        # Col N (13) and Col P (15) mapping to link specific records
         t_area = str(get_cell_val_safe(r, 13)).strip()
         s_name = str(get_cell_val_safe(r, 15)).strip()
+        # Avoid pulling the header row itself
         if t_area and s_name and t_area.upper() != "TRADE AREA":
             media_data_list.append({
                 'TRADE AREA': t_area,
                 'SITE NAME': s_name,
+                # DOCS: C(2), D(3), E(4), F(5)
                 '__DIRECT_TCT': get_cell_val_safe(r, 2),
                 '__DIRECT_LOT_PLAN': get_cell_val_safe(r, 3),
                 '__DIRECT_BLDG_PLAN': get_cell_val_safe(r, 4),
                 '__DIRECT_TAX_MAP': get_cell_val_safe(r, 5),
+                # PHOTOS: H(7), I(8), J(9), K(10), L(11)
                 '__DIRECT_PHOTO_1': get_cell_val_safe(r, 7),
                 '__DIRECT_PHOTO_2': get_cell_val_safe(r, 8),
                 '__DIRECT_PHOTO_3': get_cell_val_safe(r, 9),
                 '__DIRECT_PHOTO_4': get_cell_val_safe(r, 10),
                 '__DIRECT_PHOTO_5': get_cell_val_safe(r, 11),
             })
-    
     temp_wb = load_workbook(template_data)
     placeholders = get_placeholders(temp_wb.active)
+    # Extract the raw content to resolve the NameError
     template_bytes_raw = template_data.getvalue()
     template_data.seek(0)
-    
-    return df, placeholders, template_bytes_raw, media_data_list, polygons
+    return df, placeholders, template_bytes_raw, media_data_list
 
-#--- CREATE FOLIUM MAP WITH POLYGONS ---
-def create_site_map(polygons, df, selected_ta=None, selected_site=None):
-    # Calculate center
-    center_lat, center_lon = 14.5995, 120.9842  # Default to Manila
-    
-    if polygons:
-        all_coords = []
-        for poly in polygons:
-            all_coords.extend(poly['coordinates'])
-        if all_coords:
-            center_lat = sum(c[0] for c in all_coords) / len(all_coords)
-            center_lon = sum(c[1] for c in all_coords) / len(all_coords)
-    
-    m = folium.Map(location=[center_lat, center_lon], zoom_start=13, control_scale=True)
-    
-    # Create color map for trade areas
-    trade_areas = df["TRADE AREA"].dropna().unique().tolist()
-    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9', '#F8A5C2', '#74B9FF']
-    color_map = {}
-    for i, ta in enumerate(trade_areas):
-        color_map[ta] = colors[i % len(colors)]
-    
-    # Add polygons
-    for poly in polygons:
-        site_name = poly['name']
-        trade_area = poly['trade_area']
-        coords = poly['coordinates']
-        
-        # Determine color
-        color = color_map.get(trade_area, '#808080')
-        
-        # Create popup with HTML
-        popup_html = f"""
-        <div class="popup-content" style="font-family: 'Google Sans', sans-serif; padding: 10px; max-width: 300px;">
-            <h4 style="margin: 0 0 8px 0; color: #003366; font-size: 14px;">{site_name}</h4>
-            <p style="margin: 4px 0; font-size: 12px; color: #333;"><strong>Trade Area:</strong> {trade_area}</p>
-            <p style="margin: 4px 0; font-size: 12px; color: #333;"><strong>Click polygon to view details</strong></p>
-        </div>
-        """
-        popup = folium.Popup(popup_html, max_width=300)
-        
-        # Add polygon
-        folium.Polygon(
-            locations=coords,
-            color=color,
-            weight=2,
-            fill=True,
-            fill_color=color,
-            fill_opacity=0.4,
-            popup=popup,
-            tooltip=site_name,
-            smooth_factor=0.5
-        ).add_to(m)
-        
-        # Add marker at center of polygon
-        center = [sum(c[0] for c in coords) / len(coords), sum(c[1] for c in coords) / len(coords)]
-        folium.Marker(
-            location=center,
-            icon=folium.DivIcon(
-                html=f'<div style="background-color:{color};color:white;border-radius:50%;width:14px;height:14px;border:3px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></div>'
-            ),
-            tooltip=site_name
-        ).add_to(m)
-    
-    # Add legend
-    if trade_areas:
-        legend_html = '''
-        <div style="position: fixed; bottom: 50px; right: 50px; z-index: 1000; background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); font-family: 'Google Sans', sans-serif; font-size: 12px; max-height: 300px; overflow-y: auto; min-width: 150px;">
-            <strong style="display: block; margin-bottom: 6px;">Trade Areas</strong>
-        '''
-        for ta in trade_areas[:15]:  # Limit to 15 for display
-            color = color_map.get(ta, '#808080')
-            legend_html += f'<div style="display: flex; align-items: center; margin: 3px 0;"><span style="display: inline-block; width: 12px; height: 12px; background: {color}; border-radius: 3px; margin-right: 8px;"></span><span style="font-size: 11px;">{ta[:30]}</span></div>'
-        legend_html += '</div>'
-        m.get_root().html.add_child(folium.Element(legend_html))
-    
-    return m
+# --- MAIN LOGIC BEGINS ---
 
-#--- RENDER SITE INFORMATION IN TABS ---
-def render_site_tabs(site_row_data, media_row_data, selected_site_display):
+# --- Step 1: Display Login Function ---
+if not st.session_state.authenticated:
+    r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
+    with r1_col2:
+        st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
+        password_input = st.text_input("", placeholder="Enter password", type="password")
+        if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
+            if check_password(password_input):
+                st.session_state.authenticated = True
+                # Clear cache on successful login if needed, though typically not necessary just for auth
+                # st.cache_data.clear() 
+                st.rerun()
+            else:
+                st.error("Invalid token string provided.")
+    st.stop() # Stop execution if not authenticated
+
+# At this point, user is authenticated
+
+# --- Step 2: Initialize load_data() and derive defaults (this happens post-login) ---
+# The @st.cache_data decorator ensures this runs efficiently (from cache if possible)
+df, placeholders, template_bytes_raw, media_data_list = load_data()
+
+if df is None or template_bytes_raw is None:
+    st.error("Failed to load data assets. Please verify link paths.")
+    st.stop()
+
+# --- Step 3: Determine Default Selections (Preset Logic) ---
+trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
+first_row = df.iloc[0] if not df.empty else None
+first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
+first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
+default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
+
+# --- Step 4: Apply Presets and Render UI (Row 1 and Row 2) ---
+deploy_workspace_security_protocols()
+
+#--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
+col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
+with col1:
+    # Use the determined default index for the first TA
+    selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
+
+with col2:
+    if selected_ta:
+        raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
+        sites_in_ta = sorted(raw_sites, key=parse_site_number)
+
+        # Use the determined default index for the first site in the first TA
+        if selected_ta == first_trade_area and first_site_display in sites_in_ta:
+            default_site_index = sites_in_ta.index(first_site_display)
+        else:
+            default_site_index = 0 # Fallback if preset doesn't match
+    else:
+        sites_in_ta = []
+        default_site_index = 0
+
+    selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
+
+with col3:
+    if selected_ta:
+        st.download_button(
+            label="Export Trade Area",
+            data=generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders),
+            file_name=f"{selected_ta}_Site_Information_Report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+
+#--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
+if selected_ta and selected_site_display:
+    # Get site data based on the selected/preset site
+    site_data = df[df["SITE_DISPLAY"] == selected_site_display]
+    site_row_data = site_data.iloc[0] if not site_data.empty else None
+
+    # Get corresponding media data
+    target_ta = str(site_row_data["TRADE AREA"]) if site_row_data is not None else ""
+    target_sn = str(site_row_data["SITE NAME"]) if site_row_data is not None else ""
+    media_row_data = {}
+    if site_row_data is not None:
+        for m in media_data_list:
+            if m['TRADE AREA'] == target_ta and m['SITE NAME'] == target_sn:
+                media_row_data = m
+                break
+        if not media_row_data:
+            media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {} # Fallback if needed
+
+
+    # Instantiate Workspace Tabs instantly *after* controls are defined
     tab_report, tab_photos, tab_docs = st.tabs([
-        "🏢 PROPERTY INFORMATION",
-        "📸 PROPERTY PHOTOS", 
-        "📄 PROPERTY DOCS"
+        "PROPERTY INFORMATION",
+        "PROPERTY PHOTOS",
+        "PROPERTY DOCS"
     ])
-    
+
+
+    # --- TAB 1: SITE INFORMATION REPORT ---
     with tab_report:
         if site_row_data is not None:
             try:
@@ -904,7 +742,6 @@ def render_site_tabs(site_row_data, media_row_data, selected_site_display):
                     val = site_row_data.get(key_string.upper(), "")
                     if pd.isna(val) or val is None: return ""
                     return str(val).strip()
-                
                 rendered_view = HTML_FRAMEWORK
                 rendered_view = rendered_view.replace("_TRADE_AREA_", process_val("TRADE AREA"))
                 rendered_view = rendered_view.replace("_SITE_NAME_", process_val("SITE NAME"))
@@ -935,13 +772,15 @@ def render_site_tabs(site_row_data, media_row_data, selected_site_display):
                 rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS"))
                 rendered_view = rendered_view.replace("_REMARKS_", process_val("REMARKS"))
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-                
+
                 components.html(rendered_view, height=1200, scrolling=False)
+
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
         else:
-            st.info("No data available for the selected site.")
-    
+             st.info("No data available for the selected site.")
+
+    # --- TAB 2: PROPERTY PHOTOS (3x3 LAYOUT) ---
     with tab_photos:
         if site_row_data is not None and media_row_data:
             direct_photo_mapping = {
@@ -963,11 +802,11 @@ def render_site_tabs(site_row_data, media_row_data, selected_site_display):
                         thumb_url = raw_url
                         full_url = raw_url
                     valid_photos.append((label, thumb_url, full_url))
-            
             if valid_photos:
+                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
-                    .image-grid {
+                    .image-grid-3x3 {
                         display: grid;
                         grid-template-columns: repeat(3, 1fr);
                         gap: 15px;
@@ -1013,13 +852,17 @@ def render_site_tabs(site_row_data, media_row_data, selected_site_display):
                         height: 100%;
                     }
                     @media (max-width: 768px) {
-                        .image-grid { grid-template-columns: repeat(2, 1fr); }
+                        .image-grid-3x3 {
+                            grid-template-columns: repeat(2, 1fr);
+                        }
                     }
                     @media (max-width: 480px) {
-                        .image-grid { grid-template-columns: 1fr; }
+                        .image-grid-3x3 {
+                            grid-template-columns: 1fr;
+                        }
                     }
                 </style>
-                <div class="image-grid">
+                <div class="image-grid-3x3">
                 '''
                 for label, thumb_url, full_url in valid_photos:
                     grid_html += f'''
@@ -1031,12 +874,14 @@ def render_site_tabs(site_row_data, media_row_data, selected_site_display):
                         </div>
                     '''
                 grid_html += '</div>'
+                # UPDATED: scrolling=False forces outer scrollbar, height increased
                 components.html(grid_html, height=1200, scrolling=False)
             else:
                 st.info("No photo links configured for this property record selection.")
         else:
-            st.info("No data available for the selected site.")
-    
+             st.info("No data available for the selected site.")
+
+    # --- TAB 3: PROPERTY DOCS (3x3 LAYOUT) ---
     with tab_docs:
         if site_row_data is not None and media_row_data:
             direct_doc_mapping = {
@@ -1057,11 +902,11 @@ def render_site_tabs(site_row_data, media_row_data, selected_site_display):
                         thumb_url = raw_url
                         full_url = raw_url
                     valid_docs.append((label, thumb_url, full_url))
-            
             if valid_docs:
+                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
-                    .image-grid {
+                    .image-grid-3x3 {
                         display: grid;
                         grid-template-columns: repeat(3, 1fr);
                         gap: 15px;
@@ -1107,13 +952,17 @@ def render_site_tabs(site_row_data, media_row_data, selected_site_display):
                         height: 100%;
                     }
                     @media (max-width: 768px) {
-                        .image-grid { grid-template-columns: repeat(2, 1fr); }
+                        .image-grid-3x3 {
+                            grid-template-columns: repeat(2, 1fr);
+                        }
                     }
                     @media (max-width: 480px) {
-                        .image-grid { grid-template-columns: 1fr; }
+                        .image-grid-3x3 {
+                            grid-template-columns: 1fr;
+                        }
                     }
                 </style>
-                <div class="image-grid">
+                <div class="image-grid-3x3">
                 '''
                 for label, thumb_url, full_url in valid_docs:
                     grid_html += f'''
@@ -1125,110 +974,9 @@ def render_site_tabs(site_row_data, media_row_data, selected_site_display):
                         </div>
                     '''
                 grid_html += '</div>'
+                # UPDATED: scrolling=False forces outer scrollbar, height increased
                 components.html(grid_html, height=1200, scrolling=False)
             else:
                 st.info("No layout documents configured for this property record selection.")
         else:
-            st.info("No data available for the selected site.")
-
-#--- MAIN LOGIC ---
-
-# LOGIN
-if not st.session_state.authenticated:
-    r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
-    with r1_col2:
-        st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
-        password_input = st.text_input("", placeholder="Enter password", type="password")
-        if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
-            if check_password(password_input):
-                st.session_state.authenticated = True
-                st.rerun()
-            else:
-                st.error("Invalid token string provided.")
-    st.stop()
-
-# Load data
-df, placeholders, template_bytes_raw, media_data_list, polygons = load_data()
-
-if df is None or template_bytes_raw is None:
-    st.error("Failed to load data assets. Please verify link paths.")
-    st.stop()
-
-# --- LAYOUT: MAP + CONTROLS ---
-st.markdown("""
-    <div style="background: linear-gradient(90deg, #003366 0%, #1a5276 100%); padding: 8px 16px; border-radius: 8px; margin-bottom: 12px;">
-        <h2 style="color: white; margin: 0; font-size: 1.2rem; font-weight: 500;">📍 Site Sourcing Viewer</h2>
-    </div>
-""", unsafe_allow_html=True)
-
-# --- TWO COLUMN LAYOUT ---
-col_map, col_sidebar = st.columns([2.2, 1])
-
-with col_map:
-    # Create and display map
-    m = create_site_map(polygons, df)
-    folium_static(m, width=None, height=600)
-
-with col_sidebar:
-    st.markdown("### 🔍 Site Details")
-    
-    # Trade Area dropdown
-    trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
-    selected_ta = st.selectbox("Trade Area", options=trade_areas, index=0, key="ta_select")
-    
-    # Site Name dropdown (filtered by trade area)
-    if selected_ta:
-        sites_in_ta = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
-        sites_in_ta = sorted(sites_in_ta, key=parse_site_number)
-    else:
-        sites_in_ta = []
-    
-    selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=0, key="site_select")
-    
-    # Export button
-    if selected_ta:
-        st.download_button(
-            label="📥 Export Trade Area Report",
-            data=generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders),
-            file_name=f"{selected_ta}_Site_Information_Report.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
-    
-    # Quick info preview
-    if selected_site_display:
-        site_data = df[df["SITE_DISPLAY"] == selected_site_display]
-        if not site_data.empty:
-            site_row = site_data.iloc[0]
-            st.markdown("---")
-            st.markdown("### 📋 Quick Info")
-            
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.markdown(f"**Site #:** {site_row.get('SITE NO', 'N/A')}")
-                st.markdown(f"**Address:** {site_row.get('UNIT #, BLDG/ST # AND ST NAME', 'N/A')}")
-            with col_b:
-                st.markdown(f"**City:** {site_row.get('CITY/MUNICIPALITY', 'N/A')}")
-                st.markdown(f"**Region:** {site_row.get('REGION', 'N/A')}")
-
-# --- SITE INFORMATION TABS ---
-if selected_site_display:
-    st.markdown("---")
-    st.markdown(f"### 📊 Site Report: {selected_site_display}")
-    
-    # Get site data
-    site_data = df[df["SITE_DISPLAY"] == selected_site_display]
-    site_row_data = site_data.iloc[0] if not site_data.empty else None
-    
-    # Get media data
-    target_ta = str(site_row_data["TRADE AREA"]) if site_row_data is not None else ""
-    target_sn = str(site_row_data["SITE NAME"]) if site_row_data is not None else ""
-    media_row_data = {}
-    if site_row_data is not None:
-        for m in media_data_list:
-            if m['TRADE AREA'] == target_ta and m['SITE NAME'] == target_sn:
-                media_row_data = m
-                break
-    
-    # Render tabs
-    render_site_tabs(site_row_data, media_row_data, selected_site_display)
+             st.info("No data available for the selected site.")
