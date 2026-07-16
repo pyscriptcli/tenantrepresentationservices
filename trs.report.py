@@ -28,94 +28,112 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-#--- FULL SCREEN LOADING OVERLAY ---
-LOADING_HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { 
-        font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif;
-        background: #ffffff;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        overflow: hidden;
-    }
-    .loading-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 30px;
-        padding: 40px;
-    }
-    .spinner {
-        width: 60px;
-        height: 60px;
-        border: 4px solid #e8eaed;
-        border-top: 4px solid #003366;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    .loading-text {
-        font-size: 1.2rem;
-        color: #202124;
-        font-weight: 500;
-        letter-spacing: 0.3px;
-    }
-    .loading-subtext {
-        font-size: 0.9rem;
-        color: #5f6368;
-        font-weight: 400;
-        margin-top: -10px;
-    }
-    .progress-bar-container {
-        width: 300px;
-        height: 4px;
-        background: #e8eaed;
-        border-radius: 2px;
-        overflow: hidden;
-    }
-    .progress-bar {
-        height: 100%;
-        background: #003366;
-        border-radius: 2px;
-        width: 0%;
-        animation: progress 2.5s ease-in-out infinite;
-    }
-    @keyframes progress {
-        0% { width: 0%; }
-        50% { width: 70%; }
-        100% { width: 100%; }
-    }
-    .logo-text {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #003366;
-        letter-spacing: 1px;
-    }
-</style>
-</head>
-<body>
-<div class="loading-container">
-    <div class="logo-text">TRS</div>
-    <div class="spinner"></div>
-    <div class="loading-text">Loading Site Information Report</div>
-    <div class="loading-subtext">Please wait while we prepare your data...</div>
-    <div class="progress-bar-container">
-        <div class="progress-bar"></div>
+#--- FULL SCREEN LOADING OVERLAY COMPONENT ---
+def show_loading_overlay(message="Loading Data...", submessage="Please wait while we prepare your data..."):
+    """Display a full-screen loading overlay with custom message"""
+    loading_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ 
+            font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif;
+            background: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 999999;
+        }}
+        .loading-container {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            padding: 40px;
+        }}
+        .spinner {{
+            width: 60px;
+            height: 60px;
+            border: 4px solid #e8eaed;
+            border-top: 4px solid #003366;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }}
+        @keyframes spin {{
+            0% {{ transform: rotate(0deg); }}
+            100% {{ transform: rotate(360deg); }}
+        }}
+        .loading-text {{
+            font-size: 1.2rem;
+            color: #202124;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }}
+        .loading-subtext {{
+            font-size: 0.9rem;
+            color: #5f6368;
+            font-weight: 400;
+            margin-top: -10px;
+        }}
+        .progress-bar-container {{
+            width: 300px;
+            height: 4px;
+            background: #e8eaed;
+            border-radius: 2px;
+            overflow: hidden;
+        }}
+        .progress-bar {{
+            height: 100%;
+            background: #003366;
+            border-radius: 2px;
+            width: 0%;
+            animation: progress 2.5s ease-in-out infinite;
+        }}
+        @keyframes progress {{
+            0% {{ width: 0%; }}
+            50% {{ width: 70%; }}
+            100% {{ width: 100%; }}
+        }}
+        .logo-text {{
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #003366;
+            letter-spacing: 1px;
+        }}
+        .overlay-backdrop {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.95);
+            z-index: 999998;
+        }}
+    </style>
+    </head>
+    <body>
+    <div class="overlay-backdrop"></div>
+    <div class="loading-container">
+        <div class="logo-text">TRS</div>
+        <div class="spinner"></div>
+        <div class="loading-text">{message}</div>
+        <div class="loading-subtext">{submessage}</div>
+        <div class="progress-bar-container">
+            <div class="progress-bar"></div>
+        </div>
     </div>
-</div>
-</body>
-</html>
-"""
+    </body>
+    </html>
+    """
+    return components.html(loading_html, height=800, scrolling=False)
 
 #--- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & OUTER SCROLLBAR) ---
 st.markdown("""
@@ -218,13 +236,13 @@ div[data-testid="stHorizontalBlock"] {
 }
 
 /* Hard pixel alignment lock for the export column element wrapper */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4) {
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) {
     align-self: flex-end !important;
     padding-bottom: 4px !important;
 }
 
 /* Force Streamlit's inner widget wrapper to drop any hidden margin blocks */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4) div[data-testid="stElementWrapper"] {
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"] {
     margin-bottom: 0px !important;
     padding-bottom: 0px !important;
 }
@@ -297,6 +315,17 @@ iframe[title="streamlit_components.components.html"]::-webkit-scrollbar {
     display: none !important;
     width: 0 !important;
     height: 0 !important;
+}
+
+/* Ensure loading overlay is on top */
+.overlay-backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: rgba(255,255,255,0.95) !important;
+    z-index: 999999 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -403,6 +432,8 @@ if 'template_bytes_raw' not in st.session_state:
     st.session_state.template_bytes_raw = None
 if 'media_data_list' not in st.session_state:
     st.session_state.media_data_list = None
+if 'export_in_progress' not in st.session_state:
+    st.session_state.export_in_progress = False
 
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
@@ -460,12 +491,10 @@ def extract_google_drive_id(clean_url):
 
 def get_placeholders_optimized(template_bytes):
     """Extract placeholders from template without loading full workbook"""
-    # Use a simpler approach with iter_rows on the active sheet
     try:
         wb = load_workbook(io.BytesIO(template_bytes), data_only=False)
         sheet = wb.active
         placeholders = set()
-        # Use values_only=True for faster iteration
         for row in sheet.iter_rows(values_only=True):
             for val in row:
                 if isinstance(val, str):
@@ -503,11 +532,9 @@ def load_main_data_optimized(source_bytes):
         wb = load_workbook(io.BytesIO(source_bytes), data_only=False)
         ws = wb.active
         
-        # Get header row with values_only
         header_row = list(ws.iter_rows(min_row=1, max_row=1, values_only=True))[0]
         headers = [str(h).strip().upper() if h else "" for h in header_row]
         
-        # Use values_only=True for fast iteration
         parsed_data_list = []
         for row in ws.iter_rows(min_row=2, values_only=True):
             row_dict = {}
@@ -548,33 +575,26 @@ def load_media_data_optimized(source_bytes):
         media_data_list = []
         media_ws = None
         
-        # Locate the correct tab
         for sheet_name in wb.sheetnames:
             if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
                 media_ws = wb[sheet_name]
                 break
         
-        # Fallback if specific media sheet name isn't found
         if not media_ws:
             media_ws = wb.active
         
-        # Use values_only=True for fast iteration
         for row in media_ws.iter_rows(values_only=True):
-            # Col N (13) and Col P (15) mapping to link specific records
             t_area = str(row[13] if len(row) > 13 and row[13] is not None else "").strip()
             s_name = str(row[15] if len(row) > 15 and row[15] is not None else "").strip()
             
-            # Avoid pulling the header row itself
             if t_area and s_name and t_area.upper() != "TRADE AREA":
                 media_data_list.append({
                     'TRADE AREA': t_area,
                     'SITE NAME': s_name,
-                    # DOCS: C(2), D(3), E(4), F(5)
                     '__DIRECT_TCT': clean_and_extract_url(row[2] if len(row) > 2 else ""),
                     '__DIRECT_LOT_PLAN': clean_and_extract_url(row[3] if len(row) > 3 else ""),
                     '__DIRECT_BLDG_PLAN': clean_and_extract_url(row[4] if len(row) > 4 else ""),
                     '__DIRECT_TAX_MAP': clean_and_extract_url(row[5] if len(row) > 5 else ""),
-                    # PHOTOS: H(7), I(8), J(9), K(10), L(11)
                     '__DIRECT_PHOTO_1': clean_and_extract_url(row[7] if len(row) > 7 else ""),
                     '__DIRECT_PHOTO_2': clean_and_extract_url(row[8] if len(row) > 8 else ""),
                     '__DIRECT_PHOTO_3': clean_and_extract_url(row[9] if len(row) > 9 else ""),
@@ -592,7 +612,6 @@ def load_data_parallel():
     """Load data with parallel processing using ThreadPoolExecutor"""
     start_time = time.time()
     
-    # Download files in parallel
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_source = executor.submit(download_file, SOURCE_URL)
         future_template = executor.submit(download_file, TEMPLATE_URL)
@@ -606,7 +625,6 @@ def load_data_parallel():
     source_data = source_bytes.getvalue()
     template_data = template_bytes.getvalue()
     
-    # Load data in parallel
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_main = executor.submit(load_main_data_optimized, source_data)
         future_media = executor.submit(load_media_data_optimized, source_data)
@@ -617,7 +635,6 @@ def load_data_parallel():
     if df is None:
         return None, None, None, [], None
     
-    # Extract placeholders from template
     placeholders = get_placeholders_optimized(template_data)
     
     elapsed = time.time() - start_time
@@ -641,7 +658,6 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
         new_sheet = wb.copy_worksheet(base_sheet)
         new_sheet.title = safe_tab_name
         
-        # Process cells with values_only=False to maintain formatting
         for row_cells in new_sheet.iter_rows():
             for cell in row_cells:
                 if isinstance(cell.value, str) and "{{" in cell.value:
@@ -662,7 +678,6 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
                     new_val = re.sub(r"\{\{.*?\}\}", "", new_val)
                     cell.value = new_val.strip() if new_val else ""
         
-        # Auto-adjust row heights for better visibility
         for row in new_sheet.iter_rows():
             max_len = max([len(str(cell.value or '')) for cell in row])
             if max_len > 45:
@@ -695,7 +710,6 @@ html, body {
     overflow-y: auto !important;
     overflow-x: hidden !important;
 }
-/* Container that scales and centers the entire table */
 .report-wrapper {
     width: 100%;
     overflow-y: visible !important;
@@ -773,32 +787,25 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!wrapper || !scaler || !container) return;
         
-        // Get the natural width of the table content
         const table = document.querySelector('.waffle');
         if (!table) return;
         
-        // Get container width (available space)
         const containerWidth = wrapper.parentElement ? wrapper.parentElement.clientWidth : window.innerWidth;
-        const availableWidth = containerWidth - 40; // Account for padding and margins
+        const availableWidth = containerWidth - 40;
         
-        // Reset table to auto width to measure natural size
         table.style.width = 'auto';
         const naturalWidth = table.scrollWidth;
         table.style.width = '100%';
         
-        // Calculate scale factor
         let scale = 1;
         if (naturalWidth > availableWidth) {
-            scale = (availableWidth / naturalWidth) * 0.95; // 95% to give slight margin
-            // Ensure we don't scale too small
+            scale = (availableWidth / naturalWidth) * 0.95;
             if (scale < 0.4) scale = 0.4;
         }
         
-        // Apply scaling to the scaler element - centered
         if (scale < 1) {
             scaler.style.transform = 'scale(' + scale + ')';
             scaler.style.transformOrigin = 'center top';
-            // Adjust width to compensate for scaling
             scaler.style.width = (100 / scale) + '%';
             scaler.style.marginBottom = '0px';
             scaler.style.display = 'inline-block';
@@ -811,12 +818,10 @@ document.addEventListener('DOMContentLoaded', function() {
             scaler.style.textAlign = 'center';
         }
         
-        // Center the container
         container.style.display = 'inline-block';
         container.style.textAlign = 'left';
         container.style.margin = '0 auto';
         
-        // Allow vertical scrolling, hide horizontal
         wrapper.style.overflowY = 'visible';
         wrapper.style.overflowX = 'hidden';
         wrapper.style.width = '100%';
@@ -825,18 +830,15 @@ document.addEventListener('DOMContentLoaded', function() {
         wrapper.style.alignItems = 'flex-start';
         wrapper.style.minHeight = '100%';
         
-        // Adjust container to prevent horizontal overflow
         container.style.overflowX = 'visible';
         container.style.overflowY = 'visible';
         container.style.width = '100%';
         
-        // Ensure the body allows vertical scrolling
         document.body.style.overflowY = 'auto';
         document.body.style.overflowX = 'hidden';
         document.documentElement.style.overflowY = 'auto';
         document.documentElement.style.overflowX = 'hidden';
         
-        // Calculate and set the scaler height to allow scrolling
         const tableHeight = table.scrollHeight;
         if (scale < 1) {
             scaler.style.height = (tableHeight * scale + 50) + 'px';
@@ -845,17 +847,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Run on load
     setTimeout(scaleReportToFit, 100);
     
-    // Run on resize
     let resizeTimer;
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(scaleReportToFit, 100);
     });
     
-    // Also run when content changes
     const observer = new MutationObserver(function() { 
         setTimeout(scaleReportToFit, 100);
     });
@@ -864,7 +863,6 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(tableBody, { childList: true, subtree: true, characterData: true }); 
     }
     
-    // Additional check after images load
     window.addEventListener('load', function() {
         setTimeout(scaleReportToFit, 200);
     });
@@ -971,7 +969,7 @@ if not st.session_state.authenticated:
 # Show full-screen loading overlay if data hasn't been loaded yet
 if not st.session_state.data_loaded:
     # Display full-screen loading overlay
-    components.html(LOADING_HTML, height=800, scrolling=False)
+    show_loading_overlay("Loading Data...", "Please wait while we prepare your data...")
     
     # Load data with parallel processing
     with st.spinner("Loading data..."):
@@ -1033,14 +1031,34 @@ with col2:
 
 with col3:
     if selected_ta:
-        st.download_button(
-            label="Export",
-            data=generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders),
-            file_name=f"{selected_ta}_Site_Information_Report.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
-            key="export_button"
-        )
+        # Create a download button that shows loading overlay on click
+        export_key = f"export_{selected_ta}_{selected_site_display}"
+        
+        # Use a placeholder for the download button
+        download_placeholder = st.empty()
+        
+        # Check if export is in progress
+        if st.session_state.get('export_in_progress', False):
+            show_loading_overlay("Generating Export...", "Please wait while we prepare your Excel report...")
+        
+        # Create download button with custom behavior
+        if download_placeholder.button("Export", use_container_width=True, key=export_key):
+            st.session_state.export_in_progress = True
+            # Generate the report
+            try:
+                report_data = generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders)
+                st.session_state.export_in_progress = False
+                # Use st.download_button to trigger download
+                st.download_button(
+                    label="Download Report",
+                    data=report_data,
+                    file_name=f"{selected_ta}_Site_Information_Report.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"download_{export_key}"
+                )
+            except Exception as e:
+                st.session_state.export_in_progress = False
+                st.error(f"Error generating export: {str(e)}")
 
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
 if selected_ta and selected_site_display:
