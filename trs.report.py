@@ -16,7 +16,7 @@ from datetime import datetime
 import time
 import gspread
 from google.oauth2.service_account import Credentials
-import json
+
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -731,8 +731,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
-#--- LOAD DATA ASSETS USING GOOGLE SHEETS API ---
-@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+
 #--- GOOGLE SHEETS CREDENTIALS ---
 import json
 import os
@@ -755,6 +754,8 @@ def get_credentials():
     # If file doesn't exist, raise error
     raise FileNotFoundError(f"Credentials file not found. Tried: {possible_paths}")
 
+#--- LOAD DATA ASSETS USING GOOGLE SHEETS API ---
+@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
 
 def load_data():
     """Load data from Google Sheets using API (no Excel download for data)"""
