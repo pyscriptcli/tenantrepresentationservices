@@ -14,6 +14,8 @@ import streamlit.components.v1 as components
 import base64
 from datetime import datetime
 import time
+import gspread
+from google.oauth2.service_account import Credentials
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -929,7 +931,7 @@ if selected_ta and selected_site_display:
                 
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
                 
-                components.html(rendered_view, height=1200, scrolling=False)
+                components.html(rendered_view, height=1600, scrolling=False)
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
         else:
