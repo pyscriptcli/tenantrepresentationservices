@@ -28,93 +28,36 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-#--- FULL SCREEN LOADING OVERLAY (MARKDOWN VERSION) ---
-def get_loading_overlay_html(message="Loading Data...", submessage="Please wait while we prepare your data..."):
-    """Return HTML for a full‑screen loading overlay (fixed position, covers everything)."""
+#--- FULL SCREEN LOADING OVERLAY (MINIMALIST VERSION) ---
+def get_loading_overlay_html(message="Loading data..."):
+    """Return HTML for a clean, minimalist full-screen loading overlay."""
     return f"""
     <div id="loading-overlay" style="
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255,255,255,0.95);
-        z-index: 999999;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(255, 255, 255, 0.98);
+        z-index: 999999; 
+        display: flex; flex-direction: column;
+        justify-content: center; align-items: center;
         font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif;
-        margin: 0;
-        padding: 0;
     ">
         <div style="
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 30px;
-            padding: 40px;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
-            min-width: 400px;
-            text-align: center;
-        ">
-            <div style="font-size: 1.8rem; font-weight: 700; color: #003366; letter-spacing: 2px;">TRS</div>
-            <div style="
-                width: 60px;
-                height: 60px;
-                border: 4px solid #e8eaed;
-                border-top: 4px solid #003366;
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-            "></div>
-            <div style="font-size: 1.2rem; color: #202124; font-weight: 500;">{message}</div>
-            <div style="font-size: 0.9rem; color: #5f6368; font-weight: 400; margin-top: -10px;">{submessage}</div>
-            <div style="width: 300px; height: 4px; background: #e8eaed; border-radius: 2px; overflow: hidden; margin-top: 10px;">
-                <div style="
-                    height: 100%;
-                    background: #003366;
-                    border-radius: 2px;
-                    width: 0%;
-                    animation: progress 2.5s ease-in-out infinite;
-                "></div>
-            </div>
-            <div style="font-size: 0.8rem; color: #5f6368; min-height: 24px;" id="statusMessage">Initializing...</div>
+            width: 45px; height: 45px;
+            border: 4px solid #f0f2f6;
+            border-top: 4px solid #003366;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        "></div>
+        <div style="font-size: 1.1rem; color: #202124; font-weight: 500; letter-spacing: 0.5px;">
+            {message}
         </div>
     </div>
     <style>
-        @keyframes spin {{
-            0% {{ transform: rotate(0deg); }}
-            100% {{ transform: rotate(360deg); }}
-        }}
-        @keyframes progress {{
-            0% {{ width: 0%; }}
-            50% {{ width: 70%; }}
-            100% {{ width: 100%; }}
+        @keyframes spin {{ 
+            0% {{ transform: rotate(0deg); }} 
+            100% {{ transform: rotate(360deg); }} 
         }}
     </style>
-    <script>
-        (function() {{
-            const statusMessages = [
-                'Connecting to data source...',
-                'Downloading files...',
-                'Processing data...',
-                'Optimizing for display...',
-                'Almost ready...'
-            ];
-            let msgIndex = 0;
-            const interval = setInterval(function() {{
-                const el = document.getElementById('statusMessage');
-                if (el && msgIndex < statusMessages.length) {{
-                    el.textContent = statusMessages[msgIndex];
-                    msgIndex++;
-                }} else {{
-                    clearInterval(interval);
-                }}
-            }}, 500);
-        }})();
-    </script>
     """
 
 #--- LINE 1 GLOBAL STYLESHEET ENFORCER ---
@@ -900,40 +843,47 @@ if not st.session_state.authenticated:
                 st.error("Invalid token string provided.")
     st.stop()
 
-# --- Step 2: If authenticated but data not loaded yet, show full‑screen overlay and load data ---
+# --- Step 2: If authenticated but data not loaded yet, show full-screen overlay and load data ---
 if not st.session_state.data_loaded:
-    # Show the loading overlay (markdown, fixed position)
-    st.markdown(get_loading_overlay_html(
-        message="Loading Site Information Report",
-        submessage="Please wait while we fetch and process your data..."
+    # Create an empty placeholder to securely hold the loading screen
+    loading_placeholder = st.empty()
+    
+    # Render the overlay immediately
+    loading_placeholder.markdown(get_loading_overlay_html(
+        message="Fetching Site Information..."
     ), unsafe_allow_html=True)
     
-    # Small delay to ensure overlay renders
-    time.sleep(0.5)
-    
-    # Load data with parallel processing (fresh fetch)
+    # Execute parallel data fetching
     try:
         data = load_data_parallel()
-        df, placeholders, template_bytes_raw, media_data_list, data_timestamp = data
         
-        if df is None or template_bytes_raw is None:
+        # Verify data payload is complete
+        if data and data[0] is not None:
+            df, placeholders, template_bytes_raw, media_data_list, data_timestamp = data
+            
+            # Commit data to session state
+            st.session_state.df = df
+            st.session_state.placeholders = placeholders
+            st.session_state.template_bytes_raw = template_bytes_raw
+            st.session_state.media_data_list = media_data_list
+            st.session_state.data_timestamp = data_timestamp
+            
+            # Unlock the UI ONLY after all data is safely loaded
+            st.session_state.data_loaded = True
+            st.session_state.first_load_complete = True
+            
+            # Destroy the loading screen container and trigger UI render
+            loading_placeholder.empty()
+            st.rerun()
+        else:
+            # Handle empty/failed returns safely
+            loading_placeholder.empty()
             st.error("Failed to load data assets. Please verify link paths.")
             st.stop()
-        
-        # Store data in session state
-        st.session_state.df = df
-        st.session_state.placeholders = placeholders
-        st.session_state.template_bytes_raw = template_bytes_raw
-        st.session_state.media_data_list = media_data_list
-        st.session_state.data_timestamp = data_timestamp
-        st.session_state.data_loaded = True
-        st.session_state.first_load_complete = True
-        
-        # Rerun to remove overlay and show main UI
-        time.sleep(0.3)
-        st.rerun()
-        
+            
     except Exception as e:
+        # Handle exceptions without trapping the user in an infinite loading screen
+        loading_placeholder.empty()
         st.error(f"Error loading data: {str(e)}")
         st.stop()
 
