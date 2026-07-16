@@ -14,9 +14,12 @@ import streamlit.components.v1 as components
 import base64
 from datetime import datetime
 import time
-import pickle
-from concurrent.futures import ThreadPoolExecutor
 import threading
+import queue
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import pickle
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -24,6 +27,95 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+
+#--- FULL SCREEN LOADING OVERLAY ---
+LOADING_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+        font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif;
+        background: #ffffff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        overflow: hidden;
+    }
+    .loading-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 30px;
+        padding: 40px;
+    }
+    .spinner {
+        width: 60px;
+        height: 60px;
+        border: 4px solid #e8eaed;
+        border-top: 4px solid #003366;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .loading-text {
+        font-size: 1.2rem;
+        color: #202124;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+    }
+    .loading-subtext {
+        font-size: 0.9rem;
+        color: #5f6368;
+        font-weight: 400;
+        margin-top: -10px;
+    }
+    .progress-bar-container {
+        width: 300px;
+        height: 4px;
+        background: #e8eaed;
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    .progress-bar {
+        height: 100%;
+        background: #003366;
+        border-radius: 2px;
+        width: 0%;
+        animation: progress 2.5s ease-in-out infinite;
+    }
+    @keyframes progress {
+        0% { width: 0%; }
+        50% { width: 70%; }
+        100% { width: 100%; }
+    }
+    .logo-text {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #003366;
+        letter-spacing: 1px;
+    }
+</style>
+</head>
+<body>
+<div class="loading-container">
+    <div class="logo-text">TRS</div>
+    <div class="spinner"></div>
+    <div class="loading-text">Loading Site Information Report</div>
+    <div class="loading-subtext">Please wait while we prepare your data...</div>
+    <div class="progress-bar-container">
+        <div class="progress-bar"></div>
+    </div>
+</div>
+</body>
+</html>
+"""
 
 #--- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & OUTER SCROLLBAR) ---
 st.markdown("""
@@ -44,7 +136,7 @@ div[data-testid="stTextInput"] button {
 
 /* 1. FIXED: MAIN VIEWPORT WITH OUTER SCROLLBAR ONLY */
 html, body {
-    overflow-y: auto !important;
+    overflow-y: auto !important; /* ENABLES OUTER SCROLLBAR */
     overflow-x: hidden !important;
     height: 100% !important;
     margin: 0px !important;
@@ -78,10 +170,10 @@ div[data-testid="stDecoration"] {
     padding-bottom: 0px !important;
     padding-left: 0.4rem !important;
     padding-right: 0.4rem !important;
-    overflow: visible !important;
+    overflow: visible !important; /* CRITICAL: Forces content to flow to body scrollbar */
     height: auto !important;
     max-height: none !important;
-    min-height: calc(100vh + 100px) !important;
+    min-height: calc(100vh + 100px) !important; /* INCREASED VERTICAL SIZE BY 100px */
 }
 
 /* Catch and crush any empty layout blocks */
@@ -95,12 +187,12 @@ div[data-testid="stVerticalBlock"] > div:empty {
 
 /* 4. FIXED: REPORT VIEWER - HIDE INNER SCROLLBARS & INCREASE HEIGHT */
 iframe[title="streamlit_components.components.html"] {
-    height: 1200px !important;
+    height: 1200px !important; /* Increased height to fit content */
     max-height: none !important;
     border: none !important;
     margin-bottom: 10px !important;
     width: 100% !important;
-    overflow: hidden !important;
+    overflow: hidden !important; /* PREVENTS INNER IFRAME SCROLLBAR */
 }
 
 /* Optimize Tab Headers Matrix for High Density Views */
@@ -126,13 +218,13 @@ div[data-testid="stHorizontalBlock"] {
 }
 
 /* Hard pixel alignment lock for the export column element wrapper */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) {
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4) {
     align-self: flex-end !important;
     padding-bottom: 4px !important;
 }
 
 /* Force Streamlit's inner widget wrapper to drop any hidden margin blocks */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"] {
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4) div[data-testid="stElementWrapper"] {
     margin-bottom: 0px !important;
     padding-bottom: 0px !important;
 }
@@ -206,106 +298,7 @@ iframe[title="streamlit_components.components.html"]::-webkit-scrollbar {
     width: 0 !important;
     height: 0 !important;
 }
-
-/* Full Screen Loading Overlay */
-.loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.95);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 999999;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-}
-.loading-overlay .spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid #e0e0e0;
-    border-top: 4px solid #003366;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-.loading-overlay .loading-text {
-    margin-top: 20px;
-    font-size: 18px;
-    color: #003366;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-}
-.loading-overlay .loading-subtext {
-    margin-top: 8px;
-    font-size: 14px;
-    color: #666;
-}
-.loading-overlay .progress-bar {
-    width: 300px;
-    height: 4px;
-    background: #e0e0e0;
-    border-radius: 2px;
-    margin-top: 20px;
-    overflow: hidden;
-}
-.loading-overlay .progress-bar .progress-fill {
-    height: 100%;
-    background: #003366;
-    border-radius: 2px;
-    transition: width 0.3s ease;
-    width: 0%;
-}
 </style>
-
-<!-- Full Screen Loading Overlay HTML -->
-<div id="loading-overlay" class="loading-overlay">
-    <div class="spinner"></div>
-    <div class="loading-text">Loading Data...</div>
-    <div class="loading-subtext">Please wait while we prepare your report</div>
-    <div class="progress-bar">
-        <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
-    </div>
-</div>
-
-<script>
-// Function to update loading progress
-function updateProgress(percent) {
-    const fill = document.getElementById('progress-fill');
-    if (fill) {
-        fill.style.width = percent + '%';
-    }
-}
-
-// Function to remove loading overlay
-function hideLoadingOverlay() {
-    const overlay = document.getElementById('loading-overlay');
-    if (overlay) {
-        overlay.style.opacity = '0';
-        setTimeout(function() {
-            overlay.style.display = 'none';
-        }, 300);
-    }
-}
-
-// Remove loading overlay when page is fully loaded
-window.addEventListener('load', function() {
-    setTimeout(hideLoadingOverlay, 100);
-});
-
-// Also remove when Streamlit is ready
-if (window.Streamlit) {
-    window.Streamlit.events.addEventListener('streamlit:render', function() {
-        setTimeout(hideLoadingOverlay, 200);
-    });
-}
-</script>
 """, unsafe_allow_html=True)
 
 #--- RUNTIME WORKSPACE SECURITY OBSERVERS ---
@@ -384,6 +377,8 @@ def deploy_workspace_security_protocols():
     """
     components.html(injected_js, height=0, width=0)
 
+deploy_workspace_security_protocols()
+
 #--- PROGRAMMATIC LIGHT MODE LOCK ---
 _config_dir = ".streamlit"
 _config_file = os.path.join(_config_dir, "config.toml")
@@ -400,6 +395,14 @@ if 'data_timestamp' not in st.session_state:
     st.session_state.data_timestamp = None
 if 'data_loaded' not in st.session_state:
     st.session_state.data_loaded = False
+if 'df' not in st.session_state:
+    st.session_state.df = None
+if 'placeholders' not in st.session_state:
+    st.session_state.placeholders = None
+if 'template_bytes_raw' not in st.session_state:
+    st.session_state.template_bytes_raw = None
+if 'media_data_list' not in st.session_state:
+    st.session_state.media_data_list = None
 
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
@@ -408,18 +411,16 @@ def check_password(password):
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 CACHE_TTL = 86400  # 24 hours in seconds
-CACHE_DIR = ".cache"
 
-# Create cache directory if it doesn't exist
-if not os.path.exists(CACHE_DIR):
-    os.makedirs(CACHE_DIR)
-
-#--- HELPER FUNCTIONS ---
+#--- OPTIMIZED HELPER FUNCTIONS ---
 @st.cache_data(ttl=3600)
 def download_file(url):
+    """Download file with timeout and retry logic"""
     try:
         response = requests.get(url, timeout=30)
-        return io.BytesIO(response.content) if response.status_code == 200 else None
+        if response.status_code == 200:
+            return io.BytesIO(response.content)
+        return None
     except:
         return None
 
@@ -428,21 +429,26 @@ def clean_and_extract_url(cell_value):
     if cell_value is None:
         return ""
     val_str = str(cell_value).strip()
+    # Check if nested inside an IMAGE formula layout
     formula_match = re.search(r'IMAGE\s*\(\s*["\'](https://[^"\']+)["\']', val_str, re.IGNORECASE)
     if formula_match:
         return formula_match.group(1)
+    # Standard URL match fallback
     url_match = re.search(r'(https://[^\s"\']+)', val_str)
     if url_match:
         return url_match.group(1)
     return val_str
 
-def get_cell_val_safe(row_cells, index):
-    """Safely fetch and clean a cell value by fixed column index. Checks hyperlinks too."""
-    if index < len(row_cells):
-        cell = row_cells[index]
-        if cell.hyperlink and cell.hyperlink.target:
-            return clean_and_extract_url(cell.hyperlink.target)
-        return clean_and_extract_url(cell.value)
+def get_cell_val_safe(row_values, index):
+    """Safely fetch and clean a cell value by fixed column index from values_only data."""
+    if index < len(row_values):
+        val = row_values[index]
+        if val is not None and isinstance(val, str):
+            # Check for URL in string
+            url_match = re.search(r'(https://[^\s"\']+)', val)
+            if url_match:
+                return url_match.group(1)
+        return val if val is not None else ""
     return ""
 
 def extract_google_drive_id(clean_url):
@@ -452,16 +458,26 @@ def extract_google_drive_id(clean_url):
     match = re.search(r'(?:id=|/d/|/uc?.*?id=)([a-zA-Z0-9_-]{25,})', clean_url)
     return match.group(1) if match else None
 
-def get_placeholders(sheet):
-    placeholders = set()
-    for row in sheet.iter_rows():
-        for cell in row:
-            if isinstance(cell.value, str):
-                matches = re.findall(r"{{(.*?)}}", cell.value)
-                for match in matches:
-                    name = match.split(":")[0].strip() if ":" in match else match.strip()
-                    placeholders.add(name)
-    return sorted(list(placeholders))
+def get_placeholders_optimized(template_bytes):
+    """Extract placeholders from template without loading full workbook"""
+    # Use a simpler approach with iter_rows on the active sheet
+    try:
+        wb = load_workbook(io.BytesIO(template_bytes), data_only=False)
+        sheet = wb.active
+        placeholders = set()
+        # Use values_only=True for faster iteration
+        for row in sheet.iter_rows(values_only=True):
+            for val in row:
+                if isinstance(val, str):
+                    matches = re.findall(r"{{(.*?)}}", val)
+                    for match in matches:
+                        name = match.split(":")[0].strip() if ":" in match else match.strip()
+                        placeholders.add(name)
+        wb.close()
+        return sorted(list(placeholders))
+    except Exception as e:
+        st.error(f"Error extracting placeholders: {e}")
+        return []
 
 def sanitize_tab_name(name, existing_names):
     clean_name = re.sub(r'[/*?\[\]:]', '', str(name))[:31]
@@ -481,19 +497,151 @@ def parse_site_number(site_display_str):
     match = re.match(r"^(\d+)", site_display_str)
     return int(match.group(1)) if match else float('inf')
 
+def load_main_data_optimized(source_bytes):
+    """Load main data using values_only=True for maximum speed"""
+    try:
+        wb = load_workbook(io.BytesIO(source_bytes), data_only=False)
+        ws = wb.active
+        
+        # Get header row with values_only
+        header_row = list(ws.iter_rows(min_row=1, max_row=1, values_only=True))[0]
+        headers = [str(h).strip().upper() if h else "" for h in header_row]
+        
+        # Use values_only=True for fast iteration
+        parsed_data_list = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            row_dict = {}
+            has_val = False
+            for idx, val in enumerate(row):
+                if idx < len(headers) and headers[idx]:
+                    cleaned_val = clean_and_extract_url(val)
+                    row_dict[headers[idx]] = cleaned_val
+                    if cleaned_val != "":
+                        has_val = True
+            if has_val:
+                parsed_data_list.append(row_dict)
+        
+        wb.close()
+        df = pd.DataFrame(parsed_data_list)
+        df = df.loc[:, ~df.columns.str.contains('^$')]
+        
+        def create_site_display(row):
+            site_no = row.get('SITE NO', '')
+            site_name = row.get('SITE NAME', '')
+            if pd.notna(site_no) and site_no != '':
+                try:
+                    return f"{int(float(str(site_no)))} - {site_name}"
+                except:
+                    return f"{site_no} - {site_name}"
+            return str(site_name)
+        
+        df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
+        return df
+    except Exception as e:
+        st.error(f"Error loading main data: {e}")
+        return None
+
+def load_media_data_optimized(source_bytes):
+    """Load media data from PHOTOS/DOCS tab using values_only=True"""
+    try:
+        wb = load_workbook(io.BytesIO(source_bytes), data_only=False)
+        media_data_list = []
+        media_ws = None
+        
+        # Locate the correct tab
+        for sheet_name in wb.sheetnames:
+            if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
+                media_ws = wb[sheet_name]
+                break
+        
+        # Fallback if specific media sheet name isn't found
+        if not media_ws:
+            media_ws = wb.active
+        
+        # Use values_only=True for fast iteration
+        for row in media_ws.iter_rows(values_only=True):
+            # Col N (13) and Col P (15) mapping to link specific records
+            t_area = str(row[13] if len(row) > 13 and row[13] is not None else "").strip()
+            s_name = str(row[15] if len(row) > 15 and row[15] is not None else "").strip()
+            
+            # Avoid pulling the header row itself
+            if t_area and s_name and t_area.upper() != "TRADE AREA":
+                media_data_list.append({
+                    'TRADE AREA': t_area,
+                    'SITE NAME': s_name,
+                    # DOCS: C(2), D(3), E(4), F(5)
+                    '__DIRECT_TCT': clean_and_extract_url(row[2] if len(row) > 2 else ""),
+                    '__DIRECT_LOT_PLAN': clean_and_extract_url(row[3] if len(row) > 3 else ""),
+                    '__DIRECT_BLDG_PLAN': clean_and_extract_url(row[4] if len(row) > 4 else ""),
+                    '__DIRECT_TAX_MAP': clean_and_extract_url(row[5] if len(row) > 5 else ""),
+                    # PHOTOS: H(7), I(8), J(9), K(10), L(11)
+                    '__DIRECT_PHOTO_1': clean_and_extract_url(row[7] if len(row) > 7 else ""),
+                    '__DIRECT_PHOTO_2': clean_and_extract_url(row[8] if len(row) > 8 else ""),
+                    '__DIRECT_PHOTO_3': clean_and_extract_url(row[9] if len(row) > 9 else ""),
+                    '__DIRECT_PHOTO_4': clean_and_extract_url(row[10] if len(row) > 10 else ""),
+                    '__DIRECT_PHOTO_5': clean_and_extract_url(row[11] if len(row) > 11 else ""),
+                })
+        
+        wb.close()
+        return media_data_list
+    except Exception as e:
+        st.error(f"Error loading media data: {e}")
+        return []
+
+def load_data_parallel():
+    """Load data with parallel processing using ThreadPoolExecutor"""
+    start_time = time.time()
+    
+    # Download files in parallel
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_source = executor.submit(download_file, SOURCE_URL)
+        future_template = executor.submit(download_file, TEMPLATE_URL)
+        
+        source_bytes = future_source.result()
+        template_bytes = future_template.result()
+    
+    if source_bytes is None or template_bytes is None:
+        return None, None, None, [], None
+    
+    source_data = source_bytes.getvalue()
+    template_data = template_bytes.getvalue()
+    
+    # Load data in parallel
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_main = executor.submit(load_main_data_optimized, source_data)
+        future_media = executor.submit(load_media_data_optimized, source_data)
+        
+        df = future_main.result()
+        media_data_list = future_media.result()
+    
+    if df is None:
+        return None, None, None, [], None
+    
+    # Extract placeholders from template
+    placeholders = get_placeholders_optimized(template_data)
+    
+    elapsed = time.time() - start_time
+    print(f"Data loaded in {elapsed:.2f} seconds")
+    
+    return df, placeholders, template_data, media_data_list, datetime.now()
+
 @st.cache_data(ttl=600, show_spinner=False)
 def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders):
+    """Generate report with optimized placeholder replacement"""
     ta_data = df[df["TRADE AREA"] == trade_area]
     wb = load_workbook(io.BytesIO(template_bytes_raw))
     original_sheets = wb.sheetnames
     base_sheet = wb.active
     base_sheet.title = "TEMPLATE_TO_DELETE"
     existing_tabs = set()
+    
     for _, r_row in ta_data.iterrows():
         s_name = r_row.get("SITE NAME", "Unknown")
         safe_tab_name = sanitize_tab_name(s_name, existing_tabs)
         new_sheet = wb.copy_worksheet(base_sheet)
         new_sheet.title = safe_tab_name
+        
+        # Process cells with values_only=False to maintain formatting
         for row_cells in new_sheet.iter_rows():
             for cell in row_cells:
                 if isinstance(cell.value, str) and "{{" in cell.value:
@@ -502,230 +650,35 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
                         target_regex = r"\{\{\s*" + re.escape(ph) + r"(\s*:.*?)?\}\}"
                         if re.search(target_regex, new_val):
                             raw_data_val = r_row.get(ph.upper(), "")
-                            if pd.isna(raw_data_val) or raw_data_val is None: raw_data_val = ""
-                            if isinstance(raw_data_val, float) and raw_data_val.is_integer(): val_str = str(int(raw_data_val))
-                            elif hasattr(raw_data_val, 'strftime'): val_str = r_row.get(ph.upper(), "").strftime('%B %d, %Y')
-                            else: val_str = str(raw_data_val)
+                            if pd.isna(raw_data_val) or raw_data_val is None:
+                                raw_data_val = ""
+                            if isinstance(raw_data_val, float) and raw_data_val.is_integer():
+                                val_str = str(int(raw_data_val))
+                            elif hasattr(raw_data_val, 'strftime'):
+                                val_str = r_row.get(ph.upper(), "").strftime('%B %d, %Y')
+                            else:
+                                val_str = str(raw_data_val)
                             new_val = re.sub(target_regex, val_str, new_val)
                     new_val = re.sub(r"\{\{.*?\}\}", "", new_val)
                     cell.value = new_val.strip() if new_val else ""
+        
+        # Auto-adjust row heights for better visibility
         for row in new_sheet.iter_rows():
             max_len = max([len(str(cell.value or '')) for cell in row])
-            if max_len > 45: 
+            if max_len > 45:
                 new_sheet.row_dimensions[row[0].row].height = None
+    
     if "TEMPLATE_TO_DELETE" in wb.sheetnames:
         wb.remove(wb["TEMPLATE_TO_DELETE"])
+    
     for name in original_sheets:
         if name in wb.sheetnames and name != "TEMPLATE_TO_DELETE":
             wb.remove(wb[name])
+    
     wb_buffer = io.BytesIO()
     wb.save(wb_buffer)
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
-
-#--- OPTIMIZED LOAD DATA FUNCTION ---
-def parse_main_data(source_bytes):
-    """Parse main data from Excel bytes"""
-    try:
-        # Use read_only and data_only for speed
-        src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=True, read_only=True)
-        src_ws = src_wb.active
-        
-        # Get all values at once - fastest method
-        all_values = list(src_ws.values)
-        
-        if not all_values:
-            return None, None
-        
-        # Parse header
-        header_row = [str(cell).strip().upper() if cell else "" for cell in all_values[0]]
-        
-        # Parse data - optimized loop
-        parsed_data_list = []
-        for row in all_values[1:]:
-            row_dict = {}
-            has_val = False
-            for idx, cell in enumerate(row):
-                if idx < len(header_row) and header_row[idx]:
-                    # Fast type conversion without formatting
-                    if isinstance(cell, (int, float)):
-                        raw_val = str(int(cell)) if cell == int(cell) else str(cell)
-                    else:
-                        raw_val = str(cell) if cell is not None else ""
-                    
-                    row_dict[header_row[idx]] = raw_val
-                    if raw_val:
-                        has_val = True
-            if has_val:
-                parsed_data_list.append(row_dict)
-        
-        df = pd.DataFrame(parsed_data_list)
-        df = df.loc[:, ~df.columns.str.contains('^$')]
-        
-        # Add SITE_DISPLAY
-        def create_site_display(row):
-            site_no = row.get('SITE NO', '')
-            site_name = row.get('SITE NAME', '')
-            if pd.notna(site_no) and site_no:
-                try:
-                    site_no_clean = str(site_no).replace(',', '')
-                    return f"{int(float(site_no_clean))} - {site_name}"
-                except:
-                    return f"{site_no} - {site_name}"
-            return str(site_name)
-        
-        df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
-        
-        return df, header_row
-    
-    except Exception as e:
-        return None, None
-
-def parse_media_data(source_bytes):
-    """Parse media data from Excel bytes"""
-    try:
-        src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=True, read_only=True)
-        media_data_list = []
-        media_ws = None
-        
-        # Find media sheet quickly
-        for sheet_name in src_wb.sheetnames:
-            if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper():
-                media_ws = src_wb[sheet_name]
-                break
-        
-        if media_ws:
-            media_values = list(media_ws.values)
-            for row in media_values:
-                t_area = str(row[13]).strip() if len(row) > 13 else ""
-                s_name = str(row[15]).strip() if len(row) > 15 else ""
-                
-                if t_area and s_name and t_area.upper() != "TRADE AREA":
-                    media_data_list.append({
-                        'TRADE AREA': t_area,
-                        'SITE NAME': s_name,
-                        '__DIRECT_TCT': row[2] if len(row) > 2 else "",
-                        '__DIRECT_LOT_PLAN': row[3] if len(row) > 3 else "",
-                        '__DIRECT_BLDG_PLAN': row[4] if len(row) > 4 else "",
-                        '__DIRECT_TAX_MAP': row[5] if len(row) > 5 else "",
-                        '__DIRECT_PHOTO_1': row[7] if len(row) > 7 else "",
-                        '__DIRECT_PHOTO_2': row[8] if len(row) > 8 else "",
-                        '__DIRECT_PHOTO_3': row[9] if len(row) > 9 else "",
-                        '__DIRECT_PHOTO_4': row[10] if len(row) > 10 else "",
-                        '__DIRECT_PHOTO_5': row[11] if len(row) > 11 else "",
-                    })
-        
-        return media_data_list
-    except:
-        return []
-
-def parse_template(template_bytes):
-    """Parse template from Excel bytes"""
-    try:
-        temp_wb = load_workbook(io.BytesIO(template_bytes))
-        placeholders = get_placeholders(temp_wb.active)
-        template_bytes_raw = template_bytes.getvalue()
-        template_bytes.seek(0)
-        return placeholders, template_bytes_raw
-    except:
-        return None, None
-
-def get_cache_files():
-    """Get cache file paths"""
-    timestamp = datetime.now().strftime("%Y%m%d")
-    return {
-        'df': os.path.join(CACHE_DIR, f"df_{timestamp}.parquet"),
-        'placeholders': os.path.join(CACHE_DIR, f"placeholders_{timestamp}.pkl"),
-        'template': os.path.join(CACHE_DIR, f"template_{timestamp}.bin"),
-        'media': os.path.join(CACHE_DIR, f"media_{timestamp}.pkl"),
-        'timestamp': os.path.join(CACHE_DIR, f"timestamp_{timestamp}.pkl")
-    }
-
-def save_to_cache(df, placeholders, template_bytes_raw, media_data_list, timestamp):
-    """Save data to cache files"""
-    try:
-        cache_files = get_cache_files()
-        df.to_parquet(cache_files['df'])
-        with open(cache_files['placeholders'], 'wb') as f:
-            pickle.dump(placeholders, f)
-        with open(cache_files['template'], 'wb') as f:
-            f.write(template_bytes_raw)
-        with open(cache_files['media'], 'wb') as f:
-            pickle.dump(media_data_list, f)
-        with open(cache_files['timestamp'], 'wb') as f:
-            pickle.dump(timestamp, f)
-        return True
-    except:
-        return False
-
-def load_from_cache():
-    """Load data from cache files"""
-    try:
-        cache_files = get_cache_files()
-        if all(os.path.exists(path) for path in cache_files.values()):
-            df = pd.read_parquet(cache_files['df'])
-            with open(cache_files['placeholders'], 'rb') as f:
-                placeholders = pickle.load(f)
-            with open(cache_files['template'], 'rb') as f:
-                template_bytes_raw = f.read()
-            with open(cache_files['media'], 'rb') as f:
-                media_data_list = pickle.load(f)
-            with open(cache_files['timestamp'], 'rb') as f:
-                timestamp = pickle.load(f)
-            
-            # Check if cache is still valid
-            cache_age = (datetime.now() - timestamp).total_seconds()
-            if cache_age < CACHE_TTL:
-                return df, placeholders, template_bytes_raw, media_data_list, timestamp
-    
-    except:
-        pass
-    return None, None, None, None, None
-
-#--- LOAD DATA ASSETS ---
-@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-def load_data():
-    """Load data with 24-hour caching and timestamp tracking"""
-    
-    # Try to load from cache first
-    cached_data = load_from_cache()
-    if cached_data[0] is not None:
-        return cached_data
-    
-    try:
-        # Download files in parallel
-        source_bytes = download_file(SOURCE_URL)
-        template_data = download_file(TEMPLATE_URL)
-        
-        if source_bytes is None or template_data is None:
-            return None, None, None, [], None
-        
-        # Parse main data and media data in parallel
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            main_future = executor.submit(parse_main_data, source_bytes)
-            media_future = executor.submit(parse_media_data, source_bytes)
-            
-            df, _ = main_future.result()
-            media_data_list = media_future.result()
-        
-        if df is None:
-            return None, None, None, [], None
-        
-        # Parse template
-        placeholders, template_bytes_raw = parse_template(template_data)
-        
-        if placeholders is None:
-            return None, None, None, [], None
-        
-        timestamp = datetime.now()
-        
-        # Save to cache
-        save_to_cache(df, placeholders, template_bytes_raw, media_data_list, timestamp)
-        
-        return df, placeholders, template_bytes_raw, media_data_list, timestamp
-    
-    except Exception as e:
-        return None, None, None, [], None
 
 #--- COMPLETE HTML BLUEPRINT ---
 HTML_FRAMEWORK = """
@@ -742,6 +695,7 @@ html, body {
     overflow-y: auto !important;
     overflow-x: hidden !important;
 }
+/* Container that scales and centers the entire table */
 .report-wrapper {
     width: 100%;
     overflow-y: visible !important;
@@ -819,25 +773,32 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!wrapper || !scaler || !container) return;
         
+        // Get the natural width of the table content
         const table = document.querySelector('.waffle');
         if (!table) return;
         
+        // Get container width (available space)
         const containerWidth = wrapper.parentElement ? wrapper.parentElement.clientWidth : window.innerWidth;
-        const availableWidth = containerWidth - 40;
+        const availableWidth = containerWidth - 40; // Account for padding and margins
         
+        // Reset table to auto width to measure natural size
         table.style.width = 'auto';
         const naturalWidth = table.scrollWidth;
         table.style.width = '100%';
         
+        // Calculate scale factor
         let scale = 1;
         if (naturalWidth > availableWidth) {
-            scale = (availableWidth / naturalWidth) * 0.95;
+            scale = (availableWidth / naturalWidth) * 0.95; // 95% to give slight margin
+            // Ensure we don't scale too small
             if (scale < 0.4) scale = 0.4;
         }
         
+        // Apply scaling to the scaler element - centered
         if (scale < 1) {
             scaler.style.transform = 'scale(' + scale + ')';
             scaler.style.transformOrigin = 'center top';
+            // Adjust width to compensate for scaling
             scaler.style.width = (100 / scale) + '%';
             scaler.style.marginBottom = '0px';
             scaler.style.display = 'inline-block';
@@ -850,10 +811,12 @@ document.addEventListener('DOMContentLoaded', function() {
             scaler.style.textAlign = 'center';
         }
         
+        // Center the container
         container.style.display = 'inline-block';
         container.style.textAlign = 'left';
         container.style.margin = '0 auto';
         
+        // Allow vertical scrolling, hide horizontal
         wrapper.style.overflowY = 'visible';
         wrapper.style.overflowX = 'hidden';
         wrapper.style.width = '100%';
@@ -862,15 +825,18 @@ document.addEventListener('DOMContentLoaded', function() {
         wrapper.style.alignItems = 'flex-start';
         wrapper.style.minHeight = '100%';
         
+        // Adjust container to prevent horizontal overflow
         container.style.overflowX = 'visible';
         container.style.overflowY = 'visible';
         container.style.width = '100%';
         
+        // Ensure the body allows vertical scrolling
         document.body.style.overflowY = 'auto';
         document.body.style.overflowX = 'hidden';
         document.documentElement.style.overflowY = 'auto';
         document.documentElement.style.overflowX = 'hidden';
         
+        // Calculate and set the scaler height to allow scrolling
         const tableHeight = table.scrollHeight;
         if (scale < 1) {
             scaler.style.height = (tableHeight * scale + 50) + 'px';
@@ -879,14 +845,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Run on load
     setTimeout(scaleReportToFit, 100);
     
+    // Run on resize
     let resizeTimer;
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(scaleReportToFit, 100);
     });
     
+    // Also run when content changes
     const observer = new MutationObserver(function() { 
         setTimeout(scaleReportToFit, 100);
     });
@@ -895,6 +864,7 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(tableBody, { childList: true, subtree: true, characterData: true }); 
     }
     
+    // Additional check after images load
     window.addEventListener('load', function() {
         setTimeout(scaleReportToFit, 200);
     });
@@ -979,17 +949,10 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
-# --- MAIN LOGIC BEGINS ---
+#--- MAIN LOGIC BEGINS ---
 
 # --- Step 1: Display Login Function ---
 if not st.session_state.authenticated:
-    # Hide loading overlay during login
-    st.markdown("""
-    <style>
-    #loading-overlay { display: none !important; }
-    </style>
-    """, unsafe_allow_html=True)
-    
     r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
     with r1_col2:
         st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
@@ -1000,55 +963,55 @@ if not st.session_state.authenticated:
                 st.rerun()
             else:
                 st.error("Invalid token string provided.")
-    st.stop()
+    st.stop() # Stop execution if not authenticated
 
 # At this point, user is authenticated
 
 # --- Step 2: Initialize load_data() and derive defaults (this happens post-login) ---
-# Show loading spinner while data loads
-with st.spinner("Loading Data..."):
-    data = load_data()
-    df, placeholders, template_bytes_raw, media_data_list, data_timestamp = data
-
-if df is None or template_bytes_raw is None:
-    st.error("Failed to load data assets. Please verify link paths.")
-    st.stop()
-
-# Store timestamp in session state if not set or if it's None
-if st.session_state.data_timestamp is None and data_timestamp is not None:
+# Show full-screen loading overlay if data hasn't been loaded yet
+if not st.session_state.data_loaded:
+    # Display full-screen loading overlay
+    components.html(LOADING_HTML, height=800, scrolling=False)
+    
+    # Load data with parallel processing
+    with st.spinner("Loading data..."):
+        data = load_data_parallel()
+        df, placeholders, template_bytes_raw, media_data_list, data_timestamp = data
+    
+    if df is None or template_bytes_raw is None:
+        st.error("Failed to load data assets. Please verify link paths.")
+        st.stop()
+    
+    # Store data in session state
+    st.session_state.df = df
+    st.session_state.placeholders = placeholders
+    st.session_state.template_bytes_raw = template_bytes_raw
+    st.session_state.media_data_list = media_data_list
     st.session_state.data_timestamp = data_timestamp
+    st.session_state.data_loaded = True
+    
+    # Rerun to display the main interface
+    st.rerun()
 
-# Mark data as loaded
-st.session_state.data_loaded = True
+# --- Step 3: Retrieve data from session state ---
+df = st.session_state.df
+placeholders = st.session_state.placeholders
+template_bytes_raw = st.session_state.template_bytes_raw
+media_data_list = st.session_state.media_data_list
+data_timestamp = st.session_state.data_timestamp
 
-# --- Step 3: Determine Default Selections (Preset Logic) ---
+# --- Step 4: Determine Default Selections (Preset Logic) ---
 trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
 first_row = df.iloc[0] if not df.empty else None
 first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
 first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
 default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
 
-# --- Step 4: Apply Presets and Render UI (Row 1 and Row 2) ---
+# --- Step 5: Apply Presets and Render UI (Row 1 and Row 2) ---
 deploy_workspace_security_protocols()
 
-# Remove loading overlay after all content is rendered
-st.markdown("""
-<script>
-// Hide the loading overlay when everything is rendered
-setTimeout(function() {
-    const overlay = document.getElementById('loading-overlay');
-    if (overlay) {
-        overlay.style.opacity = '0';
-        setTimeout(function() {
-            overlay.style.display = 'none';
-        }, 300);
-    }
-}, 500);
-</script>
-""", unsafe_allow_html=True)
-
 #--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
-col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
+col1, col2, col3 = st.columns([1.2, 1.2, 0.9])
 
 with col1:
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
@@ -1095,7 +1058,8 @@ if selected_ta and selected_site_display:
                 media_row_data = m
                 break
         if not media_row_data:
-            media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
+            media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {} # Fallback if needed
+
 
     # Instantiate Workspace Tabs instantly *after* controls are defined
     tab_report, tab_photos, tab_docs = st.tabs([
@@ -1104,7 +1068,7 @@ if selected_ta and selected_site_display:
         "PROPERTY DOCS"
     ])
 
-    # --- TAB 1: SITE INFORMATION REPORT ---
+       # --- TAB 1: SITE INFORMATION REPORT ---
     with tab_report:
         if site_row_data is not None:
             try:
@@ -1112,7 +1076,7 @@ if selected_ta and selected_site_display:
                     val = site_row_data.get(key_string.upper(), "")
                     if pd.isna(val) or val is None: 
                         return ""
-                    return val
+                    return val  # Return raw value without conversion
                 
                 rendered_view = HTML_FRAMEWORK
                 rendered_view = rendered_view.replace("_TRADE_AREA_", str(process_val("TRADE AREA")))
@@ -1175,6 +1139,7 @@ if selected_ta and selected_site_display:
                         full_url = raw_url
                     valid_photos.append((label, thumb_url, full_url))
             if valid_photos:
+                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
@@ -1273,6 +1238,7 @@ if selected_ta and selected_site_display:
                         full_url = raw_url
                     valid_docs.append((label, thumb_url, full_url))
             if valid_docs:
+                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
