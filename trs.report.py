@@ -305,9 +305,23 @@ def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
 #--- CONFIGURATION ---
-SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 CACHE_TTL = 86400  # 24 hours in seconds
+
+#--- GOOGLE SHEETS CREDENTIALS ---
+CREDS_DICT = {
+    "type": "service_account",
+    "project_id": "trs-sitesourcing-viewer",
+    "private_key_id": "1191a0d6d74bb16786681476664821ee6deb673a",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDBp3HcCLqtFDAm\nT0ijccbdttiMaPhhSDOHWl02nRhzJ0IFzx4P7Wrd7YlNMWokgyBbfux6MjnCJm8q\nqaLlZPY/L6rqN1YgE3l9jfeq26EoBv50uxtbafp9zScb1YIPXPLFCChIT/1B1n4F\n95bugmYY2Gmc9WHRu3C4Rw45PNFjuOpz/fN+ycnpTMQ/tEFpw/BGT+0Nby9VHPFq\nhr6Fmp1ezNA4quOU1nL0p7CrLglR7dASe5IDfvoZpMXwICCCjOYAP/SZ2pa+DzTB\nKEDDlQqgByeWG33M6S6CL2mTgFJapHY5cvMCIjfpGBgnd46ZUUCLx9AX8s6CelTo\nIsqjBt0JAgMBAAECggEAA/UwUYcbV/0CoukATgukPQgtbGk0y+z8bwOJkvUqkifq\nPh4mhu+bCiAYEnjN3e/3Ue3J8Kr+g5l8SiRSmcEyrl+C01IzZpwFrp6fjvr5umZL\nywaL7GL1GJ8ZvoR79pgEUI/DHjJsTzn0zc03ZRAX/OGamJE3R5PYhBuhQcnP0B7m\n1l2DqxhvWF8QfRtUf/8m9NU7d4K5s4EfDQX6VpO//54V5qHAiICSPMFqBhvjrLYD\nDpB6rskZfan7MxYgifWha0zyMpmIoH32NcPOgqfVnRqa6oDL+0TOGZQM9u95II+2\n00TP1mOd8/Ks0Df0YBQfczUipw9jaGyYO568/xHxlQKBgQDwN/jOTmL1x2T/i0yA\nrtpR7uU0XI2vXWaSPST127yZA1fmPPzxKT/0ncqvxWSz1ddBkXUJbsIxFLZOX6BS\n0zioFzyIYlolnreY/9WVWjfsQNC6Twi6W0svhqGItwhmO6QArkrOn0r0ghFqEwaf\nWyjwZE1Oct2Xz3Ujz2HQMH2gCwKBgQDOYFgW5AGZJf5jAR8Vc/5FAo6ih92jA+b3\nNoMzZjp9lA2uU/i5TNWKNBFWxJ9w+B17Uaz1+L1/NjDuFy8G5IuseSHewKG7UHcC\nwA7rKSeM+MNc0dnAkHfaNlr43q2n/uJNJFJSytf2YjRKhXGMHcLf7458tu03WMSd\n9jP1jYj/uwKBgQCyqX6EuqpBkJ6erZUltGauP5b7fcbnYflS1OUzcs3vpBvxIvUh\nzINDxUQlvRNr6aTioHPCoz0NUhFRczADyhM+eaHM8hGIH2cABW9uWJ51ObPEjdm4\n+QOPgnuL+k3l83/D/d2nlbQi7MZU9XeceCmXuZIBwc7sBSFjk+9070vQBwKBgCZQ\nXqpJRD6xfgvVXnb2JOOc+OwVu0ETbWLB/ROizAMaZHvT3R5RtGdHCV0JfexUM+z8\nGddEibG/VtAs/68Q6RlpF6+qJZyH8MBS9bIU3uHeIS7vSrTkXUvmwXboqGbC/DKE\nJsB2Jif4zWp0YcM4l0BJ0jM3Js0ars4Asl7JGwEXAoGAIRzG3IpBh8jlLlZDe63Y\n1hKfo4JHxlidnHjEeN4UdSpnIyw/Cii0OS89VxL641mUYUUP1OsKzzXRWiBMPM2y\nCMMTpAqdbh5Y5j/AShZi8DGYhJ6ylA2esc2mjRMtT3pvRq6/nNxgTxRYLhjToHXg\nidr8ma/v5dzcyYC2bZpwkco=\n-----END PRIVATE KEY-----\n",
+    "client_email": "trs-drive-api-648@trs-sitesourcing-viewer.iam.gserviceaccount.com",
+    "client_id": "106044499685095859528",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/trs-drive-api-648%40trs-sitesourcing-viewer.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
+}
 
 #--- HELPER FUNCTIONS ---
 @st.cache_data(ttl=3600)
@@ -689,85 +703,125 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
-#--- LOAD DATA ASSETS ---
+#--- LOAD DATA ASSETS USING GOOGLE SHEETS API ---
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
 def load_data():
-    """Load data with 24-hour caching and timestamp tracking"""
-    source_bytes = download_file(SOURCE_URL)
-    template_data = download_file(TEMPLATE_URL)
-    if source_bytes is None or template_data is None:
+    """Load data from Google Sheets using API (no Excel download for data)"""
+    try:
+        # Authenticate with Google Sheets API
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = Credentials.from_service_account_info(CREDS_DICT, scopes=scope)
+        client = gspread.authorize(creds)
+        
+        # Open the source sheet by ID
+        sheet_id = "14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE"
+        spreadsheet = client.open_by_key(sheet_id)
+        
+        # --- 1. Parse Main Data Sheet (RAW_DATA) ---
+        try:
+            raw_data_ws = spreadsheet.worksheet("RAW_DATA")
+        except:
+            # Fallback to first worksheet if "RAW_DATA" doesn't exist
+            raw_data_ws = spreadsheet.get_worksheet(0)
+        
+        # Get all values from the worksheet
+        all_values = raw_data_ws.get_all_values()
+        
+        if not all_values:
+            return None, None, None, [], None
+        
+        # First row as header
+        header_row = [str(cell).strip().upper() if cell else "" for cell in all_values[0]]
+        
+        # Parse data rows - preserve raw values
+        parsed_data_list = []
+        for row in all_values[1:]:
+            row_dict = {}
+            has_val = False
+            for idx, cell in enumerate(row):
+                if idx < len(header_row) and header_row[idx]:
+                    # Get raw value without any conversion
+                    raw_val = cell if cell else ""
+                    row_dict[header_row[idx]] = raw_val
+                    if raw_val != "" and raw_val is not None:
+                        has_val = True
+            if has_val:
+                parsed_data_list.append(row_dict)
+        
+        df = pd.DataFrame(parsed_data_list)
+        df = df.loc[:, ~df.columns.str.contains('^$')]
+        
+        def create_site_display(row):
+            site_no = row.get('SITE NO', '')
+            site_name = row.get('SITE NAME', '')
+            if pd.notna(site_no) and site_no != '':
+                try:
+                    # Remove any commas from site_no before conversion
+                    site_no_clean = str(site_no).replace(',', '')
+                    return f"{int(float(site_no_clean))} - {site_name}"
+                except:
+                    return f"{site_no} - {site_name}"
+            return str(site_name)
+        
+        df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
+        
+        # --- 2. Extract Data from PHOTOS/DOCS Tab ---
+        media_data_list = []
+        media_ws = None
+        
+        # Locate the correct tab
+        for worksheet in spreadsheet.worksheets():
+            if "PHOTO" in worksheet.title.upper() or "DOC" in worksheet.title.upper() or "MEDIA" in worksheet.title.upper():
+                media_ws = worksheet
+                break
+        
+        # Fallback if specific media sheet name isn't found
+        if not media_ws:
+            media_ws = raw_data_ws
+        
+        # Get all values from media sheet
+        media_values = media_ws.get_all_values()
+        
+        for row in media_values:
+            # Col N (13) and Col P (15) mapping to link specific records (0-indexed)
+            t_area = str(row[13]).strip() if len(row) > 13 else ""
+            s_name = str(row[15]).strip() if len(row) > 15 else ""
+            
+            # Avoid pulling the header row itself
+            if t_area and s_name and t_area.upper() != "TRADE AREA":
+                media_data_list.append({
+                    'TRADE AREA': t_area,
+                    'SITE NAME': s_name,
+                    # DOCS: C(2), D(3), E(4), F(5)
+                    '__DIRECT_TCT': row[2] if len(row) > 2 else "",
+                    '__DIRECT_LOT_PLAN': row[3] if len(row) > 3 else "",
+                    '__DIRECT_BLDG_PLAN': row[4] if len(row) > 4 else "",
+                    '__DIRECT_TAX_MAP': row[5] if len(row) > 5 else "",
+                    # PHOTOS: H(7), I(8), J(9), K(10), L(11)
+                    '__DIRECT_PHOTO_1': row[7] if len(row) > 7 else "",
+                    '__DIRECT_PHOTO_2': row[8] if len(row) > 8 else "",
+                    '__DIRECT_PHOTO_3': row[9] if len(row) > 9 else "",
+                    '__DIRECT_PHOTO_4': row[10] if len(row) > 10 else "",
+                    '__DIRECT_PHOTO_5': row[11] if len(row) > 11 else "",
+                })
+        
+        # --- 3. Load Template File (Excel download only for template) ---
+        template_data = download_file(TEMPLATE_URL)
+        if template_data is None:
+            return None, None, None, [], None
+        
+        temp_wb = load_workbook(io.BytesIO(template_data.getvalue()))
+        placeholders = get_placeholders(temp_wb.active)
+        
+        # Extract the raw content
+        template_bytes_raw = template_data.getvalue()
+        template_data.seek(0)
+        
+        return df, placeholders, template_bytes_raw, media_data_list, datetime.now()
+    
+    except Exception as e:
+        st.error(f"Error loading data from Google Sheets: {str(e)}")
         return None, None, None, [], None
-    
-    # Ingest openpyxl layout with direct cells intact
-    src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=False)
-    # 1. Parse Main Data Sheet (assumed active/first)
-    src_ws = src_wb.active
-    raw_rows = list(src_ws.iter_rows(values_only=False))
-    header_row = [str(cell.value).strip().upper() if cell.value else "" for cell in raw_rows[0]]
-    parsed_data_list = []
-    for r in raw_rows[1:]:
-        row_dict = {}
-        has_val = False
-        for idx, cell in enumerate(r):
-            if idx < len(header_row) and header_row[idx]:
-                cleaned_val = clean_and_extract_url(cell.value)
-                row_dict[header_row[idx]] = cleaned_val
-                if cleaned_val != "":
-                    has_val = True
-        if has_val:
-            parsed_data_list.append(row_dict)
-    df = pd.DataFrame(parsed_data_list)
-    df = df.loc[:, ~df.columns.str.contains('^$')]
-    def create_site_display(row):
-        site_no = row.get('SITE NO', '')
-        site_name = row.get('SITE NAME', '')
-        if pd.notna(site_no) and site_no != '':
-            try:
-                return f"{int(float(str(site_no)))} - {site_name}"
-            except:
-                return f"{site_no} - {site_name}"
-        return str(site_name)
-    df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
-    # 2. Extract Data from Specific "PHOTOS/DOCS" Tab using Exact Coordinates
-    media_data_list = []
-    media_ws = None
-    # Locate the correct tab
-    for sheet_name in src_wb.sheetnames:
-        if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
-            media_ws = src_wb[sheet_name]
-            break
-    # Fallback if specific media sheet name isn't found
-    if not media_ws:
-        media_ws = src_ws
-    for r in media_ws.iter_rows(values_only=False):
-        # Col N (13) and Col P (15) mapping to link specific records
-        t_area = str(get_cell_val_safe(r, 13)).strip()
-        s_name = str(get_cell_val_safe(r, 15)).strip()
-        # Avoid pulling the header row itself
-        if t_area and s_name and t_area.upper() != "TRADE AREA":
-            media_data_list.append({
-                'TRADE AREA': t_area,
-                'SITE NAME': s_name,
-                # DOCS: C(2), D(3), E(4), F(5)
-                '__DIRECT_TCT': get_cell_val_safe(r, 2),
-                '__DIRECT_LOT_PLAN': get_cell_val_safe(r, 3),
-                '__DIRECT_BLDG_PLAN': get_cell_val_safe(r, 4),
-                '__DIRECT_TAX_MAP': get_cell_val_safe(r, 5),
-                # PHOTOS: H(7), I(8), J(9), K(10), L(11)
-                '__DIRECT_PHOTO_1': get_cell_val_safe(r, 7),
-                '__DIRECT_PHOTO_2': get_cell_val_safe(r, 8),
-                '__DIRECT_PHOTO_3': get_cell_val_safe(r, 9),
-                '__DIRECT_PHOTO_4': get_cell_val_safe(r, 10),
-                '__DIRECT_PHOTO_5': get_cell_val_safe(r, 11),
-            })
-    temp_wb = load_workbook(template_data)
-    placeholders = get_placeholders(temp_wb.active)
-    # Extract the raw content to resolve the NameError
-    template_bytes_raw = template_data.getvalue()
-    template_data.seek(0)
-    
-    # Return data with timestamp
-    return df, placeholders, template_bytes_raw, media_data_list, datetime.now()
 
 def force_refresh_data():
     """Force refresh by clearing cache and reloading"""
@@ -931,7 +985,7 @@ if selected_ta and selected_site_display:
                 
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
                 
-                components.html(rendered_view, height=1600, scrolling=False)
+                components.html(rendered_view, height=1500, scrolling=False)
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
         else:
