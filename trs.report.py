@@ -730,13 +730,20 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
+#--- LOAD DATA ASSETS USING GOOGLE SHEETS API ---
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
 def load_data():
     """Load data from Google Sheets using API (no Excel download for data)"""
     try:
-        # Authenticate with Google Sheets API
+        # Authenticate with Google Sheets API using file
+        import json
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(CREDS_DICT, scopes=scope)
+        
+        # Load credentials from file
+        with open('credentials.json', 'r') as f:
+            creds_dict = json.load(f)
+        
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
         
         # Open the source sheet by ID
