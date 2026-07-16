@@ -29,8 +29,14 @@ st.set_page_config(
 )
 
 #--- FULL SCREEN LOADING OVERLAY COMPONENT ---
-def show_loading_overlay(message="Loading Data...", submessage="Please wait while we prepare your data..."):
+def show_loading_overlay(message="Loading Data...", submessage="Please wait while we prepare your data...", show_progress=True):
     """Display a full-screen loading overlay with custom message"""
+    progress_html = """
+        <div class="progress-bar-container">
+            <div class="progress-bar"></div>
+        </div>
+    """ if show_progress else ""
+    
     loading_html = f"""
     <!DOCTYPE html>
     <html>
@@ -58,6 +64,10 @@ def show_loading_overlay(message="Loading Data...", submessage="Please wait whil
             justify-content: center;
             gap: 30px;
             padding: 40px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+            min-width: 400px;
         }}
         .spinner {{
             width: 60px;
@@ -89,6 +99,7 @@ def show_loading_overlay(message="Loading Data...", submessage="Please wait whil
             background: #e8eaed;
             border-radius: 2px;
             overflow: hidden;
+            margin-top: 10px;
         }}
         .progress-bar {{
             height: 100%;
@@ -103,10 +114,17 @@ def show_loading_overlay(message="Loading Data...", submessage="Please wait whil
             100% {{ width: 100%; }}
         }}
         .logo-text {{
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             font-weight: 700;
             color: #003366;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
+        }}
+        .loading-status {{
+            font-size: 0.8rem;
+            color: #5f6368;
+            font-weight: 400;
+            margin-top: 5px;
+            min-height: 20px;
         }}
         .overlay-backdrop {{
             position: fixed;
@@ -126,16 +144,34 @@ def show_loading_overlay(message="Loading Data...", submessage="Please wait whil
         <div class="spinner"></div>
         <div class="loading-text">{message}</div>
         <div class="loading-subtext">{submessage}</div>
-        <div class="progress-bar-container">
-            <div class="progress-bar"></div>
-        </div>
+        {progress_html}
+        <div class="loading-status" id="statusMessage">Initializing...</div>
     </div>
+    <script>
+        // Simulate progress updates
+        let progress = 0;
+        const statusMessages = [
+            'Connecting to data source...',
+            'Downloading files...',
+            'Processing data...',
+            'Optimizing for display...',
+            'Almost ready...'
+        ];
+        let msgIndex = 0;
+        setInterval(function() {{
+            const statusEl = document.getElementById('statusMessage');
+            if (statusEl && msgIndex < statusMessages.length) {{
+                statusEl.textContent = statusMessages[msgIndex];
+                msgIndex++;
+            }}
+        }}, 500);
+    </script>
     </body>
     </html>
     """
     return components.html(loading_html, height=800, scrolling=False)
 
-#--- LINE 1 GLOBAL STYLESHEET ENFORCER (MAX REAL ESTATE & OUTER SCROLLBAR) ---
+#--- LINE 1 GLOBAL STYLESHEET ENFORCER ---
 st.markdown("""
 <style >
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
@@ -154,7 +190,7 @@ div[data-testid="stTextInput"] button {
 
 /* 1. FIXED: MAIN VIEWPORT WITH OUTER SCROLLBAR ONLY */
 html, body {
-    overflow-y: auto !important; /* ENABLES OUTER SCROLLBAR */
+    overflow-y: auto !important;
     overflow-x: hidden !important;
     height: 100% !important;
     margin: 0px !important;
@@ -175,7 +211,7 @@ div[data-testid="stDecoration"] {
     opacity: 0 !important;
 }
 
-/* 3. FIXED: ALLOW SCROLLING WITH INCREASED GLOBAL HEIGHT (+100px) */
+/* 3. FIXED: ALLOW SCROLLING WITH INCREASED GLOBAL HEIGHT */
 .stApp,
 .appview-container, 
 .main, 
@@ -188,10 +224,10 @@ div[data-testid="stDecoration"] {
     padding-bottom: 0px !important;
     padding-left: 0.4rem !important;
     padding-right: 0.4rem !important;
-    overflow: visible !important; /* CRITICAL: Forces content to flow to body scrollbar */
+    overflow: visible !important;
     height: auto !important;
     max-height: none !important;
-    min-height: calc(100vh + 100px) !important; /* INCREASED VERTICAL SIZE BY 100px */
+    min-height: calc(100vh + 100px) !important;
 }
 
 /* Catch and crush any empty layout blocks */
@@ -203,17 +239,17 @@ div[data-testid="stVerticalBlock"] > div:empty {
     padding: 0px !important;
 }
 
-/* 4. FIXED: REPORT VIEWER - HIDE INNER SCROLLBARS & INCREASE HEIGHT */
+/* 4. FIXED: REPORT VIEWER - HIDE INNER SCROLLBARS */
 iframe[title="streamlit_components.components.html"] {
-    height: 1200px !important; /* Increased height to fit content */
+    height: 1200px !important;
     max-height: none !important;
     border: none !important;
     margin-bottom: 10px !important;
     width: 100% !important;
-    overflow: hidden !important; /* PREVENTS INNER IFRAME SCROLLBAR */
+    overflow: hidden !important;
 }
 
-/* Optimize Tab Headers Matrix for High Density Views */
+/* Optimize Tab Headers */
 button[data-baseweb="tab"] {
     padding-top: 0.1rem !important;
     padding-bottom: 0.1rem !important;
@@ -224,7 +260,7 @@ div[data-testid="stTabs"] {
     margin-top: -5px !important;
 }
 
-/* 5. Ultra-Compact Control Bar layout matrix definitions */
+/* 5. Ultra-Compact Control Bar */
 div[data-testid="stHorizontalBlock"] { 
     gap: 0.5rem !important; 
     align-items: flex-end !important; 
@@ -235,13 +271,11 @@ div[data-testid="stHorizontalBlock"] {
     margin-bottom: 10px !important;
 }
 
-/* Hard pixel alignment lock for the export column element wrapper */
 div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) {
     align-self: flex-end !important;
     padding-bottom: 4px !important;
 }
 
-/* Force Streamlit's inner widget wrapper to drop any hidden margin blocks */
 div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"] {
     margin-bottom: 0px !important;
     padding-bottom: 0px !important;
@@ -299,24 +333,6 @@ div[data-testid="stStatusWidget"] {
     pointer-events: none !important;
 }
 
-/* Hide iframe scrollbars */
-iframe[title="streamlit_components.components.html"] {
-    height: auto !important;
-    min-height: 600px !important;
-    max-height: none !important;
-    border: none !important;
-    margin-bottom: 10px !important;
-    width: 100% !important;
-    overflow: hidden !important;
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
-}
-iframe[title="streamlit_components.components.html"]::-webkit-scrollbar {
-    display: none !important;
-    width: 0 !important;
-    height: 0 !important;
-}
-
 /* Ensure loading overlay is on top */
 .overlay-backdrop {
     position: fixed !important;
@@ -326,6 +342,13 @@ iframe[title="streamlit_components.components.html"]::-webkit-scrollbar {
     height: 100% !important;
     background: rgba(255,255,255,0.95) !important;
     z-index: 999999 !important;
+}
+
+/* Status message for loading */
+.loading-status {
+    color: #5f6368;
+    font-size: 0.85rem;
+    min-height: 24px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -434,6 +457,8 @@ if 'media_data_list' not in st.session_state:
     st.session_state.media_data_list = None
 if 'export_in_progress' not in st.session_state:
     st.session_state.export_in_progress = False
+if 'first_load_complete' not in st.session_state:
+    st.session_state.first_load_complete = False
 
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
@@ -460,27 +485,13 @@ def clean_and_extract_url(cell_value):
     if cell_value is None:
         return ""
     val_str = str(cell_value).strip()
-    # Check if nested inside an IMAGE formula layout
     formula_match = re.search(r'IMAGE\s*\(\s*["\'](https://[^"\']+)["\']', val_str, re.IGNORECASE)
     if formula_match:
         return formula_match.group(1)
-    # Standard URL match fallback
     url_match = re.search(r'(https://[^\s"\']+)', val_str)
     if url_match:
         return url_match.group(1)
     return val_str
-
-def get_cell_val_safe(row_values, index):
-    """Safely fetch and clean a cell value by fixed column index from values_only data."""
-    if index < len(row_values):
-        val = row_values[index]
-        if val is not None and isinstance(val, str):
-            # Check for URL in string
-            url_match = re.search(r'(https://[^\s"\']+)', val)
-            if url_match:
-                return url_match.group(1)
-        return val if val is not None else ""
-    return ""
 
 def extract_google_drive_id(clean_url):
     """Extracts unique file ID from verified URL strings."""
@@ -961,54 +972,66 @@ if not st.session_state.authenticated:
                 st.rerun()
             else:
                 st.error("Invalid token string provided.")
-    st.stop() # Stop execution if not authenticated
+    st.stop()
 
 # At this point, user is authenticated
 
-# --- Step 2: Initialize load_data() and derive defaults (this happens post-login) ---
-# Show full-screen loading overlay if data hasn't been loaded yet
+# --- Step 2: Initialize data loading ---
 if not st.session_state.data_loaded:
-    # Display full-screen loading overlay
-    show_loading_overlay("Loading Data...", "Please wait while we prepare your data...")
+    # Show loading overlay with status updates
+    show_loading_overlay(
+        message="Loading Site Information Report",
+        submessage="Please wait while we fetch and process your data...",
+        show_progress=True
+    )
+    
+    # Small delay to ensure the loading overlay renders
+    time.sleep(0.5)
     
     # Load data with parallel processing
-    with st.spinner("Loading data..."):
+    try:
         data = load_data_parallel()
         df, placeholders, template_bytes_raw, media_data_list, data_timestamp = data
-    
-    if df is None or template_bytes_raw is None:
-        st.error("Failed to load data assets. Please verify link paths.")
+        
+        if df is None or template_bytes_raw is None:
+            st.error("Failed to load data assets. Please verify link paths.")
+            st.stop()
+        
+        # Store data in session state
+        st.session_state.df = df
+        st.session_state.placeholders = placeholders
+        st.session_state.template_bytes_raw = template_bytes_raw
+        st.session_state.media_data_list = media_data_list
+        st.session_state.data_timestamp = data_timestamp
+        st.session_state.data_loaded = True
+        st.session_state.first_load_complete = True
+        
+        # Clear any loading overlay artifacts
+        time.sleep(0.3)
+        st.rerun()
+        
+    except Exception as e:
+        st.error(f"Error loading data: {str(e)}")
         st.stop()
-    
-    # Store data in session state
-    st.session_state.df = df
-    st.session_state.placeholders = placeholders
-    st.session_state.template_bytes_raw = template_bytes_raw
-    st.session_state.media_data_list = media_data_list
-    st.session_state.data_timestamp = data_timestamp
-    st.session_state.data_loaded = True
-    
-    # Rerun to display the main interface
-    st.rerun()
 
 # --- Step 3: Retrieve data from session state ---
+# This is the main application - it only runs after data is loaded
 df = st.session_state.df
 placeholders = st.session_state.placeholders
 template_bytes_raw = st.session_state.template_bytes_raw
 media_data_list = st.session_state.media_data_list
-data_timestamp = st.session_state.data_timestamp
 
-# --- Step 4: Determine Default Selections (Preset Logic) ---
+# --- Step 4: Determine Default Selections ---
 trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
 first_row = df.iloc[0] if not df.empty else None
 first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
 first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
 default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
 
-# --- Step 5: Apply Presets and Render UI (Row 1 and Row 2) ---
+# --- Step 5: Render UI ---
 deploy_workspace_security_protocols()
 
-#--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
+#--- ROW 1: CONTROLS ROW ---
 col1, col2, col3 = st.columns([1.2, 1.2, 0.9])
 
 with col1:
@@ -1031,38 +1054,35 @@ with col2:
 
 with col3:
     if selected_ta:
-        # Create a download button that shows loading overlay on click
-        export_key = f"export_{selected_ta}_{selected_site_display}"
-        
-        # Use a placeholder for the download button
-        download_placeholder = st.empty()
-        
-        # Check if export is in progress
-        if st.session_state.get('export_in_progress', False):
-            show_loading_overlay("Generating Export...", "Please wait while we prepare your Excel report...")
-        
-        # Create download button with custom behavior
-        if download_placeholder.button("Export", use_container_width=True, key=export_key):
+        # Export button with loading overlay
+        if st.button("Export", use_container_width=True, key="export_btn"):
             st.session_state.export_in_progress = True
-            # Generate the report
             try:
+                # Show loading overlay for export
+                show_loading_overlay(
+                    message="Generating Export",
+                    submessage="Preparing your Excel report...",
+                    show_progress=True
+                )
+                
                 report_data = generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders)
                 st.session_state.export_in_progress = False
-                # Use st.download_button to trigger download
+                
+                # Use a download button that triggers immediately
                 st.download_button(
-                    label="Download Report",
+                    label="Download Now",
                     data=report_data,
                     file_name=f"{selected_ta}_Site_Information_Report.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key=f"download_{export_key}"
+                    key="download_export"
                 )
             except Exception as e:
                 st.session_state.export_in_progress = False
                 st.error(f"Error generating export: {str(e)}")
 
-#--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER FRAME ---
+#--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER ---
 if selected_ta and selected_site_display:
-    # Get site data based on the selected/preset site
+    # Get site data based on the selected site
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     site_row_data = site_data.iloc[0] if not site_data.empty else None
 
@@ -1076,17 +1096,16 @@ if selected_ta and selected_site_display:
                 media_row_data = m
                 break
         if not media_row_data:
-            media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {} # Fallback if needed
+            media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
 
-
-    # Instantiate Workspace Tabs instantly *after* controls are defined
+    # Create tabs
     tab_report, tab_photos, tab_docs = st.tabs([
         "PROPERTY INFORMATION",
         "PROPERTY PHOTOS",
         "PROPERTY DOCS"
     ])
 
-       # --- TAB 1: SITE INFORMATION REPORT ---
+    # --- TAB 1: SITE INFORMATION REPORT ---
     with tab_report:
         if site_row_data is not None:
             try:
@@ -1094,7 +1113,7 @@ if selected_ta and selected_site_display:
                     val = site_row_data.get(key_string.upper(), "")
                     if pd.isna(val) or val is None: 
                         return ""
-                    return val  # Return raw value without conversion
+                    return val
                 
                 rendered_view = HTML_FRAMEWORK
                 rendered_view = rendered_view.replace("_TRADE_AREA_", str(process_val("TRADE AREA")))
@@ -1132,9 +1151,9 @@ if selected_ta and selected_site_display:
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
         else:
-             st.info("No data available for the selected site.")
-            
-    # --- TAB 2: PROPERTY PHOTOS (3x3 LAYOUT) ---
+            st.info("No data available for the selected site.")
+    
+    # --- TAB 2: PROPERTY PHOTOS ---
     with tab_photos:
         if site_row_data is not None and media_row_data:
             direct_photo_mapping = {
@@ -1157,7 +1176,6 @@ if selected_ta and selected_site_display:
                         full_url = raw_url
                     valid_photos.append((label, thumb_url, full_url))
             if valid_photos:
-                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
@@ -1232,9 +1250,9 @@ if selected_ta and selected_site_display:
             else:
                 st.info("No photo links configured for this property record selection.")
         else:
-             st.info("No data available for the selected site.")
+            st.info("No data available for the selected site.")
 
-    # --- TAB 3: PROPERTY DOCS (3x3 LAYOUT) ---
+    # --- TAB 3: PROPERTY DOCS ---
     with tab_docs:
         if site_row_data is not None and media_row_data:
             direct_doc_mapping = {
@@ -1256,7 +1274,6 @@ if selected_ta and selected_site_display:
                         full_url = raw_url
                     valid_docs.append((label, thumb_url, full_url))
             if valid_docs:
-                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
@@ -1331,4 +1348,4 @@ if selected_ta and selected_site_display:
             else:
                 st.info("No layout documents configured for this property record selection.")
         else:
-             st.info("No data available for the selected site.")
+            st.info("No data available for the selected site.")
