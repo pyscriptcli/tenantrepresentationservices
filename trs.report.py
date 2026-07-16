@@ -703,7 +703,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
-#--- LOAD DATA ASSETS USING GOOGLE SHEETS API ---
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
 def load_data():
     """Load data from Google Sheets using API (no Excel download for data)"""
@@ -716,6 +715,10 @@ def load_data():
         # Open the source sheet by ID
         sheet_id = "14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE"
         spreadsheet = client.open_by_key(sheet_id)
+        
+        # --- List all worksheets to debug ---
+        all_sheets = [ws.title for ws in spreadsheet.worksheets()]
+        st.write("Found sheets:", all_sheets)  # This will show us what sheets exist
         
         # --- 1. Parse Main Data Sheet (RAW_DATA) ---
         try:
@@ -820,7 +823,11 @@ def load_data():
         return df, placeholders, template_bytes_raw, media_data_list, datetime.now()
     
     except Exception as e:
+        # Show the actual error for debugging
         st.error(f"Error loading data from Google Sheets: {str(e)}")
+        st.error(f"Error type: {type(e).__name__}")
+        import traceback
+        st.error(traceback.format_exc())
         return None, None, None, [], None
 
 def force_refresh_data():
