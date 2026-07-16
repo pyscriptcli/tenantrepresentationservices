@@ -16,6 +16,7 @@ from datetime import datetime
 import time
 import gspread
 from google.oauth2.service_account import Credentials
+import json
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -732,6 +733,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
 #--- LOAD DATA ASSETS USING GOOGLE SHEETS API ---
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+#--- GOOGLE SHEETS CREDENTIALS ---
+import json
+import os
+
+def get_credentials():
+    """Load credentials from JSON file"""
+    # Try multiple possible locations
+    possible_paths = [
+        "trs-sitesourcing-viewer-1191a0d6d74b.json",  # The filename you have
+        "credentials.json",  # Alternative name
+        os.path.join(os.path.dirname(__file__), "trs-sitesourcing-viewer-1191a0d6d74b.json"),
+        os.path.join(os.path.dirname(__file__), "credentials.json"),
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                return json.load(f)
+    
+    # If file doesn't exist, raise error
+    raise FileNotFoundError(f"Credentials file not found. Tried: {possible_paths}")
+
+
 def load_data():
     """Load data from Google Sheets using API (no Excel download for data)"""
     try:
