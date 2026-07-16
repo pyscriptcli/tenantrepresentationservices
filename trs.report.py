@@ -735,24 +735,17 @@ document.addEventListener('DOMContentLoaded', function() {
 def load_data():
     """Load data from Google Sheets using API (no Excel download for data)"""
     try:
-        # Authenticate with Google Sheets API using file
-        import json
+        # Load credentials from JSON file
+        creds_dict = get_credentials()
+        
+        # Authenticate with Google Sheets API
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        
-        # Load credentials from file
-        with open('credentials.json', 'r') as f:
-            creds_dict = json.load(f)
-        
         creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         client = gspread.authorize(creds)
         
         # Open the source sheet by ID
         sheet_id = "14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE"
         spreadsheet = client.open_by_key(sheet_id)
-        
-        # --- List all worksheets to debug ---
-        all_sheets = [ws.title for ws in spreadsheet.worksheets()]
-        st.write("Found sheets:", all_sheets)  # This will show us what sheets exist
         
         # --- 1. Parse Main Data Sheet (RAW_DATA) ---
         try:
@@ -856,8 +849,11 @@ def load_data():
         
         return df, placeholders, template_bytes_raw, media_data_list, datetime.now()
     
+    except FileNotFoundError as e:
+        st.error(f"Credentials file not found: {str(e)}")
+        st.error("Please ensure the JSON credentials file is in the project directory.")
+        return None, None, None, [], None
     except Exception as e:
-        # Show the actual error for debugging
         st.error(f"Error loading data from Google Sheets: {str(e)}")
         st.error(f"Error type: {type(e).__name__}")
         import traceback
