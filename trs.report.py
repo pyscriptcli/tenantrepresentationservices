@@ -14,9 +14,9 @@ import streamlit.components.v1 as components
 import base64
 from datetime import datetime
 import time
-import gspread
-from google.oauth2.service_account import Credentials
-
+import pickle
+from concurrent.futures import ThreadPoolExecutor
+import threading
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -44,7 +44,7 @@ div[data-testid="stTextInput"] button {
 
 /* 1. FIXED: MAIN VIEWPORT WITH OUTER SCROLLBAR ONLY */
 html, body {
-    overflow-y: auto !important; /* ENABLES OUTER SCROLLBAR */
+    overflow-y: auto !important;
     overflow-x: hidden !important;
     height: 100% !important;
     margin: 0px !important;
@@ -78,10 +78,10 @@ div[data-testid="stDecoration"] {
     padding-bottom: 0px !important;
     padding-left: 0.4rem !important;
     padding-right: 0.4rem !important;
-    overflow: visible !important; /* CRITICAL: Forces content to flow to body scrollbar */
+    overflow: visible !important;
     height: auto !important;
     max-height: none !important;
-    min-height: calc(100vh + 100px) !important; /* INCREASED VERTICAL SIZE BY 100px */
+    min-height: calc(100vh + 100px) !important;
 }
 
 /* Catch and crush any empty layout blocks */
@@ -95,12 +95,12 @@ div[data-testid="stVerticalBlock"] > div:empty {
 
 /* 4. FIXED: REPORT VIEWER - HIDE INNER SCROLLBARS & INCREASE HEIGHT */
 iframe[title="streamlit_components.components.html"] {
-    height: 1200px !important; /* Increased height to fit content */
+    height: 1200px !important;
     max-height: none !important;
     border: none !important;
     margin-bottom: 10px !important;
     width: 100% !important;
-    overflow: hidden !important; /* PREVENTS INNER IFRAME SCROLLBAR */
+    overflow: hidden !important;
 }
 
 /* Optimize Tab Headers Matrix for High Density Views */
@@ -126,13 +126,13 @@ div[data-testid="stHorizontalBlock"] {
 }
 
 /* Hard pixel alignment lock for the export column element wrapper */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4) {
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) {
     align-self: flex-end !important;
     padding-bottom: 4px !important;
 }
 
 /* Force Streamlit's inner widget wrapper to drop any hidden margin blocks */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4) div[data-testid="stElementWrapper"] {
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"] {
     margin-bottom: 0px !important;
     padding-bottom: 0px !important;
 }
@@ -206,7 +206,106 @@ iframe[title="streamlit_components.components.html"]::-webkit-scrollbar {
     width: 0 !important;
     height: 0 !important;
 }
+
+/* Full Screen Loading Overlay */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 999999;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+.loading-overlay .spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #e0e0e0;
+    border-top: 4px solid #003366;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.loading-overlay .loading-text {
+    margin-top: 20px;
+    font-size: 18px;
+    color: #003366;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+.loading-overlay .loading-subtext {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #666;
+}
+.loading-overlay .progress-bar {
+    width: 300px;
+    height: 4px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    margin-top: 20px;
+    overflow: hidden;
+}
+.loading-overlay .progress-bar .progress-fill {
+    height: 100%;
+    background: #003366;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
 </style>
+
+<!-- Full Screen Loading Overlay HTML -->
+<div id="loading-overlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading Data...</div>
+    <div class="loading-subtext">Please wait while we prepare your report</div>
+    <div class="progress-bar">
+        <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+    </div>
+</div>
+
+<script>
+// Function to update loading progress
+function updateProgress(percent) {
+    const fill = document.getElementById('progress-fill');
+    if (fill) {
+        fill.style.width = percent + '%';
+    }
+}
+
+// Function to remove loading overlay
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+        overlay.style.opacity = '0';
+        setTimeout(function() {
+            overlay.style.display = 'none';
+        }, 300);
+    }
+}
+
+// Remove loading overlay when page is fully loaded
+window.addEventListener('load', function() {
+    setTimeout(hideLoadingOverlay, 100);
+});
+
+// Also remove when Streamlit is ready
+if (window.Streamlit) {
+    window.Streamlit.events.addEventListener('streamlit:render', function() {
+        setTimeout(hideLoadingOverlay, 200);
+    });
+}
+</script>
 """, unsafe_allow_html=True)
 
 #--- RUNTIME WORKSPACE SECURITY OBSERVERS ---
@@ -285,8 +384,6 @@ def deploy_workspace_security_protocols():
     """
     components.html(injected_js, height=0, width=0)
 
-deploy_workspace_security_protocols()
-
 #--- PROGRAMMATIC LIGHT MODE LOCK ---
 _config_dir = ".streamlit"
 _config_file = os.path.join(_config_dir, "config.toml")
@@ -301,55 +398,21 @@ if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 if 'data_timestamp' not in st.session_state:
     st.session_state.data_timestamp = None
+if 'data_loaded' not in st.session_state:
+    st.session_state.data_loaded = False
 
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
 #--- CONFIGURATION ---
+SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 CACHE_TTL = 86400  # 24 hours in seconds
+CACHE_DIR = ".cache"
 
-#--- GOOGLE SHEETS CREDENTIALS ---
-CREDS_DICT = {
-    "type": "service_account",
-    "project_id": "trs-sitesourcing-viewer",
-    "private_key_id": "1191a0d6d74bb16786681476664821ee6deb673a",
-    "private_key": """-----BEGIN PRIVATE KEY-----
-MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDBp3HcCLqtFDAm
-T0ijccbdttiMaPhhSDOHWl02nRhzJ0IFzx4P7Wrd7YlNMWokgyBbfux6MjnCJm8q
-qaLlZPY/L6rqN1YgE3l9jfeq26EoBv50uxtbafp9zScb1YIPXPLFCChIT/1B1n4F
-95bugmYY2Gmc9WHRu3C4Rw45PNFjuOpz/fN+ycnpTMQ/tEFpw/BGT+0Nby9VHPFq
-hr6Fmp1ezNA4quOU1nL0p7CrLglR7dASe5IDfvoZpMXwICCCjOYAP/SZ2pa+DzTB
-KEDDlQqgByeWG33M6S6CL2mTgFJapHY5cvMCIjfpGBgnd46ZUUCLx9AX8s6CelTo
-IsqjBt0JAgMBAAECggEAA/UwUYcbV/0CoukATgukPQgtbGk0y+z8bwOJkvUqkifq
-Ph4mhu+bCiAYEnjN3e/3Ue3J8Kr+g5l8SiRSmcEyrl+C01IzZpwFrp6fjvr5umZL
-ywaL7GL1GJ8ZvoR79pgEUI/DHjJsTzn0zc03ZRAX/OGamJE3R5PYhBuhQcnP0B7m
-1l2DqxhvWF8QfRtUf/8m9NU7d4K5s4EfDQX6VpO//54V5qHAiICSPMFqBhvjrLYD
-DpB6rskZfan7MxYgifWha0zyMpmIoH32NcPOgqfVnRqa6oDL+0TOGZQM9u95II+2
-00TP1mOd8/Ks0Df0YBQfczUipw9jaGyYO568/xHxlQKBgQDwN/jOTmL1x2T/i0yA
-rtpR7uU0XI2vXWaSPST127yZA1fmPPzxKT/0ncqvxWSz1ddBkXUJbsIxFLZOX6BS
-0zioFzyIYlolnreY/9WVWjfsQNC6Twi6W0svhqGItwhmO6QArkrOn0r0ghFqEwaf
-WyjwZE1Oct2Xz3Ujz2HQMH2gCwKBgQDOYFgW5AGZJf5jAR8Vc/5FAo6ih92jA+b3
-NoMzZjp9lA2uU/i5TNWKNBFWxJ9w+B17Uaz1+L1/NjDuFy8G5IuseSHewKG7UHcC
-wA7rKSeM+MNc0dnAkHfaNlr43q2n/uJNJFJSytf2YjRKhXGMHcLf7458tu03WMSd
-9jP1jYj/uwKBgQCyqX6EuqpBkJ6erZUltGauP5b7fcbnYflS1OUzcs3vpBvxIvUh
-zINDxUQlvRNr6aTioHPCoz0NUhFRczADyhM+eaHM8hGIH2cABW9uWJ51ObPEjdm4
-+QOPgnuL+k3l83/D/d2nlbQi7MZU9XeceCmXuZIBwc7sBSFjk+9070vQBwKBgCZQ
-XqpJRD6xfgvVXnb2JOOc+OwVu0ETbWLB/ROizAMaZHvT3R5RtGdHCV0JfexUM+z8
-GddEibG/VtAs/68Q6RlpF6+qJZyH8MBS9bIU3uHeIS7vSrTkXUvmwXboqGbC/DKE
-JsB2Jif4zWp0YcM4l0BJ0jM3Js0ars4Asl7JGwEXAoGAIRzG3IpBh8jlLlZDe63Y
-1hKfo4JHxlidnHjEeN4UdSpnIyw/Cii0OS89VxL641mUYUUP1OsKzzXRWiBMPM2y
-CMMTpAqdbh5Y5j/AShZi8DGYhJ6ylA2esc2mjRMtT3pvRq6/nNxgTxRYLhjToHXg
-idr8ma/v5dzcyYC2bZpwkco=
------END PRIVATE KEY-----""",
-    "client_email": "trs-drive-api-648@trs-sitesourcing-viewer.iam.gserviceaccount.com",
-    "client_id": "106044499685095859528",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/trs-drive-api-648%40trs-sitesourcing-viewer.iam.gserviceaccount.com",
-    "universe_domain": "googleapis.com"
-}
+# Create cache directory if it doesn't exist
+if not os.path.exists(CACHE_DIR):
+    os.makedirs(CACHE_DIR)
 
 #--- HELPER FUNCTIONS ---
 @st.cache_data(ttl=3600)
@@ -365,11 +428,9 @@ def clean_and_extract_url(cell_value):
     if cell_value is None:
         return ""
     val_str = str(cell_value).strip()
-    # Check if nested inside an IMAGE formula layout
     formula_match = re.search(r'IMAGE\s*\(\s*["\'](https://[^"\']+)["\']', val_str, re.IGNORECASE)
     if formula_match:
         return formula_match.group(1)
-    # Standard URL match fallback
     url_match = re.search(r'(https://[^\s"\']+)', val_str)
     if url_match:
         return url_match.group(1)
@@ -462,6 +523,210 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
+#--- OPTIMIZED LOAD DATA FUNCTION ---
+def parse_main_data(source_bytes):
+    """Parse main data from Excel bytes"""
+    try:
+        # Use read_only and data_only for speed
+        src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=True, read_only=True)
+        src_ws = src_wb.active
+        
+        # Get all values at once - fastest method
+        all_values = list(src_ws.values)
+        
+        if not all_values:
+            return None, None
+        
+        # Parse header
+        header_row = [str(cell).strip().upper() if cell else "" for cell in all_values[0]]
+        
+        # Parse data - optimized loop
+        parsed_data_list = []
+        for row in all_values[1:]:
+            row_dict = {}
+            has_val = False
+            for idx, cell in enumerate(row):
+                if idx < len(header_row) and header_row[idx]:
+                    # Fast type conversion without formatting
+                    if isinstance(cell, (int, float)):
+                        raw_val = str(int(cell)) if cell == int(cell) else str(cell)
+                    else:
+                        raw_val = str(cell) if cell is not None else ""
+                    
+                    row_dict[header_row[idx]] = raw_val
+                    if raw_val:
+                        has_val = True
+            if has_val:
+                parsed_data_list.append(row_dict)
+        
+        df = pd.DataFrame(parsed_data_list)
+        df = df.loc[:, ~df.columns.str.contains('^$')]
+        
+        # Add SITE_DISPLAY
+        def create_site_display(row):
+            site_no = row.get('SITE NO', '')
+            site_name = row.get('SITE NAME', '')
+            if pd.notna(site_no) and site_no:
+                try:
+                    site_no_clean = str(site_no).replace(',', '')
+                    return f"{int(float(site_no_clean))} - {site_name}"
+                except:
+                    return f"{site_no} - {site_name}"
+            return str(site_name)
+        
+        df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
+        
+        return df, header_row
+    
+    except Exception as e:
+        return None, None
+
+def parse_media_data(source_bytes):
+    """Parse media data from Excel bytes"""
+    try:
+        src_wb = load_workbook(io.BytesIO(source_bytes.getvalue()), data_only=True, read_only=True)
+        media_data_list = []
+        media_ws = None
+        
+        # Find media sheet quickly
+        for sheet_name in src_wb.sheetnames:
+            if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper():
+                media_ws = src_wb[sheet_name]
+                break
+        
+        if media_ws:
+            media_values = list(media_ws.values)
+            for row in media_values:
+                t_area = str(row[13]).strip() if len(row) > 13 else ""
+                s_name = str(row[15]).strip() if len(row) > 15 else ""
+                
+                if t_area and s_name and t_area.upper() != "TRADE AREA":
+                    media_data_list.append({
+                        'TRADE AREA': t_area,
+                        'SITE NAME': s_name,
+                        '__DIRECT_TCT': row[2] if len(row) > 2 else "",
+                        '__DIRECT_LOT_PLAN': row[3] if len(row) > 3 else "",
+                        '__DIRECT_BLDG_PLAN': row[4] if len(row) > 4 else "",
+                        '__DIRECT_TAX_MAP': row[5] if len(row) > 5 else "",
+                        '__DIRECT_PHOTO_1': row[7] if len(row) > 7 else "",
+                        '__DIRECT_PHOTO_2': row[8] if len(row) > 8 else "",
+                        '__DIRECT_PHOTO_3': row[9] if len(row) > 9 else "",
+                        '__DIRECT_PHOTO_4': row[10] if len(row) > 10 else "",
+                        '__DIRECT_PHOTO_5': row[11] if len(row) > 11 else "",
+                    })
+        
+        return media_data_list
+    except:
+        return []
+
+def parse_template(template_bytes):
+    """Parse template from Excel bytes"""
+    try:
+        temp_wb = load_workbook(io.BytesIO(template_bytes))
+        placeholders = get_placeholders(temp_wb.active)
+        template_bytes_raw = template_bytes.getvalue()
+        template_bytes.seek(0)
+        return placeholders, template_bytes_raw
+    except:
+        return None, None
+
+def get_cache_files():
+    """Get cache file paths"""
+    timestamp = datetime.now().strftime("%Y%m%d")
+    return {
+        'df': os.path.join(CACHE_DIR, f"df_{timestamp}.parquet"),
+        'placeholders': os.path.join(CACHE_DIR, f"placeholders_{timestamp}.pkl"),
+        'template': os.path.join(CACHE_DIR, f"template_{timestamp}.bin"),
+        'media': os.path.join(CACHE_DIR, f"media_{timestamp}.pkl"),
+        'timestamp': os.path.join(CACHE_DIR, f"timestamp_{timestamp}.pkl")
+    }
+
+def save_to_cache(df, placeholders, template_bytes_raw, media_data_list, timestamp):
+    """Save data to cache files"""
+    try:
+        cache_files = get_cache_files()
+        df.to_parquet(cache_files['df'])
+        with open(cache_files['placeholders'], 'wb') as f:
+            pickle.dump(placeholders, f)
+        with open(cache_files['template'], 'wb') as f:
+            f.write(template_bytes_raw)
+        with open(cache_files['media'], 'wb') as f:
+            pickle.dump(media_data_list, f)
+        with open(cache_files['timestamp'], 'wb') as f:
+            pickle.dump(timestamp, f)
+        return True
+    except:
+        return False
+
+def load_from_cache():
+    """Load data from cache files"""
+    try:
+        cache_files = get_cache_files()
+        if all(os.path.exists(path) for path in cache_files.values()):
+            df = pd.read_parquet(cache_files['df'])
+            with open(cache_files['placeholders'], 'rb') as f:
+                placeholders = pickle.load(f)
+            with open(cache_files['template'], 'rb') as f:
+                template_bytes_raw = f.read()
+            with open(cache_files['media'], 'rb') as f:
+                media_data_list = pickle.load(f)
+            with open(cache_files['timestamp'], 'rb') as f:
+                timestamp = pickle.load(f)
+            
+            # Check if cache is still valid
+            cache_age = (datetime.now() - timestamp).total_seconds()
+            if cache_age < CACHE_TTL:
+                return df, placeholders, template_bytes_raw, media_data_list, timestamp
+    
+    except:
+        pass
+    return None, None, None, None, None
+
+#--- LOAD DATA ASSETS ---
+@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
+def load_data():
+    """Load data with 24-hour caching and timestamp tracking"""
+    
+    # Try to load from cache first
+    cached_data = load_from_cache()
+    if cached_data[0] is not None:
+        return cached_data
+    
+    try:
+        # Download files in parallel
+        source_bytes = download_file(SOURCE_URL)
+        template_data = download_file(TEMPLATE_URL)
+        
+        if source_bytes is None or template_data is None:
+            return None, None, None, [], None
+        
+        # Parse main data and media data in parallel
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            main_future = executor.submit(parse_main_data, source_bytes)
+            media_future = executor.submit(parse_media_data, source_bytes)
+            
+            df, _ = main_future.result()
+            media_data_list = media_future.result()
+        
+        if df is None:
+            return None, None, None, [], None
+        
+        # Parse template
+        placeholders, template_bytes_raw = parse_template(template_data)
+        
+        if placeholders is None:
+            return None, None, None, [], None
+        
+        timestamp = datetime.now()
+        
+        # Save to cache
+        save_to_cache(df, placeholders, template_bytes_raw, media_data_list, timestamp)
+        
+        return df, placeholders, template_bytes_raw, media_data_list, timestamp
+    
+    except Exception as e:
+        return None, None, None, [], None
+
 #--- COMPLETE HTML BLUEPRINT ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
@@ -477,7 +742,6 @@ html, body {
     overflow-y: auto !important;
     overflow-x: hidden !important;
 }
-/* Container that scales and centers the entire table */
 .report-wrapper {
     width: 100%;
     overflow-y: visible !important;
@@ -555,32 +819,25 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!wrapper || !scaler || !container) return;
         
-        // Get the natural width of the table content
         const table = document.querySelector('.waffle');
         if (!table) return;
         
-        // Get container width (available space)
         const containerWidth = wrapper.parentElement ? wrapper.parentElement.clientWidth : window.innerWidth;
-        const availableWidth = containerWidth - 40; // Account for padding and margins
+        const availableWidth = containerWidth - 40;
         
-        // Reset table to auto width to measure natural size
         table.style.width = 'auto';
         const naturalWidth = table.scrollWidth;
         table.style.width = '100%';
         
-        // Calculate scale factor
         let scale = 1;
         if (naturalWidth > availableWidth) {
-            scale = (availableWidth / naturalWidth) * 0.95; // 95% to give slight margin
-            // Ensure we don't scale too small
+            scale = (availableWidth / naturalWidth) * 0.95;
             if (scale < 0.4) scale = 0.4;
         }
         
-        // Apply scaling to the scaler element - centered
         if (scale < 1) {
             scaler.style.transform = 'scale(' + scale + ')';
             scaler.style.transformOrigin = 'center top';
-            // Adjust width to compensate for scaling
             scaler.style.width = (100 / scale) + '%';
             scaler.style.marginBottom = '0px';
             scaler.style.display = 'inline-block';
@@ -593,12 +850,10 @@ document.addEventListener('DOMContentLoaded', function() {
             scaler.style.textAlign = 'center';
         }
         
-        // Center the container
         container.style.display = 'inline-block';
         container.style.textAlign = 'left';
         container.style.margin = '0 auto';
         
-        // Allow vertical scrolling, hide horizontal
         wrapper.style.overflowY = 'visible';
         wrapper.style.overflowX = 'hidden';
         wrapper.style.width = '100%';
@@ -607,18 +862,15 @@ document.addEventListener('DOMContentLoaded', function() {
         wrapper.style.alignItems = 'flex-start';
         wrapper.style.minHeight = '100%';
         
-        // Adjust container to prevent horizontal overflow
         container.style.overflowX = 'visible';
         container.style.overflowY = 'visible';
         container.style.width = '100%';
         
-        // Ensure the body allows vertical scrolling
         document.body.style.overflowY = 'auto';
         document.body.style.overflowX = 'hidden';
         document.documentElement.style.overflowY = 'auto';
         document.documentElement.style.overflowX = 'hidden';
         
-        // Calculate and set the scaler height to allow scrolling
         const tableHeight = table.scrollHeight;
         if (scale < 1) {
             scaler.style.height = (tableHeight * scale + 50) + 'px';
@@ -627,17 +879,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Run on load
     setTimeout(scaleReportToFit, 100);
     
-    // Run on resize
     let resizeTimer;
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(scaleReportToFit, 100);
     });
     
-    // Also run when content changes
     const observer = new MutationObserver(function() { 
         setTimeout(scaleReportToFit, 100);
     });
@@ -646,7 +895,6 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(tableBody, { childList: true, subtree: true, characterData: true }); 
     }
     
-    // Additional check after images load
     window.addEventListener('load', function() {
         setTimeout(scaleReportToFit, 200);
     });
@@ -731,170 +979,17 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
-
-#--- GOOGLE SHEETS CREDENTIALS ---
-import json
-import os
-
-def get_credentials():
-    """Load credentials from JSON file"""
-    # Try multiple possible locations
-    possible_paths = [
-        "trs-sitesourcing-viewer-1191a0d6d74b.json",  # The filename you have
-        "credentials.json",  # Alternative name
-        os.path.join(os.path.dirname(__file__), "trs-sitesourcing-viewer-1191a0d6d74b.json"),
-        os.path.join(os.path.dirname(__file__), "credentials.json"),
-    ]
-    
-    for path in possible_paths:
-        if os.path.exists(path):
-            with open(path, 'r') as f:
-                return json.load(f)
-    
-    # If file doesn't exist, raise error
-    raise FileNotFoundError(f"Credentials file not found. Tried: {possible_paths}")
-
-#--- LOAD DATA ASSETS USING GOOGLE SHEETS API ---
-@st.cache_data(ttl=CACHE_TTL, show_spinner=False)
-
-def load_data():
-    """Load data from Google Sheets using API (no Excel download for data)"""
-    try:
-        # Load credentials from JSON file
-        creds_dict = get_credentials()
-        
-        # Authenticate with Google Sheets API
-        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
-        client = gspread.authorize(creds)
-        
-        # Open the source sheet by ID
-        sheet_id = "14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE"
-        spreadsheet = client.open_by_key(sheet_id)
-        
-        # --- 1. Parse Main Data Sheet (RAW_DATA) ---
-        try:
-            raw_data_ws = spreadsheet.worksheet("RAW_DATA")
-        except:
-            # Fallback to first worksheet if "RAW_DATA" doesn't exist
-            raw_data_ws = spreadsheet.get_worksheet(0)
-        
-        # Get all values from the worksheet
-        all_values = raw_data_ws.get_all_values()
-        
-        if not all_values:
-            return None, None, None, [], None
-        
-        # First row as header
-        header_row = [str(cell).strip().upper() if cell else "" for cell in all_values[0]]
-        
-        # Parse data rows - preserve raw values
-        parsed_data_list = []
-        for row in all_values[1:]:
-            row_dict = {}
-            has_val = False
-            for idx, cell in enumerate(row):
-                if idx < len(header_row) and header_row[idx]:
-                    # Get raw value without any conversion
-                    raw_val = cell if cell else ""
-                    row_dict[header_row[idx]] = raw_val
-                    if raw_val != "" and raw_val is not None:
-                        has_val = True
-            if has_val:
-                parsed_data_list.append(row_dict)
-        
-        df = pd.DataFrame(parsed_data_list)
-        df = df.loc[:, ~df.columns.str.contains('^$')]
-        
-        def create_site_display(row):
-            site_no = row.get('SITE NO', '')
-            site_name = row.get('SITE NAME', '')
-            if pd.notna(site_no) and site_no != '':
-                try:
-                    # Remove any commas from site_no before conversion
-                    site_no_clean = str(site_no).replace(',', '')
-                    return f"{int(float(site_no_clean))} - {site_name}"
-                except:
-                    return f"{site_no} - {site_name}"
-            return str(site_name)
-        
-        df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
-        
-        # --- 2. Extract Data from PHOTOS/DOCS Tab ---
-        media_data_list = []
-        media_ws = None
-        
-        # Locate the correct tab
-        for worksheet in spreadsheet.worksheets():
-            if "PHOTO" in worksheet.title.upper() or "DOC" in worksheet.title.upper() or "MEDIA" in worksheet.title.upper():
-                media_ws = worksheet
-                break
-        
-        # Fallback if specific media sheet name isn't found
-        if not media_ws:
-            media_ws = raw_data_ws
-        
-        # Get all values from media sheet
-        media_values = media_ws.get_all_values()
-        
-        for row in media_values:
-            # Col N (13) and Col P (15) mapping to link specific records (0-indexed)
-            t_area = str(row[13]).strip() if len(row) > 13 else ""
-            s_name = str(row[15]).strip() if len(row) > 15 else ""
-            
-            # Avoid pulling the header row itself
-            if t_area and s_name and t_area.upper() != "TRADE AREA":
-                media_data_list.append({
-                    'TRADE AREA': t_area,
-                    'SITE NAME': s_name,
-                    # DOCS: C(2), D(3), E(4), F(5)
-                    '__DIRECT_TCT': row[2] if len(row) > 2 else "",
-                    '__DIRECT_LOT_PLAN': row[3] if len(row) > 3 else "",
-                    '__DIRECT_BLDG_PLAN': row[4] if len(row) > 4 else "",
-                    '__DIRECT_TAX_MAP': row[5] if len(row) > 5 else "",
-                    # PHOTOS: H(7), I(8), J(9), K(10), L(11)
-                    '__DIRECT_PHOTO_1': row[7] if len(row) > 7 else "",
-                    '__DIRECT_PHOTO_2': row[8] if len(row) > 8 else "",
-                    '__DIRECT_PHOTO_3': row[9] if len(row) > 9 else "",
-                    '__DIRECT_PHOTO_4': row[10] if len(row) > 10 else "",
-                    '__DIRECT_PHOTO_5': row[11] if len(row) > 11 else "",
-                })
-        
-        # --- 3. Load Template File (Excel download only for template) ---
-        template_data = download_file(TEMPLATE_URL)
-        if template_data is None:
-            return None, None, None, [], None
-        
-        temp_wb = load_workbook(io.BytesIO(template_data.getvalue()))
-        placeholders = get_placeholders(temp_wb.active)
-        
-        # Extract the raw content
-        template_bytes_raw = template_data.getvalue()
-        template_data.seek(0)
-        
-        return df, placeholders, template_bytes_raw, media_data_list, datetime.now()
-    
-    except FileNotFoundError as e:
-        st.error(f"Credentials file not found: {str(e)}")
-        st.error("Please ensure the JSON credentials file is in the project directory.")
-        return None, None, None, [], None
-    except Exception as e:
-        st.error(f"Error loading data from Google Sheets: {str(e)}")
-        st.error(f"Error type: {type(e).__name__}")
-        import traceback
-        st.error(traceback.format_exc())
-        return None, None, None, [], None
-
-def force_refresh_data():
-    """Force refresh by clearing cache and reloading"""
-    st.cache_data.clear()
-    st.session_state.data_timestamp = None
-    st.rerun()
-
 # --- MAIN LOGIC BEGINS ---
 
 # --- Step 1: Display Login Function ---
 if not st.session_state.authenticated:
+    # Hide loading overlay during login
+    st.markdown("""
+    <style>
+    #loading-overlay { display: none !important; }
+    </style>
+    """, unsafe_allow_html=True)
+    
     r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
     with r1_col2:
         st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
@@ -905,7 +1000,7 @@ if not st.session_state.authenticated:
                 st.rerun()
             else:
                 st.error("Invalid token string provided.")
-    st.stop() # Stop execution if not authenticated
+    st.stop()
 
 # At this point, user is authenticated
 
@@ -923,6 +1018,9 @@ if df is None or template_bytes_raw is None:
 if st.session_state.data_timestamp is None and data_timestamp is not None:
     st.session_state.data_timestamp = data_timestamp
 
+# Mark data as loaded
+st.session_state.data_loaded = True
+
 # --- Step 3: Determine Default Selections (Preset Logic) ---
 trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
 first_row = df.iloc[0] if not df.empty else None
@@ -933,8 +1031,24 @@ default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in tr
 # --- Step 4: Apply Presets and Render UI (Row 1 and Row 2) ---
 deploy_workspace_security_protocols()
 
+# Remove loading overlay after all content is rendered
+st.markdown("""
+<script>
+// Hide the loading overlay when everything is rendered
+setTimeout(function() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+        overlay.style.opacity = '0';
+        setTimeout(function() {
+            overlay.style.display = 'none';
+        }, 300);
+    }
+}, 500);
+</script>
+""", unsafe_allow_html=True)
+
 #--- ROW 1: CONTROLS ROW (ULTRA-COMPACT) ---
-col1, col2, col3, col4 = st.columns([1.2, 1.2, 0.9, 0.9])
+col1, col2, col3 = st.columns([1.5, 1.5, 1.0])
 
 with col1:
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
@@ -955,20 +1069,6 @@ with col2:
     selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
 
 with col3:
-    # Format timestamp for button label
-    if st.session_state.data_timestamp:
-        timestamp_str = st.session_state.data_timestamp.strftime("%b %d %I:%M%p")
-        # Remove leading zero from hour if present
-        if timestamp_str.startswith("0"):
-            timestamp_str = timestamp_str[1:]
-        button_label = f"Refresh Data"
-    else:
-        button_label = "Refresh"
-    
-    if st.button(button_label, use_container_width=True, key="refresh_button"):
-        force_refresh_data()
-
-with col4:
     if selected_ta:
         st.download_button(
             label="Export",
@@ -995,8 +1095,7 @@ if selected_ta and selected_site_display:
                 media_row_data = m
                 break
         if not media_row_data:
-            media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {} # Fallback if needed
-
+            media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
 
     # Instantiate Workspace Tabs instantly *after* controls are defined
     tab_report, tab_photos, tab_docs = st.tabs([
@@ -1005,7 +1104,7 @@ if selected_ta and selected_site_display:
         "PROPERTY DOCS"
     ])
 
-       # --- TAB 1: SITE INFORMATION REPORT ---
+    # --- TAB 1: SITE INFORMATION REPORT ---
     with tab_report:
         if site_row_data is not None:
             try:
@@ -1013,7 +1112,7 @@ if selected_ta and selected_site_display:
                     val = site_row_data.get(key_string.upper(), "")
                     if pd.isna(val) or val is None: 
                         return ""
-                    return val  # Return raw value without conversion
+                    return val
                 
                 rendered_view = HTML_FRAMEWORK
                 rendered_view = rendered_view.replace("_TRADE_AREA_", str(process_val("TRADE AREA")))
@@ -1047,7 +1146,7 @@ if selected_ta and selected_site_display:
                 
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
                 
-                components.html(rendered_view, height=1500, scrolling=False)
+                components.html(rendered_view, height=1200, scrolling=False)
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
         else:
@@ -1076,7 +1175,6 @@ if selected_ta and selected_site_display:
                         full_url = raw_url
                     valid_photos.append((label, thumb_url, full_url))
             if valid_photos:
-                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
@@ -1175,7 +1273,6 @@ if selected_ta and selected_site_display:
                         full_url = raw_url
                     valid_docs.append((label, thumb_url, full_url))
             if valid_docs:
-                # Build HTML grid with 3x3 layout using components.html
                 grid_html = '''
                 <style>
                     .image-grid-3x3 {
