@@ -28,36 +28,26 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-#--- FULL SCREEN LOADING OVERLAY COMPONENT ---
-def show_loading_overlay(message="Loading Data...", submessage="Please wait while we prepare your data...", show_progress=True):
-    """Display a full-screen loading overlay with custom message"""
-    progress_html = """
-        <div class="progress-bar-container">
-            <div class="progress-bar"></div>
-        </div>
-    """ if show_progress else ""
-    
-    loading_html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ 
-            font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif;
-            background: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            z-index: 999999;
-        }}
-        .loading-container {{
+#--- FULL SCREEN LOADING OVERLAY (MARKDOWN VERSION) ---
+def get_loading_overlay_html(message="Loading Data...", submessage="Please wait while we prepare your data..."):
+    """Return HTML for a full‑screen loading overlay (fixed position, covers everything)."""
+    return f"""
+    <div id="loading-overlay" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255,255,255,0.95);
+        z-index: 999999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif;
+        margin: 0;
+        padding: 0;
+    ">
+        <div style="
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -68,108 +58,64 @@ def show_loading_overlay(message="Loading Data...", submessage="Please wait whil
             border-radius: 16px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.08);
             min-width: 400px;
-        }}
-        .spinner {{
-            width: 60px;
-            height: 60px;
-            border: 4px solid #e8eaed;
-            border-top: 4px solid #003366;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }}
+            text-align: center;
+        ">
+            <div style="font-size: 1.8rem; font-weight: 700; color: #003366; letter-spacing: 2px;">TRS</div>
+            <div style="
+                width: 60px;
+                height: 60px;
+                border: 4px solid #e8eaed;
+                border-top: 4px solid #003366;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            "></div>
+            <div style="font-size: 1.2rem; color: #202124; font-weight: 500;">{message}</div>
+            <div style="font-size: 0.9rem; color: #5f6368; font-weight: 400; margin-top: -10px;">{submessage}</div>
+            <div style="width: 300px; height: 4px; background: #e8eaed; border-radius: 2px; overflow: hidden; margin-top: 10px;">
+                <div style="
+                    height: 100%;
+                    background: #003366;
+                    border-radius: 2px;
+                    width: 0%;
+                    animation: progress 2.5s ease-in-out infinite;
+                "></div>
+            </div>
+            <div style="font-size: 0.8rem; color: #5f6368; min-height: 24px;" id="statusMessage">Initializing...</div>
+        </div>
+    </div>
+    <style>
         @keyframes spin {{
             0% {{ transform: rotate(0deg); }}
             100% {{ transform: rotate(360deg); }}
-        }}
-        .loading-text {{
-            font-size: 1.2rem;
-            color: #202124;
-            font-weight: 500;
-            letter-spacing: 0.3px;
-        }}
-        .loading-subtext {{
-            font-size: 0.9rem;
-            color: #5f6368;
-            font-weight: 400;
-            margin-top: -10px;
-        }}
-        .progress-bar-container {{
-            width: 300px;
-            height: 4px;
-            background: #e8eaed;
-            border-radius: 2px;
-            overflow: hidden;
-            margin-top: 10px;
-        }}
-        .progress-bar {{
-            height: 100%;
-            background: #003366;
-            border-radius: 2px;
-            width: 0%;
-            animation: progress 2.5s ease-in-out infinite;
         }}
         @keyframes progress {{
             0% {{ width: 0%; }}
             50% {{ width: 70%; }}
             100% {{ width: 100%; }}
         }}
-        .logo-text {{
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #003366;
-            letter-spacing: 2px;
-        }}
-        .loading-status {{
-            font-size: 0.8rem;
-            color: #5f6368;
-            font-weight: 400;
-            margin-top: 5px;
-            min-height: 20px;
-        }}
-        .overlay-backdrop {{
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255,255,255,0.95);
-            z-index: 999998;
-        }}
     </style>
-    </head>
-    <body>
-    <div class="overlay-backdrop"></div>
-    <div class="loading-container">
-        <div class="logo-text">TRS</div>
-        <div class="spinner"></div>
-        <div class="loading-text">{message}</div>
-        <div class="loading-subtext">{submessage}</div>
-        {progress_html}
-        <div class="loading-status" id="statusMessage">Initializing...</div>
-    </div>
     <script>
-        // Simulate progress updates
-        let progress = 0;
-        const statusMessages = [
-            'Connecting to data source...',
-            'Downloading files...',
-            'Processing data...',
-            'Optimizing for display...',
-            'Almost ready...'
-        ];
-        let msgIndex = 0;
-        setInterval(function() {{
-            const statusEl = document.getElementById('statusMessage');
-            if (statusEl && msgIndex < statusMessages.length) {{
-                statusEl.textContent = statusMessages[msgIndex];
-                msgIndex++;
-            }}
-        }}, 500);
+        (function() {{
+            const statusMessages = [
+                'Connecting to data source...',
+                'Downloading files...',
+                'Processing data...',
+                'Optimizing for display...',
+                'Almost ready...'
+            ];
+            let msgIndex = 0;
+            const interval = setInterval(function() {{
+                const el = document.getElementById('statusMessage');
+                if (el && msgIndex < statusMessages.length) {{
+                    el.textContent = statusMessages[msgIndex];
+                    msgIndex++;
+                }} else {{
+                    clearInterval(interval);
+                }}
+            }}, 500);
+        }})();
     </script>
-    </body>
-    </html>
     """
-    return components.html(loading_html, height=800, scrolling=False)
 
 #--- LINE 1 GLOBAL STYLESHEET ENFORCER ---
 st.markdown("""
@@ -331,24 +277,6 @@ div[data-testid="stStatusWidget"] {
     height: 0 !important;
     width: 0 !important;
     pointer-events: none !important;
-}
-
-/* Ensure loading overlay is on top */
-.overlay-backdrop {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    background: rgba(255,255,255,0.95) !important;
-    z-index: 999999 !important;
-}
-
-/* Status message for loading */
-.loading-status {
-    color: #5f6368;
-    font-size: 0.85rem;
-    min-height: 24px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -972,21 +900,18 @@ if not st.session_state.authenticated:
                 st.error("Invalid token string provided.")
     st.stop()
 
-# At this point, user is authenticated
-
-# --- Step 2: Initialize data loading (fresh fetch every session) ---
+# --- Step 2: If authenticated but data not loaded yet, show full‑screen overlay and load data ---
 if not st.session_state.data_loaded:
-    # Show loading overlay with status updates
-    show_loading_overlay(
+    # Show the loading overlay (markdown, fixed position)
+    st.markdown(get_loading_overlay_html(
         message="Loading Site Information Report",
-        submessage="Please wait while we fetch and process your data...",
-        show_progress=True
-    )
+        submessage="Please wait while we fetch and process your data..."
+    ), unsafe_allow_html=True)
     
-    # Small delay to ensure the loading overlay renders
+    # Small delay to ensure overlay renders
     time.sleep(0.5)
     
-    # Load data with parallel processing (no caching → fresh)
+    # Load data with parallel processing (fresh fetch)
     try:
         data = load_data_parallel()
         df, placeholders, template_bytes_raw, media_data_list, data_timestamp = data
@@ -1004,7 +929,7 @@ if not st.session_state.data_loaded:
         st.session_state.data_loaded = True
         st.session_state.first_load_complete = True
         
-        # Rerun to remove loading overlay and show main UI
+        # Rerun to remove overlay and show main UI
         time.sleep(0.3)
         st.rerun()
         
@@ -1012,21 +937,20 @@ if not st.session_state.data_loaded:
         st.error(f"Error loading data: {str(e)}")
         st.stop()
 
-# --- Step 3: Retrieve data from session state ---
-# This is the main application - it only runs after data is loaded
+# --- Step 3: Data is loaded – render the main UI ---
 df = st.session_state.df
 placeholders = st.session_state.placeholders
 template_bytes_raw = st.session_state.template_bytes_raw
 media_data_list = st.session_state.media_data_list
 
-# --- Step 4: Determine Default Selections ---
+# Determine default selections
 trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
 first_row = df.iloc[0] if not df.empty else None
 first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
 first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
 default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
 
-# --- Step 5: Render UI ---
+# Security protocols
 deploy_workspace_security_protocols()
 
 #--- ROW 1: CONTROLS ROW ---
@@ -1051,7 +975,6 @@ with col2:
     selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
 
 with col3:
-    # Simple download button – generates report on click with built‑in spinner
     if selected_ta:
         st.download_button(
             label="Export",
@@ -1064,11 +987,9 @@ with col3:
 
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER ---
 if selected_ta and selected_site_display:
-    # Get site data based on the selected site
     site_data = df[df["SITE_DISPLAY"] == selected_site_display]
     site_row_data = site_data.iloc[0] if not site_data.empty else None
 
-    # Get corresponding media data
     target_ta = str(site_row_data["TRADE AREA"]) if site_row_data is not None else ""
     target_sn = str(site_row_data["SITE NAME"]) if site_row_data is not None else ""
     media_row_data = {}
@@ -1080,14 +1001,13 @@ if selected_ta and selected_site_display:
         if not media_row_data:
             media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
 
-    # Create tabs
     tab_report, tab_photos, tab_docs = st.tabs([
         "PROPERTY INFORMATION",
         "PROPERTY PHOTOS",
         "PROPERTY DOCS"
     ])
 
-    # --- TAB 1: SITE INFORMATION REPORT (HEIGHT = 1600px) ---
+    # --- TAB 1: SITE INFORMATION REPORT (height = 1600) ---
     with tab_report:
         if site_row_data is not None:
             try:
@@ -1129,7 +1049,6 @@ if selected_ta and selected_site_display:
                 
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
                 
-                # Render with height=1600 for better visibility
                 components.html(rendered_view, height=1600, scrolling=False)
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
