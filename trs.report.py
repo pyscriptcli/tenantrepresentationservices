@@ -460,6 +460,12 @@ if 'export_in_progress' not in st.session_state:
 if 'first_load_complete' not in st.session_state:
     st.session_state.first_load_complete = False
 
+# --- Navigation state ---
+if 'site_index' not in st.session_state:
+    st.session_state.site_index = 0
+if 'prev_ta' not in st.session_state:
+    st.session_state.prev_ta = None
+
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
@@ -1037,20 +1043,55 @@ col1, col2, col3 = st.columns([1.2, 1.2, 0.9])
 with col1:
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
 
+# Track trade area change to reset site index
+if 'prev_ta' not in st.session_state:
+    st.session_state.prev_ta = selected_ta
+
+if selected_ta != st.session_state.prev_ta:
+    st.session_state.site_index = 0
+    st.session_state.prev_ta = selected_ta
+
 with col2:
     if selected_ta:
         raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
         sites_in_ta = sorted(raw_sites, key=parse_site_number)
 
-        if selected_ta == first_trade_area and first_site_display in sites_in_ta:
-            default_site_index = sites_in_ta.index(first_site_display)
-        else:
-            default_site_index = 0
-    else:
-        sites_in_ta = []
-        default_site_index = 0
+        # Ensure site_index is within bounds
+        if st.session_state.site_index >= len(sites_in_ta):
+            st.session_state.site_index = 0
 
-    selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
+        # Build three sub-columns: left arrow, dropdown, right arrow
+        left_col, mid_col, right_col = st.columns([0.4, 4, 0.4])
+        with left_col:
+            # Previous button
+            prev_disabled = st.session_state.site_index <= 0
+            if st.button("◀", use_container_width=True, disabled=prev_disabled, key="prev_site"):
+                if st.session_state.site_index > 0:
+                    st.session_state.site_index -= 1
+                    st.rerun()
+        with mid_col:
+            # Dropdown
+            selected_site_display = st.selectbox(
+                "Site Name",
+                options=sites_in_ta,
+                index=st.session_state.site_index,
+                label_visibility="visible",
+                key="site_select"
+            )
+            # Update index if user changed via dropdown
+            new_index = sites_in_ta.index(selected_site_display)
+            if new_index != st.session_state.site_index:
+                st.session_state.site_index = new_index
+        with right_col:
+            # Next button
+            next_disabled = st.session_state.site_index >= len(sites_in_ta) - 1
+            if st.button("▶", use_container_width=True, disabled=next_disabled, key="next_site"):
+                if st.session_state.site_index < len(sites_in_ta) - 1:
+                    st.session_state.site_index += 1
+                    st.rerun()
+    else:
+        st.selectbox("Site Name", options=[], label_visibility="visible", disabled=True)
+        selected_site_display = None
 
 with col3:
     if selected_ta:
