@@ -460,24 +460,16 @@ if 'export_in_progress' not in st.session_state:
 if 'first_load_complete' not in st.session_state:
     st.session_state.first_load_complete = False
 
-# --- Navigation state ---
-if 'site_index' not in st.session_state:
-    st.session_state.site_index = 0
-if 'prev_ta' not in st.session_state:
-    st.session_state.prev_ta = None
-
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
 #--- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
-CACHE_TTL = 86400  # 24 hours in seconds
 
-#--- OPTIMIZED HELPER FUNCTIONS ---
-@st.cache_data(ttl=3600)
+#--- OPTIMIZED HELPER FUNCTIONS (NO CACHING – FETCH FRESH EACH SESSION) ---
 def download_file(url):
-    """Download file with timeout and retry logic"""
+    """Download file with timeout and retry logic – no caching."""
     try:
         response = requests.get(url, timeout=30)
         if response.status_code == 200:
@@ -626,7 +618,7 @@ def load_media_data_optimized(source_bytes):
         return []
 
 def load_data_parallel():
-    """Load data with parallel processing using ThreadPoolExecutor"""
+    """Load data with parallel processing using ThreadPoolExecutor (fresh download)"""
     start_time = time.time()
     
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -712,7 +704,7 @@ def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders)
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
-#--- COMPLETE HTML BLUEPRINT ---
+#--- COMPLETE HTML BLUEPRINT (REPORT HEIGHT SET TO 1600px VIA SCALING) ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
@@ -982,7 +974,7 @@ if not st.session_state.authenticated:
 
 # At this point, user is authenticated
 
-# --- Step 2: Initialize data loading ---
+# --- Step 2: Initialize data loading (fresh fetch every session) ---
 if not st.session_state.data_loaded:
     # Show loading overlay with status updates
     show_loading_overlay(
@@ -994,7 +986,7 @@ if not st.session_state.data_loaded:
     # Small delay to ensure the loading overlay renders
     time.sleep(0.5)
     
-    # Load data with parallel processing
+    # Load data with parallel processing (no caching → fresh)
     try:
         data = load_data_parallel()
         df, placeholders, template_bytes_raw, media_data_list, data_timestamp = data
@@ -1012,7 +1004,7 @@ if not st.session_state.data_loaded:
         st.session_state.data_loaded = True
         st.session_state.first_load_complete = True
         
-        # Clear any loading overlay artifacts
+        # Rerun to remove loading overlay and show main UI
         time.sleep(0.3)
         st.rerun()
         
@@ -1043,83 +1035,32 @@ col1, col2, col3 = st.columns([1.2, 1.2, 0.9])
 with col1:
     selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
 
-# Track trade area change to reset site index
-if 'prev_ta' not in st.session_state:
-    st.session_state.prev_ta = selected_ta
-
-if selected_ta != st.session_state.prev_ta:
-    st.session_state.site_index = 0
-    st.session_state.prev_ta = selected_ta
-
 with col2:
     if selected_ta:
         raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
         sites_in_ta = sorted(raw_sites, key=parse_site_number)
 
-        # Ensure site_index is within bounds
-        if st.session_state.site_index >= len(sites_in_ta):
-            st.session_state.site_index = 0
-
-        # Build three sub-columns: left arrow, dropdown, right arrow
-        left_col, mid_col, right_col = st.columns([0.4, 4, 0.4])
-        with left_col:
-            # Previous button
-            prev_disabled = st.session_state.site_index <= 0
-            if st.button("◀", use_container_width=True, disabled=prev_disabled, key="prev_site"):
-                if st.session_state.site_index > 0:
-                    st.session_state.site_index -= 1
-                    st.rerun()
-        with mid_col:
-            # Dropdown
-            selected_site_display = st.selectbox(
-                "Site Name",
-                options=sites_in_ta,
-                index=st.session_state.site_index,
-                label_visibility="visible",
-                key="site_select"
-            )
-            # Update index if user changed via dropdown
-            new_index = sites_in_ta.index(selected_site_display)
-            if new_index != st.session_state.site_index:
-                st.session_state.site_index = new_index
-        with right_col:
-            # Next button
-            next_disabled = st.session_state.site_index >= len(sites_in_ta) - 1
-            if st.button("▶", use_container_width=True, disabled=next_disabled, key="next_site"):
-                if st.session_state.site_index < len(sites_in_ta) - 1:
-                    st.session_state.site_index += 1
-                    st.rerun()
+        if selected_ta == first_trade_area and first_site_display in sites_in_ta:
+            default_site_index = sites_in_ta.index(first_site_display)
+        else:
+            default_site_index = 0
     else:
-        st.selectbox("Site Name", options=[], label_visibility="visible", disabled=True)
-        selected_site_display = None
+        sites_in_ta = []
+        default_site_index = 0
+
+    selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
 
 with col3:
+    # Simple download button – generates report on click with built‑in spinner
     if selected_ta:
-        # Export button with loading overlay
-        if st.button("Export", use_container_width=True, key="export_btn"):
-            st.session_state.export_in_progress = True
-            try:
-                # Show loading overlay for export
-                show_loading_overlay(
-                    message="Generating Export",
-                    submessage="Preparing your Excel report...",
-                    show_progress=True
-                )
-                
-                report_data = generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders)
-                st.session_state.export_in_progress = False
-                
-                # Use a download button that triggers immediately
-                st.download_button(
-                    label="Download Now",
-                    data=report_data,
-                    file_name=f"{selected_ta}_Site_Information_Report.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key="download_export"
-                )
-            except Exception as e:
-                st.session_state.export_in_progress = False
-                st.error(f"Error generating export: {str(e)}")
+        st.download_button(
+            label="Export",
+            data=generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders),
+            file_name=f"{selected_ta}_Site_Information_Report.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True,
+            key="export_btn"
+        )
 
 #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER ---
 if selected_ta and selected_site_display:
@@ -1146,7 +1087,7 @@ if selected_ta and selected_site_display:
         "PROPERTY DOCS"
     ])
 
-    # --- TAB 1: SITE INFORMATION REPORT ---
+    # --- TAB 1: SITE INFORMATION REPORT (HEIGHT = 1600px) ---
     with tab_report:
         if site_row_data is not None:
             try:
@@ -1188,7 +1129,8 @@ if selected_ta and selected_site_display:
                 
                 rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
                 
-                components.html(rendered_view, height=1200, scrolling=False)
+                # Render with height=1600 for better visibility
+                components.html(rendered_view, height=1600, scrolling=False)
             except Exception as e:
                 st.error(f"Error compiling visual matrix framework: {str(e)}")
         else:
