@@ -314,8 +314,6 @@ if not os.path.exists(_config_file):
 TARGET_HASH = "6e7dfba0b39da481db37c3263c61cac6"
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
-if 'data_timestamp' not in st.session_state:
-    st.session_state.data_timestamp = None
 if 'data_loaded' not in st.session_state:
     st.session_state.data_loaded = False
 if 'df' not in st.session_state:
@@ -331,9 +329,13 @@ if 'export_in_progress' not in st.session_state:
 if 'first_load_complete' not in st.session_state:
     st.session_state.first_load_complete = False
 
-# New cache version tracking
-if 'data_cache_version' not in st.session_state:
-    st.session_state.data_cache_version = 0
+# --- NEW: Admin refresh states ---
+if 'cache_version' not in st.session_state:
+    st.session_state.cache_version = 0
+if 'admin_refresh_requested' not in st.session_state:
+    st.session_state.admin_refresh_requested = False
+if 'admin_dialog_shown' not in st.session_state:
+    st.session_state.admin_dialog_shown = False
 
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
@@ -344,7 +346,7 @@ TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSM
 
 #--- OPTIMIZED HELPER FUNCTIONS ---
 def download_file(url):
-    """Download file with timeout and retry logic – no caching."""
+    """Download file with timeout and retry logic."""
     try:
         response = requests.get(url, timeout=30)
         if response.status_code == 200:
@@ -526,111 +528,80 @@ def load_data_parallel():
     
     return df, placeholders, template_data, media_data_list, datetime.now()
 
-#--- CACHED DATA LOADER (PERSISTENT ACROSS SESSIONS) ---
+# --- CACHED DATA LOADER (cached by version) ---
 @st.cache_data(ttl=None, show_spinner=False)
 def get_cached_data(cache_version):
-    """
-    Fetch data from source and cache it. cache_version is used to invalidate.
-    The ttl is set to None so it stays until version changes.
-    """
+    """Load data with cache keyed by cache_version."""
+    # The cache_version parameter is used to invalidate the cache when changed.
     return load_data_parallel()
 
-#--- FUNCTION TO ENSURE DATA IS LOADED AND IN SESSION STATE ---
-def ensure_data_loaded():
-    """Check if data is loaded and up-to-date; if not, load it."""
-    current_version = st.session_state.data_cache_version
-    
-    # If data not loaded or version mismatch, load
-    if not st.session_state.data_loaded or st.session_state.get('data_version', -1) != current_version:
-        # Show loading overlay
-        loading_placeholder = st.empty()
-        loading_placeholder.markdown(get_loading_overlay_html(
-            message="Fetching Site Information..."
-        ), unsafe_allow_html=True)
-        
-        try:
-            result = get_cached_data(current_version)
-            if result and result[0] is not None:
-                df, placeholders, template_bytes_raw, media_data_list, data_timestamp = result
-                st.session_state.df = df
-                st.session_state.placeholders = placeholders
-                st.session_state.template_bytes_raw = template_bytes_raw
-                st.session_state.media_data_list = media_data_list
-                st.session_state.data_timestamp = data_timestamp
-                st.session_state.data_loaded = True
-                st.session_state.data_version = current_version
-                st.session_state.first_load_complete = True
-                loading_placeholder.empty()
-                return True
-            else:
-                loading_placeholder.empty()
-                st.error("Failed to load data assets. Please verify link paths.")
-                return False
-        except Exception as e:
-            loading_placeholder.empty()
-            st.error(f"Error loading data: {str(e)}")
-            return False
-    return True
+# --- GENERATE REPORT (cached per trade_area) ---
+@st.cache_data(ttl=None, show_spinner=False)
+def generate_trade_area_report_cached(trade_area, cache_version, df_hash, template_bytes_raw, placeholders_tuple):
+    """Generate report with caching based on trade_area, cache_version, df_hash, template, and placeholders."""
+    # Convert placeholders_tuple back to list if needed; but we just pass it as tuple for caching.
+    # We also need to pass df as a hash; we'll use pandas hash if possible, but we can just pass the df itself? 
+    # st.cache_data can handle DataFrames, so we can pass the df directly; but we need to include it in the cache key.
+    # For simplicity, we'll pass df directly; but then the cache key will include the entire df, which is okay.
+    # However, to avoid huge keys, we'll compute a hash of the df if needed. But st.cache_data handles DataFrames efficiently.
+    # We'll just pass the df and other large objects; st.cache_data will hash them.
+    # To reduce key size, we could pass only trade_area and rely on the fact that df is in session_state, 
+    # but since we want caching across sessions, we need to include it.
+    # We'll refactor: generate_trade_area_report now takes all needed data.
+    # But we can also just use the original function without caching if we want, but we'll cache it for speed.
+    # We'll implement caching here, but the cache key will include the entire df, template, etc. 
+    # That's acceptable as they are large but st.cache_data handles it.
+    # We'll compute a hash of the df to avoid storing duplicate large objects if we have many reports.
+    # But st.cache_data already does that.
+    # We'll proceed with a simpler approach: pass all needed data.
+    # However, we need to ensure that when df changes, the cache invalidates. Since we pass the df as argument, 
+    # if df changes (new object), the cache will miss. So we need to pass the df from session_state.
+    # We'll also pass cache_version to force invalidation on admin refresh.
+    # We'll generate the report and return bytes.
+    # We'll implement the same logic as before.
+    # We'll assume the function is called with the current df, template, etc.
+    pass
 
-#--- ADMIN REFRESH HANDLER ---
-def handle_admin_refresh():
-    """Check if admin refresh is requested, show password dialog, and refresh if correct."""
-    # If query param admin_refresh is set, show dialog
-    if st.query_params.get("admin_refresh") == "true":
-        # Show a modal-like overlay
-        st.markdown("""
-        <div style="position: fixed; top:0; left:0; width:100%; height:100%; 
-                    background: rgba(0,0,0,0.5); z-index: 100000; 
-                    display: flex; align-items: center; justify-content: center;">
-            <div style="background: white; padding: 40px; border-radius: 12px; 
-                        box-shadow: 0 8px 30px rgba(0,0,0,0.3); max-width: 400px; width: 90%;">
-                <h3 style="margin-top: 0; text-align: center;">Admin Refresh</h3>
-                <p style="text-align: center; color: #5f6368;">Enter admin password to refresh data from source.</p>
-        """, unsafe_allow_html=True)
-        
-        with st.container():
-            admin_pw = st.text_input("Admin Password", type="password", placeholder="Enter password", key="admin_pw_input")
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Refresh", use_container_width=True):
-                    if check_password(admin_pw):
-                        # Increment cache version to force refresh
-                        st.session_state.data_cache_version += 1
-                        # Clear query param and rerun
-                        st.query_params.clear()
-                        st.rerun()
-                    else:
-                        st.error("Incorrect password.")
-            with col2:
-                if st.button("Cancel", use_container_width=True):
-                    st.query_params.clear()
-                    st.rerun()
-        
-        st.markdown("</div></div>", unsafe_allow_html=True)
-        st.stop()  # Stop further execution to show only the dialog
+# We'll define the report generation function with caching.
+# To avoid complexity, we'll keep the original generate_trade_area_report function and use @st.cache_data on it.
+# But we need to pass the data as arguments. So we'll modify the function signature.
 
-#--- KEYBOARD SHORTCUT INJECTION (Ctrl+Shift+P) ---
-def inject_admin_shortcut():
-    """Inject JavaScript to detect Ctrl+Shift+P and trigger admin refresh."""
-    js = """
-    <script>
-    document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
-            e.preventDefault();
-            // Set query param and reload
-            const url = new URL(window.location);
-            url.searchParams.set('admin_refresh', 'true');
-            window.location.href = url.toString();
-        }
-    });
-    </script>
-    """
-    components.html(js, height=0, width=0)
+@st.cache_data(ttl=None, show_spinner=False)
+def generate_trade_area_report_cached(trade_area, df_hash, template_bytes_raw, placeholders_tuple, cache_version):
+    """Generate report with caching based on trade_area, cache_version, and a hash of the df."""
+    # We need to reconstruct the df from the hash? No, we pass the df as a DataFrame.
+    # Actually st.cache_data can handle DataFrames, so we can pass the df directly.
+    # But to avoid large key size, we can pass a hash of the df and then retrieve the full df from session_state.
+    # Since we have the df in session_state, we can just use it inside the function without passing it, 
+    # but then the cache key won't include the df, so changes to df won't invalidate the report.
+    # To properly invalidate, we need to include df in the cache key. st.cache_data includes all arguments in the key.
+    # We'll pass the df and template_bytes_raw and placeholders_tuple as arguments.
+    # This will work: when df changes, the cache key changes because df object changes.
+    # However, df is large, but st.cache_data will use a hash of the df for the key, not store the df itself multiple times.
+    # So it's safe.
+    # We'll define the function to accept df, template_bytes_raw, placeholders_tuple.
+    pass
 
-#--- GENERATE TRADE AREA REPORT (with caching) ---
-@st.cache_data(ttl=600, show_spinner=False)
-def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders):
-    """Generate report with optimized placeholder replacement"""
+# For simplicity, we will not cache the report generation; but we can easily add caching later.
+# We'll keep the original generate_trade_area_report function and not cache it to avoid key complexity.
+# The user can re-add caching if needed.
+
+# Since we want the admin refresh to clear all caches, we'll keep the report generation uncached or use the cache with cache_version.
+# We'll implement a simple version: we'll cache the report generation with @st.cache_data using the trade_area, and we'll include cache_version and a hash of df.
+# We'll compute a hash of the df and pass it as an argument to ensure invalidation when df changes.
+# We'll use pd.util.hash_pandas_object to compute a hash of the df.
+
+def df_hash(df):
+    return hash(pd.util.hash_pandas_object(df).sum())
+
+# But this might be slow. Alternatively, we can rely on the fact that we pass the df itself and the cache will use its hash.
+# We'll just pass the df and rely on st.cache_data's hashing.
+
+@st.cache_data(ttl=None, show_spinner=False)
+def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeholders_tuple, cache_version):
+    """Generate report with caching - includes data in cache key."""
+    # Convert placeholders_tuple back to list if needed
+    placeholders = list(placeholders_tuple)
     ta_data = df[df["TRADE AREA"] == trade_area]
     wb = load_workbook(io.BytesIO(template_bytes_raw))
     original_sheets = wb.sheetnames
@@ -949,15 +920,165 @@ if not st.session_state.authenticated:
                 st.error("Invalid token string provided.")
     st.stop()
 
-# --- Step 2: Inject keyboard shortcut for admin refresh (only after login) ---
-inject_admin_shortcut()
+# --- Step 2: Admin refresh handler (hidden shortcut) ---
+# First, inject JavaScript to listen for Ctrl+Shift+1 and click a hidden button
+admin_js = """
+<script>
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.shiftKey && e.key === '1') {
+        e.preventDefault();
+        // Find the hidden button and click it
+        const btn = document.querySelector('button[data-testid="adminRefreshButton"]');
+        if (btn) {
+            btn.click();
+        }
+    }
+});
+</script>
+"""
+components.html(admin_js, height=0, width=0)
 
-# --- Step 3: Handle admin refresh dialog if requested ---
-handle_admin_refresh()
+# Hidden button to trigger admin refresh
+if st.button("", key="adminRefreshButton", help="Admin refresh (Ctrl+Shift+1)", style="display:none"):
+    st.session_state.admin_refresh_requested = True
+    st.rerun()
 
-# --- Step 4: Ensure data is loaded (with cache version check) ---
-if not ensure_data_loaded():
-    st.stop()  # Stop if data load failed
+# --- Step 3: If admin refresh requested, show password dialog ---
+if st.session_state.admin_refresh_requested and not st.session_state.admin_dialog_shown:
+    st.session_state.admin_dialog_shown = True  # prevent multiple dialogs
+
+if st.session_state.admin_refresh_requested:
+    # Show a modal-like overlay using a placeholder
+    modal_placeholder = st.empty()
+    with modal_placeholder:
+        # We'll render a custom HTML overlay for the password dialog
+        dialog_html = f"""
+        <div id="admin-dialog-overlay" style="
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 99999;
+            display: flex; justify-content: center; align-items: center;
+        ">
+            <div style="
+                background: white; padding: 30px; border-radius: 12px;
+                max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                text-align: center;
+            ">
+                <h3 style="margin-top:0;">Admin Refresh</h3>
+                <p style="color:#555;">Enter the admin password to refresh data from source.</p>
+                <input type="password" id="admin-password-input" placeholder="Password" style="
+                    width: 100%; padding: 10px; margin: 15px 0;
+                    border: 1px solid #ccc; border-radius: 4px;
+                    font-size: 1rem;
+                ">
+                <div style="display:flex; gap:10px; justify-content:center;">
+                    <button id="admin-confirm-btn" style="
+                        background: #003366; color: white; border: none;
+                        padding: 8px 24px; border-radius: 100px;
+                        cursor: pointer; font-weight: 500;
+                    ">Refresh</button>
+                    <button id="admin-cancel-btn" style="
+                        background: #f1f3f4; color: #333; border: none;
+                        padding: 8px 24px; border-radius: 100px;
+                        cursor: pointer; font-weight: 500;
+                    ">Cancel</button>
+                </div>
+                <div id="admin-error-msg" style="color: red; margin-top:10px; font-size:0.9rem;"></div>
+            </div>
+        </div>
+        <script>
+        document.getElementById('admin-confirm-btn').addEventListener('click', function() {{
+            var pwd = document.getElementById('admin-password-input').value;
+            // Send password to Streamlit via a hidden form or query param
+            // We'll use window.parent.postMessage or simply set a query param
+            // For simplicity, we'll redirect to a new URL with the password as a query param
+            // But we need to handle it securely. Instead, we'll set a session state via st.query_params.
+            // But we can't set query params directly from JS. We'll use a hidden iframe or form submission.
+            // Alternative: use st.query_params via window.location.search.
+            // We'll encode the password and set it as ?admin_pwd=...
+            // Then Streamlit will read it.
+            var encoded = encodeURIComponent(pwd);
+            window.location.search = '?admin_pwd=' + encoded + '&admin_action=refresh';
+        }});
+        document.getElementById('admin-cancel-btn').addEventListener('click', function() {{
+            // Clear the admin refresh request
+            window.location.search = '?admin_action=cancel';
+        }});
+        </script>
+        """
+        components.html(dialog_html, height=0, width=0)
+
+# Read query params for admin action
+query_params = st.query_params
+if "admin_action" in query_params:
+    action = query_params["admin_action"]
+    if action == "refresh" and "admin_pwd" in query_params:
+        pwd = query_params["admin_pwd"]
+        if check_password(pwd):
+            # Password correct: invalidate cache, increment version, clear data
+            st.cache_data.clear()
+            st.session_state.cache_version += 1
+            st.session_state.admin_refresh_requested = False
+            st.session_state.admin_dialog_shown = False
+            st.session_state.data_loaded = False  # Force reload
+            # Clear query params
+            st.query_params.clear()
+            st.rerun()
+        else:
+            # Password wrong: show error on dialog (via JS)
+            # We'll set an error message in session state and display it
+            st.session_state.admin_pwd_error = "Invalid password"
+            # Keep dialog open
+            st.rerun()
+    elif action == "cancel":
+        st.session_state.admin_refresh_requested = False
+        st.session_state.admin_dialog_shown = False
+        st.query_params.clear()
+        st.rerun()
+
+# If there's an error message, display it in the dialog (we need to re-render the dialog with error)
+if st.session_state.admin_refresh_requested and st.session_state.get("admin_pwd_error"):
+    # We'll show the error in the dialog via a placeholder
+    # But the dialog is already rendered; we can inject a script to update the error div
+    error_js = f"""
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {{
+        var errDiv = document.getElementById('admin-error-msg');
+        if (errDiv) {{
+            errDiv.textContent = '{st.session_state.admin_pwd_error}';
+        }}
+    }});
+    </script>
+    """
+    components.html(error_js, height=0, width=0)
+    # Clear the error after showing
+    st.session_state.admin_pwd_error = None
+
+# --- Step 4: Load data (cached) ---
+# If data not loaded or cache_version changed, load fresh
+if not st.session_state.data_loaded or st.session_state.get("force_reload", False):
+    # Show loading overlay
+    loading_placeholder = st.empty()
+    loading_placeholder.markdown(get_loading_overlay_html(
+        message="Fetching Site Information..."
+    ), unsafe_allow_html=True)
+
+    # Call cached data loader with current cache_version
+    result = get_cached_data(st.session_state.cache_version)
+    if result and result[0] is not None:
+        df, placeholders, template_bytes_raw, media_data_list, data_timestamp = result
+        st.session_state.df = df
+        st.session_state.placeholders = placeholders
+        st.session_state.template_bytes_raw = template_bytes_raw
+        st.session_state.media_data_list = media_data_list
+        st.session_state.data_timestamp = data_timestamp
+        st.session_state.data_loaded = True
+        st.session_state.first_load_complete = True
+        loading_placeholder.empty()
+        st.rerun()
+    else:
+        loading_placeholder.empty()
+        st.error("Failed to load data assets. Please verify link paths.")
+        st.stop()
 
 # --- Step 5: Data is loaded – render the main UI ---
 df = st.session_state.df
@@ -998,9 +1119,17 @@ with col2:
 
 with col3:
     if selected_ta:
+        # Use cached report generation
+        report_bytes = generate_trade_area_report_cached(
+            selected_ta,
+            df,
+            template_bytes_raw,
+            tuple(placeholders),  # convert to hashable
+            st.session_state.cache_version
+        )
         st.download_button(
             label="Export",
-            data=generate_trade_area_report(selected_ta, df, template_bytes_raw, placeholders),
+            data=report_bytes,
             file_name=f"{selected_ta}_Site_Information_Report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True,
