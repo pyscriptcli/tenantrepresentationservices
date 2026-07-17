@@ -383,7 +383,6 @@ TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSM
 
 #--- OPTIMIZED HELPER FUNCTIONS ---
 def download_file(url):
-    """Download file with timeout and retry logic."""
     try:
         response = requests.get(url, timeout=30)
         if response.status_code == 200:
@@ -393,7 +392,6 @@ def download_file(url):
         return None
 
 def clean_and_extract_url(cell_value):
-    """Bypasses formula blocks like =IMAGE("url") to get the clean direct link string."""
     if cell_value is None:
         return ""
     val_str = str(cell_value).strip()
@@ -406,14 +404,12 @@ def clean_and_extract_url(cell_value):
     return val_str
 
 def extract_google_drive_id(clean_url):
-    """Extracts unique file ID from verified URL strings."""
     if not clean_url:
         return None
     match = re.search(r'(?:id=|/d/|/uc?.*?id=)([a-zA-Z0-9_-]{25,})', clean_url)
     return match.group(1) if match else None
 
 def get_placeholders_optimized(template_bytes):
-    """Extract placeholders from template without loading full workbook"""
     try:
         wb = load_workbook(io.BytesIO(template_bytes), data_only=False)
         sheet = wb.active
@@ -450,14 +446,11 @@ def parse_site_number(site_display_str):
     return int(match.group(1)) if match else float('inf')
 
 def load_main_data_optimized(source_bytes):
-    """Load main data using values_only=True for maximum speed"""
     try:
         wb = load_workbook(io.BytesIO(source_bytes), data_only=False)
         ws = wb.active
-        
         header_row = list(ws.iter_rows(min_row=1, max_row=1, values_only=True))[0]
         headers = [str(h).strip().upper() if h else "" for h in header_row]
-        
         parsed_data_list = []
         for row in ws.iter_rows(min_row=2, values_only=True):
             row_dict = {}
@@ -470,11 +463,9 @@ def load_main_data_optimized(source_bytes):
                         has_val = True
             if has_val:
                 parsed_data_list.append(row_dict)
-        
         wb.close()
         df = pd.DataFrame(parsed_data_list)
         df = df.loc[:, ~df.columns.str.contains('^$')]
-        
         def create_site_display(row):
             site_no = row.get('SITE NO', '')
             site_name = row.get('SITE NAME', '')
@@ -484,7 +475,6 @@ def load_main_data_optimized(source_bytes):
                 except:
                     return f"{site_no} - {site_name}"
             return str(site_name)
-        
         df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
         return df
     except Exception as e:
@@ -492,24 +482,19 @@ def load_main_data_optimized(source_bytes):
         return None
 
 def load_media_data_optimized(source_bytes):
-    """Load media data from PHOTOS/DOCS tab using values_only=True"""
     try:
         wb = load_workbook(io.BytesIO(source_bytes), data_only=False)
         media_data_list = []
         media_ws = None
-        
         for sheet_name in wb.sheetnames:
             if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
                 media_ws = wb[sheet_name]
                 break
-        
         if not media_ws:
             media_ws = wb.active
-        
         for row in media_ws.iter_rows(values_only=True):
             t_area = str(row[13] if len(row) > 13 and row[13] is not None else "").strip()
             s_name = str(row[15] if len(row) > 15 and row[15] is not None else "").strip()
-            
             if t_area and s_name and t_area.upper() != "TRADE AREA":
                 media_data_list.append({
                     'TRADE AREA': t_area,
@@ -524,7 +509,6 @@ def load_media_data_optimized(source_bytes):
                     '__DIRECT_PHOTO_4': clean_and_extract_url(row[10] if len(row) > 10 else ""),
                     '__DIRECT_PHOTO_5': clean_and_extract_url(row[11] if len(row) > 11 else ""),
                 })
-        
         wb.close()
         return media_data_list
     except Exception as e:
@@ -532,49 +516,36 @@ def load_media_data_optimized(source_bytes):
         return []
 
 def load_data_parallel():
-    """Load data with parallel processing using ThreadPoolExecutor (fresh download)"""
     start_time = time.time()
-    
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_source = executor.submit(download_file, SOURCE_URL)
         future_template = executor.submit(download_file, TEMPLATE_URL)
-        
         source_bytes = future_source.result()
         template_bytes = future_template.result()
-    
     if source_bytes is None or template_bytes is None:
         return None, None, None, [], None
-    
     source_data = source_bytes.getvalue()
     template_data = template_bytes.getvalue()
-    
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_main = executor.submit(load_main_data_optimized, source_data)
         future_media = executor.submit(load_media_data_optimized, source_data)
-        
         df = future_main.result()
         media_data_list = future_media.result()
-    
     if df is None:
         return None, None, None, [], None
-    
     placeholders = get_placeholders_optimized(template_data)
-    
     elapsed = time.time() - start_time
     print(f"Data loaded in {elapsed:.2f} seconds")
-    
     return df, placeholders, template_data, media_data_list, datetime.now()
 
 # --- CACHED DATA LOADER (cached by version) ---
 @st.cache_data(ttl=None, show_spinner=False)
 def get_cached_data(cache_version):
-    """Load data with cache keyed by cache_version."""
     return load_data_parallel()
 
 # --- CACHED REPORT GENERATION ---
 @st.cache_data(ttl=None, show_spinner=False)
 def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeholders_tuple, cache_version):
-    """Generate report with caching - includes data in cache key."""
     placeholders = list(placeholders_tuple)
     ta_data = df[df["TRADE AREA"] == trade_area]
     wb = load_workbook(io.BytesIO(template_bytes_raw))
@@ -582,13 +553,11 @@ def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeh
     base_sheet = wb.active
     base_sheet.title = "TEMPLATE_TO_DELETE"
     existing_tabs = set()
-    
     for _, r_row in ta_data.iterrows():
         s_name = r_row.get("SITE NAME", "Unknown")
         safe_tab_name = sanitize_tab_name(s_name, existing_tabs)
         new_sheet = wb.copy_worksheet(base_sheet)
         new_sheet.title = safe_tab_name
-        
         for row_cells in new_sheet.iter_rows():
             for cell in row_cells:
                 if isinstance(cell.value, str) and "{{" in cell.value:
@@ -608,25 +577,21 @@ def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeh
                             new_val = re.sub(target_regex, val_str, new_val)
                     new_val = re.sub(r"\{\{.*?\}\}", "", new_val)
                     cell.value = new_val.strip() if new_val else ""
-        
         for row in new_sheet.iter_rows():
             max_len = max([len(str(cell.value or '')) for cell in row])
             if max_len > 45:
                 new_sheet.row_dimensions[row[0].row].height = None
-    
     if "TEMPLATE_TO_DELETE" in wb.sheetnames:
         wb.remove(wb["TEMPLATE_TO_DELETE"])
-    
     for name in original_sheets:
         if name in wb.sheetnames and name != "TEMPLATE_TO_DELETE":
             wb.remove(wb[name])
-    
     wb_buffer = io.BytesIO()
     wb.save(wb_buffer)
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
-#--- COMPLETE HTML BLUEPRINT (REPORT HEIGHT SET TO 1600px VIA SCALING) ---
+#--- COMPLETE HTML BLUEPRINT ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
@@ -715,25 +680,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const wrapper = document.querySelector('.report-wrapper');
         const scaler = document.querySelector('.report-scaler');
         const container = document.querySelector('.ritz.grid-container');
-        
         if (!wrapper || !scaler || !container) return;
-        
         const table = document.querySelector('.waffle');
         if (!table) return;
-        
         const containerWidth = wrapper.parentElement ? wrapper.parentElement.clientWidth : window.innerWidth;
         const availableWidth = containerWidth - 40;
-        
         table.style.width = 'auto';
         const naturalWidth = table.scrollWidth;
         table.style.width = '100%';
-        
         let scale = 1;
         if (naturalWidth > availableWidth) {
             scale = (availableWidth / naturalWidth) * 0.95;
             if (scale < 0.4) scale = 0.4;
         }
-        
         if (scale < 1) {
             scaler.style.transform = 'scale(' + scale + ')';
             scaler.style.transformOrigin = 'center top';
@@ -748,11 +707,9 @@ document.addEventListener('DOMContentLoaded', function() {
             scaler.style.display = 'inline-block';
             scaler.style.textAlign = 'center';
         }
-        
         container.style.display = 'inline-block';
         container.style.textAlign = 'left';
         container.style.margin = '0 auto';
-        
         wrapper.style.overflowY = 'visible';
         wrapper.style.overflowX = 'hidden';
         wrapper.style.width = '100%';
@@ -760,16 +717,13 @@ document.addEventListener('DOMContentLoaded', function() {
         wrapper.style.justifyContent = 'center';
         wrapper.style.alignItems = 'flex-start';
         wrapper.style.minHeight = '100%';
-        
         container.style.overflowX = 'visible';
         container.style.overflowY = 'visible';
         container.style.width = '100%';
-        
         document.body.style.overflowY = 'auto';
         document.body.style.overflowX = 'hidden';
         document.documentElement.style.overflowY = 'auto';
         document.documentElement.style.overflowX = 'hidden';
-        
         const tableHeight = table.scrollHeight;
         if (scale < 1) {
             scaler.style.height = (tableHeight * scale + 50) + 'px';
@@ -777,15 +731,12 @@ document.addEventListener('DOMContentLoaded', function() {
             scaler.style.height = 'auto';
         }
     }
-    
     setTimeout(scaleReportToFit, 100);
-    
     let resizeTimer;
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(scaleReportToFit, 100);
     });
-    
     const observer = new MutationObserver(function() { 
         setTimeout(scaleReportToFit, 100);
     });
@@ -793,7 +744,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (tableBody) { 
         observer.observe(tableBody, { childList: true, subtree: true, characterData: true }); 
     }
-    
     window.addEventListener('load', function() {
         setTimeout(scaleReportToFit, 200);
     });
@@ -897,7 +847,7 @@ if not st.session_state.authenticated:
                 st.warning("Please enter both username and password.")
     st.stop()
 
-# --- AFTER LOGIN: DATA LOADING (if not loaded) ---
+# --- AFTER LOGIN: DATA LOADING ---
 if not st.session_state.data_loaded:
     loading_placeholder = st.empty()
     loading_placeholder.markdown(get_loading_overlay_html(
@@ -926,26 +876,24 @@ placeholders = st.session_state.placeholders
 template_bytes_raw = st.session_state.template_bytes_raw
 media_data_list = st.session_state.media_data_list
 
-# Security protocols
 deploy_workspace_security_protocols()
 
-# --- SIDEBAR NAVIGATION FOR ADMIN ---
+# --- SIDEBAR NAVIGATION ---
 if st.session_state.role == "admin":
     st.sidebar.title("Navigation")
-    # Default to Admin Panel (index 0)
     page = st.sidebar.radio("Go to", ["Admin Panel", "Viewer"], index=0)
 else:
-    page = "Viewer"  # non‑admin always sees viewer
+    page = "Viewer"
 
 # --- ADMIN PANEL ---
 if st.session_state.role == "admin" and page == "Admin Panel":
     st.title("Admin Control Panel")
 
-    # --- Refresh Data Section ---
+    # --- Refresh Data Section (compact) ---
     st.subheader("Data Refresh")
-    col_refresh, col_status = st.columns([1, 2])
+    col_refresh, col_status = st.columns([1, 3])
     with col_refresh:
-        if st.button("Refresh Data Now"):
+        if st.button("Refresh Data Now", use_container_width=True):
             st.cache_data.clear()
             st.session_state.cache_version += 1
             st.session_state.data_loaded = False
@@ -953,49 +901,68 @@ if st.session_state.role == "admin" and page == "Admin Panel":
             st.rerun()
     with col_status:
         if st.session_state.refresh_log:
-            last_refresh = st.session_state.refresh_log[-1]
-            st.write(f"Last refresh: {last_refresh}")
-            st.write(f"Total refreshes: {len(st.session_state.refresh_log)}")
+            last = st.session_state.refresh_log[-1]
+            st.write(f"Last refresh: {last}  |  Total: {len(st.session_state.refresh_log)}")
             if len(st.session_state.refresh_log) > 1:
-                st.write("Previous refreshes:")
-                for ts in st.session_state.refresh_log[-5:]:
-                    st.write(f"- {ts}")
+                st.write("Previous: " + ", ".join(st.session_state.refresh_log[-5:]))
         else:
             st.write("No refresh performed yet.")
 
     st.divider()
 
-    # --- User Management ---
+    # --- User Management (compact rows) ---
     st.subheader("User Management")
     users = st.session_state.users
     usernames = list(users.keys())
 
-    st.write("Current users:")
+    # Header row
+    cols = st.columns([1.5, 1.2, 0.8, 0.8, 1.5, 0.5])
+    cols[0].write("**Username**")
+    cols[1].write("**Password**")
+    cols[2].write("**View SIR**")
+    cols[3].write("**Export SIR**")
+    cols[4].write("**Change Password**")
+    cols[5].write("**Delete**")
+
     for uname in usernames:
-        with st.container():
-            cols = st.columns([2, 1, 1, 1, 1])
-            cols[0].write(uname)
-            view_sir = cols[1].checkbox("View SIR", value=users[uname]["permissions"]["view_sir"], key=f"view_{uname}")
-            export_sir = cols[2].checkbox("Export SIR", value=users[uname]["permissions"]["export_sir"], key=f"export_{uname}")
-            users[uname]["permissions"]["view_sir"] = view_sir
-            users[uname]["permissions"]["export_sir"] = export_sir
-            if uname != "aimsadmin":
-                if cols[3].button("Delete", key=f"del_{uname}"):
-                    del st.session_state.users[uname]
-                    st.rerun()
-            new_pw = cols[4].text_input("New password", type="password", key=f"pw_{uname}", placeholder="Change password")
+        cols = st.columns([1.5, 1.2, 0.8, 0.8, 1.5, 0.5])
+        cols[0].write(uname)
+        cols[1].write(users[uname]["password"])  # plaintext for PoC
+        view_sir = cols[2].checkbox("", value=users[uname]["permissions"]["view_sir"], key=f"view_{uname}", label_visibility="collapsed")
+        export_sir = cols[3].checkbox("", value=users[uname]["permissions"]["export_sir"], key=f"export_{uname}", label_visibility="collapsed")
+        users[uname]["permissions"]["view_sir"] = view_sir
+        users[uname]["permissions"]["export_sir"] = export_sir
+
+        if uname != "aimsadmin":
+            new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
             if new_pw:
                 users[uname]["password"] = new_pw
                 st.success(f"Password for {uname} updated.")
+            if cols[5].button("Delete", key=f"del_{uname}", use_container_width=True):
+                del st.session_state.users[uname]
+                st.rerun()
+        else:
+            # Admin user: no delete, password field can still change
+            new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
+            if new_pw:
+                users[uname]["password"] = new_pw
+                st.success(f"Password for {uname} updated.")
+            cols[5].write("—")
 
-    st.write("Add new user:")
-    with st.form("add_user_form"):
-        new_uname = st.text_input("Username")
-        new_pw = st.text_input("Temporary password", type="password")
-        view_sir_new = st.checkbox("View SIR", value=True)
-        export_sir_new = st.checkbox("Export SIR", value=True)
-        submitted = st.form_submit_button("Add User")
-        if submitted:
+    # Add new user (compact)
+    st.write("---")
+    st.write("**Add new user**")
+    col_a, col_b, col_c, col_d, col_e = st.columns([1.5, 1.2, 0.8, 0.8, 1])
+    with col_a:
+        new_uname = st.text_input("Username", placeholder="New username", key="new_uname", label_visibility="collapsed")
+    with col_b:
+        new_pw = st.text_input("Password", type="password", placeholder="Temporary password", key="new_pw", label_visibility="collapsed")
+    with col_c:
+        view_sir_new = st.checkbox("View", value=True, key="new_view", label_visibility="collapsed")
+    with col_d:
+        export_sir_new = st.checkbox("Export", value=True, key="new_export", label_visibility="collapsed")
+    with col_e:
+        if st.button("Add User", use_container_width=True):
             if new_uname and new_pw:
                 if new_uname in st.session_state.users:
                     st.error("Username already exists.")
@@ -1008,11 +975,11 @@ if st.session_state.role == "admin" and page == "Admin Panel":
                     st.success(f"User {new_uname} added.")
                     st.rerun()
             else:
-                st.warning("Please fill in both username and password.")
+                st.warning("Fill in both fields.")
 
     st.divider()
 
-    # --- Audit Log ---
+    # --- Audit Log (compact) ---
     st.subheader("Audit Log")
     audit_data = []
     for uname, data in st.session_state.users.items():
@@ -1020,30 +987,26 @@ if st.session_state.role == "admin" and page == "Admin Panel":
             audit_data.append({"Username": uname, "Access Time": ts})
     if audit_data:
         df_audit = pd.DataFrame(audit_data)
-        st.dataframe(df_audit, use_container_width=True)
+        st.dataframe(df_audit, use_container_width=True, height=200)
     else:
         st.write("No access records yet.")
 
 # --- VIEWER ---
 else:
-    # Determine default selections
+    # (Unchanged viewer code – same as before)
     trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
     first_row = df.iloc[0] if not df.empty else None
     first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
     first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
     default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
 
-    #--- ROW 1: CONTROLS ROW ---
     col1, col2, col3 = st.columns([1.2, 1.2, 0.9])
-
     with col1:
         selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
-
     with col2:
         if selected_ta:
             raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
             sites_in_ta = sorted(raw_sites, key=parse_site_number)
-
             if selected_ta == first_trade_area and first_site_display in sites_in_ta:
                 default_site_index = sites_in_ta.index(first_site_display)
             else:
@@ -1051,9 +1014,7 @@ else:
         else:
             sites_in_ta = []
             default_site_index = 0
-
         selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
-
     with col3:
         if selected_ta:
             if st.session_state.users[st.session_state.username]["permissions"]["export_sir"]:
@@ -1075,11 +1036,9 @@ else:
             else:
                 st.button("Export", disabled=True, help="You do not have permission to export.")
 
-    #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER ---
     if selected_ta and selected_site_display:
         site_data = df[df["SITE_DISPLAY"] == selected_site_display]
         site_row_data = site_data.iloc[0] if not site_data.empty else None
-
         target_ta = str(site_row_data["TRADE AREA"]) if site_row_data is not None else ""
         target_sn = str(site_row_data["SITE NAME"]) if site_row_data is not None else ""
         media_row_data = {}
@@ -1097,7 +1056,6 @@ else:
                 "PROPERTY PHOTOS",
                 "PROPERTY DOCS"
             ])
-
             with tab_report:
                 if site_row_data is not None:
                     try:
@@ -1106,7 +1064,6 @@ else:
                             if pd.isna(val) or val is None: 
                                 return ""
                             return val
-                        
                         rendered_view = HTML_FRAMEWORK
                         rendered_view = rendered_view.replace("_TRADE_AREA_", str(process_val("TRADE AREA")))
                         rendered_view = rendered_view.replace("_SITE_NAME_", str(process_val("SITE NAME")))
@@ -1136,15 +1093,12 @@ else:
                         rendered_view = rendered_view.replace("_EMAIL_ADDRESS_", str(process_val("EMAIL ADDRESS")))
                         rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", str(process_val("SITE AVAILABILITY CLASS")))
                         rendered_view = rendered_view.replace("_REMARKS_", str(process_val("REMARKS")))
-                        
                         rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-                        
                         components.html(rendered_view, height=1600, scrolling=False)
                     except Exception as e:
                         st.error(f"Error compiling visual matrix framework: {str(e)}")
                 else:
                     st.info("No data available for the selected site.")
-            
             with tab_photos:
                 if site_row_data is not None and media_row_data:
                     direct_photo_mapping = {
@@ -1242,7 +1196,6 @@ else:
                         st.info("No photo links configured for this property record selection.")
                 else:
                     st.info("No data available for the selected site.")
-
             with tab_docs:
                 if site_row_data is not None and media_row_data:
                     direct_doc_mapping = {
