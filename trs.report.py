@@ -331,6 +331,10 @@ if 'export_in_progress' not in st.session_state:
 if 'first_load_complete' not in st.session_state:
     st.session_state.first_load_complete = False
 
+# New cache version tracking
+if 'data_cache_version' not in st.session_state:
+    st.session_state.data_cache_version = 0
+
 def check_password(password):
     return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
 
@@ -338,7 +342,7 @@ def check_password(password):
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
-#--- OPTIMIZED HELPER FUNCTIONS (NO CACHING – FETCH FRESH EACH SESSION) ---
+#--- OPTIMIZED HELPER FUNCTIONS ---
 def download_file(url):
     """Download file with timeout and retry logic – no caching."""
     try:
@@ -522,6 +526,108 @@ def load_data_parallel():
     
     return df, placeholders, template_data, media_data_list, datetime.now()
 
+#--- CACHED DATA LOADER (PERSISTENT ACROSS SESSIONS) ---
+@st.cache_data(ttl=None, show_spinner=False)
+def get_cached_data(cache_version):
+    """
+    Fetch data from source and cache it. cache_version is used to invalidate.
+    The ttl is set to None so it stays until version changes.
+    """
+    return load_data_parallel()
+
+#--- FUNCTION TO ENSURE DATA IS LOADED AND IN SESSION STATE ---
+def ensure_data_loaded():
+    """Check if data is loaded and up-to-date; if not, load it."""
+    current_version = st.session_state.data_cache_version
+    
+    # If data not loaded or version mismatch, load
+    if not st.session_state.data_loaded or st.session_state.get('data_version', -1) != current_version:
+        # Show loading overlay
+        loading_placeholder = st.empty()
+        loading_placeholder.markdown(get_loading_overlay_html(
+            message="Fetching Site Information..."
+        ), unsafe_allow_html=True)
+        
+        try:
+            result = get_cached_data(current_version)
+            if result and result[0] is not None:
+                df, placeholders, template_bytes_raw, media_data_list, data_timestamp = result
+                st.session_state.df = df
+                st.session_state.placeholders = placeholders
+                st.session_state.template_bytes_raw = template_bytes_raw
+                st.session_state.media_data_list = media_data_list
+                st.session_state.data_timestamp = data_timestamp
+                st.session_state.data_loaded = True
+                st.session_state.data_version = current_version
+                st.session_state.first_load_complete = True
+                loading_placeholder.empty()
+                return True
+            else:
+                loading_placeholder.empty()
+                st.error("Failed to load data assets. Please verify link paths.")
+                return False
+        except Exception as e:
+            loading_placeholder.empty()
+            st.error(f"Error loading data: {str(e)}")
+            return False
+    return True
+
+#--- ADMIN REFRESH HANDLER ---
+def handle_admin_refresh():
+    """Check if admin refresh is requested, show password dialog, and refresh if correct."""
+    # If query param admin_refresh is set, show dialog
+    if st.query_params.get("admin_refresh") == "true":
+        # Show a modal-like overlay
+        st.markdown("""
+        <div style="position: fixed; top:0; left:0; width:100%; height:100%; 
+                    background: rgba(0,0,0,0.5); z-index: 100000; 
+                    display: flex; align-items: center; justify-content: center;">
+            <div style="background: white; padding: 40px; border-radius: 12px; 
+                        box-shadow: 0 8px 30px rgba(0,0,0,0.3); max-width: 400px; width: 90%;">
+                <h3 style="margin-top: 0; text-align: center;">Admin Refresh</h3>
+                <p style="text-align: center; color: #5f6368;">Enter admin password to refresh data from source.</p>
+        """, unsafe_allow_html=True)
+        
+        with st.container():
+            admin_pw = st.text_input("Admin Password", type="password", placeholder="Enter password", key="admin_pw_input")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Refresh", use_container_width=True):
+                    if check_password(admin_pw):
+                        # Increment cache version to force refresh
+                        st.session_state.data_cache_version += 1
+                        # Clear query param and rerun
+                        st.query_params.clear()
+                        st.rerun()
+                    else:
+                        st.error("Incorrect password.")
+            with col2:
+                if st.button("Cancel", use_container_width=True):
+                    st.query_params.clear()
+                    st.rerun()
+        
+        st.markdown("</div></div>", unsafe_allow_html=True)
+        st.stop()  # Stop further execution to show only the dialog
+
+#--- KEYBOARD SHORTCUT INJECTION (Ctrl+Shift+P) ---
+def inject_admin_shortcut():
+    """Inject JavaScript to detect Ctrl+Shift+P and trigger admin refresh."""
+    js = """
+    <script>
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
+            e.preventDefault();
+            // Set query param and reload
+            const url = new URL(window.location);
+            url.searchParams.set('admin_refresh', 'true');
+            window.location.href = url.toString();
+        }
+    });
+    </script>
+    """
+    components.html(js, height=0, width=0)
+
+#--- GENERATE TRADE AREA REPORT (with caching) ---
 @st.cache_data(ttl=600, show_spinner=False)
 def generate_trade_area_report(trade_area, df, template_bytes_raw, placeholders):
     """Generate report with optimized placeholder replacement"""
@@ -843,51 +949,17 @@ if not st.session_state.authenticated:
                 st.error("Invalid token string provided.")
     st.stop()
 
-# --- Step 2: If authenticated but data not loaded yet, show full-screen overlay and load data ---
-if not st.session_state.data_loaded:
-    # Create an empty placeholder to securely hold the loading screen
-    loading_placeholder = st.empty()
-    
-    # Render the overlay immediately
-    loading_placeholder.markdown(get_loading_overlay_html(
-        message="Fetching Site Information..."
-    ), unsafe_allow_html=True)
-    
-    # Execute parallel data fetching
-    try:
-        data = load_data_parallel()
-        
-        # Verify data payload is complete
-        if data and data[0] is not None:
-            df, placeholders, template_bytes_raw, media_data_list, data_timestamp = data
-            
-            # Commit data to session state
-            st.session_state.df = df
-            st.session_state.placeholders = placeholders
-            st.session_state.template_bytes_raw = template_bytes_raw
-            st.session_state.media_data_list = media_data_list
-            st.session_state.data_timestamp = data_timestamp
-            
-            # Unlock the UI ONLY after all data is safely loaded
-            st.session_state.data_loaded = True
-            st.session_state.first_load_complete = True
-            
-            # Destroy the loading screen container and trigger UI render
-            loading_placeholder.empty()
-            st.rerun()
-        else:
-            # Handle empty/failed returns safely
-            loading_placeholder.empty()
-            st.error("Failed to load data assets. Please verify link paths.")
-            st.stop()
-            
-    except Exception as e:
-        # Handle exceptions without trapping the user in an infinite loading screen
-        loading_placeholder.empty()
-        st.error(f"Error loading data: {str(e)}")
-        st.stop()
+# --- Step 2: Inject keyboard shortcut for admin refresh (only after login) ---
+inject_admin_shortcut()
 
-# --- Step 3: Data is loaded – render the main UI ---
+# --- Step 3: Handle admin refresh dialog if requested ---
+handle_admin_refresh()
+
+# --- Step 4: Ensure data is loaded (with cache version check) ---
+if not ensure_data_loaded():
+    st.stop()  # Stop if data load failed
+
+# --- Step 5: Data is loaded – render the main UI ---
 df = st.session_state.df
 placeholders = st.session_state.placeholders
 template_bytes_raw = st.session_state.template_bytes_raw
