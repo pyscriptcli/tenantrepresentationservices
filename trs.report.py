@@ -20,38 +20,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import pickle
 import pyarrow as pa
 import pyarrow.parquet as pq
-
-# --- Google Sheets persistence (prefer google-auth) ---
-try:
-    import gspread
-    from google.oauth2 import service_account
-    from google.auth.transport.requests import Request
-    HAS_GSPREAD = True
-    HAS_GOOGLE_AUTH = True
-except ImportError:
-    HAS_GSPREAD = False
-    HAS_GOOGLE_AUTH = False
-    # fallback to oauth2client if available
-    try:
-        from oauth2client.service_account import ServiceAccountCredentials
-        HAS_OAUTH2CLIENT = True
-    except:
-        HAS_OAUTH2CLIENT = False
-
-# Hardcoded service account credentials (for testing only)
-SERVICE_ACCOUNT_CREDS = {
-    "type": "service_account",
-    "project_id": "trs-sitesourcing-viewer",
-    "private_key_id": "1191a0d6d74bb16786681476664821ee6deb673a",
-    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDBp3HcCLqtFDAm\nT0ijccbdttiMaPhhSDOHWl02nRhzJ0IFzx4P7Wrd7YlNMWokgyBbfux6MjnCJm8q\nqaLlZPY/L6rqN1YgE3l9jfeq26EoBv50uxtbafp9zScb1YIPXPLFCChIT/1B1n4F\n95bugmYY2Gmc9WHRu3C4Rw45PNFjuOpz/fN+ycnpTMQ/tEFpw/BGT+0Nby9VHPFq\nhr6Fmp1ezNA4quOU1nL0p7CrLglR7dASe5IDfvoZpMXwICCCjOYAP/SZ2pa+DzTB\nKEDDlQqgByeWG33M6S6CL2mTgFJapHY5cvMCIjfpGBgnd46ZUUCLx9AX8s6CelTo\nIsqjBt0JAgMBAAECggEAA/UwUYcbV/0CoukATgukPQgtbGk0y+z8bwOJkvUqkifq\nPh4mhu+bCiAYEnjN3e/3Ue3J8Kr+g5l8SiRSmcEyrl+C01IzZpwFrp6fjvr5umZL\nywaL7GL1GJ8ZvoR79pgEUI/DHjJsTzn0zc03ZRAX/OGamJE3R5PYhBuhQcnP0B7m\n1l2DqxhvWF8QfRtUf/8m9NU7d4K5s4EfDQX6VpO//54V5qHAiICSPMFqBhvjrLYD\nDpB6rskZfan7MxYgifWha0zyMpmIoH32NcPOgqfVnRqa6oDL+0TOGZQM9u95II+2\n00TP1mOd8/Ks0Df0YBQfczUipw9jaGyYO568/xHxlQKBgQDwN/jOTmL1x2T/i0yA\nrtpR7uU0XI2vXWaSPST127yZA1fmPPzxKT/0ncqvxWSz1ddBkXUJbsIxFLZOX6BS\n0zioFzyIYlolnreY/9WVWjfsQNC6Twi6W0svhqGItwhmO6QArkrOn0r0ghFqEwaf\nWyjwZE1Oct2Xz3Ujz2HQMH2gCwKBgQDOYFgW5AGZJf5jAR8Vc/5FAo6ih92jA+b3\nNoMzZjp9lA2uU/i5TNWKNBFWxJ9w+B17Uaz1+L1/NjDuFy8G5IuseSHewKG7UHcC\nwA7rKSeM+MNc0dnAkHfaNlr43q2n/uJNJFJSytf2YjRKhXGMHcLf7458tu03WMSd\n9jP1jYj/uwKBgQCyqX6EuqpBkJ6erZUltGauP5b7fcbnYflS1OUzcs3vpBvxIvUh\nzINDxUQlvRNr6aTioHPCoz0NUhFRczADyhM+eaHM8hGIH2cABW9uWJ51ObPEjdm4\n+QOPgnuL+k3l83/D/d2nlbQi7MZU9XeceCmXuZIBwc7sBSFjk+9070vQBwKBgCZQ\nXqpJRD6xfgvVXnb2JOOc+OwVu0ETbWLB/ROizAMaZHvT3R5RtGdHCV0JfexUM+z8\nGddEibG/VtAs/68Q6RlpF6+qJZyH8MBS9bIU3uHeIS7vSrTkXUvmwXboqGbC/DKE\nJsB2Jif4zWp0YcM4l0BJ0jM3Js0ars4Asl7JGwEXAoGAIRzG3IpBh8jlLlZDe63Y\n1hKfo4JHxlidnHjEeN4UdSpnIyw/Cii0OS89VxL641mUYUUP1OsKzzXRWiBMPM2y\nCMMTpAqdbh5Y5j/AShZi8DGYhJ6ylA2esc2mjRMtT3pvRq6/nNxgTxRYLhjToHXg\nidr8ma/v5dzcyYC2bZpwkco=\n-----END PRIVATE KEY-----\n",
-    "client_email": "trs-drive-api-648@trs-sitesourcing-viewer.iam.gserviceaccount.com",
-    "client_id": "106044499685095859528",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/trs-drive-api-648%40trs-sitesourcing-viewer.iam.gserviceaccount.com",
-    "universe_domain": "googleapis.com"
-}
+import json
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -202,152 +171,67 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- USER STORE CLASS (single sheet, using google-auth) ---
+#--- JSON STORE CLASS ---
 class UserStore:
-    def __init__(self):
-        self.use_sheet = False
-        self.sheet_client = None
-        self.spreadsheet = None
-        self.admin_sheet = None
-        self._init_sheet()
+    def __init__(self, json_path="adminlog.json"):
+        self.json_path = json_path
+        self._ensure_file()
 
-    def _init_sheet(self):
-        if not HAS_GSPREAD:
-            st.error("gspread library not installed. Please install gspread.")
-            return
-        if not HAS_GOOGLE_AUTH:
-            st.error("google-auth library not installed. Please install google-auth.")
-            return
+    def _ensure_file(self):
+        if not os.path.exists(self.json_path):
+            default_data = {
+                "users": {
+                    "trs.regis": {"password": "trs.jfc", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": False},
+                    "trs.aims": {"password": "trs.jfc", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": False},
+                    "trs.jfc": {"password": "trs.jfc", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": False},
+                    "aimsadmin": {"password": "trs.aims", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": True}
+                },
+                "audit": [],
+                "refresh_logs": []
+            }
+            with open(self.json_path, "w") as f:
+                json.dump(default_data, f, indent=2)
 
-        try:
-            # Use google-auth service account credentials
-            creds = service_account.Credentials.from_service_account_info(
-                SERVICE_ACCOUNT_CREDS,
-                scopes=["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-            )
-            self.sheet_client = gspread.authorize(creds)
-            # Extract spreadsheet ID from SOURCE_URL
-            source_url = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
-            match = re.search(r'/d/([a-zA-Z0-9_-]+)', source_url)
-            if not match:
-                st.error("Could not extract spreadsheet ID from SOURCE_URL.")
-                return
-            sheet_id = match.group(1)
-            self.spreadsheet = self.sheet_client.open_by_key(sheet_id)
-            self.use_sheet = True
-            self._ensure_sheet()
-        except Exception as e:
-            st.error(f"Failed to connect to Google Sheets: {str(e)}")
-            self.use_sheet = False
+    def _read(self):
+        with open(self.json_path, "r") as f:
+            return json.load(f)
 
-    def _ensure_sheet(self):
-        try:
-            self.admin_sheet = self.spreadsheet.worksheet("TRS ADMIN")
-        except:
-            self.admin_sheet = self.spreadsheet.add_worksheet("TRS ADMIN", rows=1000, cols=7)
-            header = ["Type", "User", "Password", "ViewSIR", "ExportSIR", "IsAdmin", "Timestamp"]
-            self.admin_sheet.update('A1:G1', [header])
+    def _write(self, data):
+        with open(self.json_path, "w") as f:
+            json.dump(data, f, indent=2)
 
     def load_users(self):
-        if not self.use_sheet:
-            return None
-        try:
-            data = self.admin_sheet.get_all_values()
-            if len(data) > 1:
-                users = {}
-                for row in data[1:]:
-                    if len(row) >= 7 and row[0].strip().upper() == "USER" and row[1]:
-                        users[row[1]] = {
-                            "password": row[2],
-                            "permissions": {
-                                "view_sir": row[3].strip().upper() == "TRUE",
-                                "export_sir": row[4].strip().upper() == "TRUE"
-                            },
-                            "is_admin": row[5].strip().upper() == "TRUE",
-                            "audit": []
-                        }
-                return users if users else None
-            else:
-                return None
-        except Exception as e:
-            st.error(f"Error loading users from sheet: {e}")
-            return None
+        data = self._read()
+        return data["users"]
 
     def save_users(self, users):
-        if not self.use_sheet:
-            st.error("Google Sheets not available. Cannot save users.")
-            return
-        try:
-            all_data = self.admin_sheet.get_all_values()
-            if not all_data:
-                return
-            header = all_data[0]
-            keep_rows = [row for row in all_data[1:] if len(row) > 0 and row[0].strip().upper() not in ("USER", "")]
-            user_rows = []
-            for user, data in users.items():
-                user_rows.append([
-                    "USER",
-                    user,
-                    data["password"],
-                    "TRUE" if data["permissions"]["view_sir"] else "FALSE",
-                    "TRUE" if data["permissions"]["export_sir"] else "FALSE",
-                    "TRUE" if data.get("is_admin", False) else "FALSE",
-                    ""
-                ])
-            new_rows = [header] + keep_rows + user_rows
-            self.admin_sheet.clear()
-            if new_rows:
-                self.admin_sheet.update('A1:G{}'.format(len(new_rows)), new_rows)
-        except Exception as e:
-            st.error(f"Error saving users to sheet: {e}")
+        data = self._read()
+        data["users"] = users
+        self._write(data)
 
     def log_audit(self, username):
-        if self.use_sheet:
-            try:
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                self.admin_sheet.append_row(["AUDIT", username, "", "", "", "", timestamp])
-            except Exception as e:
-                print(f"Audit log error: {e}")
+        data = self._read()
+        data["audit"].append({"user": username, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+        self._write(data)
 
     def log_refresh(self):
-        if self.use_sheet:
-            try:
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                self.admin_sheet.append_row(["REFRESH", "", "", "", "", "", timestamp])
-            except Exception as e:
-                print(f"Refresh log error: {e}")
+        data = self._read()
+        data["refresh_logs"].append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        self._write(data)
 
     def get_refresh_log(self):
-        if self.use_sheet:
-            try:
-                data = self.admin_sheet.get_all_values()
-                refreshes = []
-                for row in data[1:]:
-                    if len(row) >= 7 and row[0].strip().upper() == "REFRESH" and row[6]:
-                        refreshes.append(row[6])
-                return refreshes
-            except:
-                return []
-        return []
+        data = self._read()
+        return data["refresh_logs"]
 
     def get_audit_log(self):
-        if self.use_sheet:
-            try:
-                data = self.admin_sheet.get_all_values()
-                audits = []
-                for row in data[1:]:
-                    if len(row) >= 7 and row[0].strip().upper() == "AUDIT" and row[1] and row[6]:
-                        audits.append({"User": row[1], "Timestamp": row[6]})
-                return audits
-            except:
-                return []
-        return []
+        data = self._read()
+        return data["audit"]
 
 #--- INITIALIZE USER STORE ---
 if 'user_store' not in st.session_state:
     st.session_state.user_store = UserStore()
 
-# Load users (from sheet – may be None if no users)
+# Load users from JSON
 if 'users' not in st.session_state:
     st.session_state.users = st.session_state.user_store.load_users()
 if 'refresh_log' not in st.session_state:
@@ -376,8 +260,6 @@ if 'cache_version' not in st.session_state:
 #--- LOGIN FUNCTION ---
 def authenticate(username, password):
     users = st.session_state.users
-    if users is None:
-        return False
     if username in users and users[username]["password"] == password:
         st.session_state.authenticated = True
         st.session_state.username = username
@@ -811,9 +693,7 @@ if not st.session_state.authenticated:
         password = st.text_input("Password", placeholder="Enter password", type="password", key="login_password")
         if st.button("Login", use_container_width=True):
             if username and password:
-                if st.session_state.users is None:
-                    st.error("No users found in TRS ADMIN sheet. Please add at least one user manually or via the admin panel.")
-                elif authenticate(username, password):
+                if authenticate(username, password):
                     st.rerun()
                 else:
                     st.error("Invalid username or password.")
@@ -888,12 +768,9 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     # --- User Management (compact) ---
     st.subheader("User Management")
     users = st.session_state.users
-    if users is None:
-        st.warning("No users found in TRS ADMIN sheet. Add a user below.")
-        users = {}
-
     usernames = list(users.keys())
 
+    # Header
     cols = st.columns([1.5, 1.2, 0.8, 0.8, 1.5, 0.5])
     cols[0].write("**Username**")
     cols[1].write("**Password**")
@@ -911,7 +788,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
         users[uname]["permissions"]["view_sir"] = view_sir
         users[uname]["permissions"]["export_sir"] = export_sir
 
-        if not users[uname].get("is_admin", False):
+        if uname != "aimsadmin":
             new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
             if new_pw:
                 users[uname]["password"] = new_pw
@@ -942,28 +819,24 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     with col_e:
         if st.button("Add User", use_container_width=True):
             if new_uname and new_pw:
-                if new_uname in users:
+                if new_uname in st.session_state.users:
                     st.error("Username already exists.")
                 else:
-                    users[new_uname] = {
+                    st.session_state.users[new_uname] = {
                         "password": new_pw,
                         "permissions": {"view_sir": view_sir_new, "export_sir": export_sir_new},
-                        "is_admin": False,
-                        "audit": []
+                        "is_admin": False
                     }
-                    st.session_state.users = users
-                    st.session_state.user_store.save_users(users)
+                    st.session_state.user_store.save_users(st.session_state.users)
                     st.success(f"User {new_uname} added.")
                     st.rerun()
             else:
                 st.warning("Fill in both fields.")
 
-    if st.button("Sync to Sheet", use_container_width=True):
-        if users:
-            st.session_state.user_store.save_users(users)
-            st.success("User data synced to Google Sheet.")
-        else:
-            st.warning("No users to sync.")
+    # Sync button (force save)
+    if st.button("Sync to File", use_container_width=True):
+        st.session_state.user_store.save_users(st.session_state.users)
+        st.success("User data synced to JSON file.")
 
     st.divider()
 
@@ -976,7 +849,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     else:
         st.write("No audit records yet.")
 
-# --- VIEWER ---
+# --- VIEWER (unchanged) ---
 else:
     # Determine default selections
     trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
@@ -1002,7 +875,7 @@ else:
         selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
     with col3:
         if selected_ta:
-            if st.session_state.users and st.session_state.users[st.session_state.username]["permissions"]["export_sir"]:
+            if st.session_state.users[st.session_state.username]["permissions"]["export_sir"]:
                 report_bytes = generate_trade_area_report_cached(
                     selected_ta,
                     df,
@@ -1035,7 +908,7 @@ else:
             if not media_row_data:
                 media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
 
-        if st.session_state.users and st.session_state.users[st.session_state.username]["permissions"]["view_sir"]:
+        if st.session_state.users[st.session_state.username]["permissions"]["view_sir"]:
             tab_report, tab_photos, tab_docs = st.tabs([
                 "PROPERTY INFORMATION",
                 "PROPERTY PHOTOS",
