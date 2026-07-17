@@ -172,106 +172,97 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- LOCAL JSON STORE CLASS ---
+#--- LOCAL JSON STORE CLASS (NO DEFAULTS) ---
 class LocalUserStore:
-    def __init__(self, json_path="adminlog.json"):
+    def __init__(self, json_path):
         self.json_path = json_path
         self.backup_data = None  # Cache fallback if file can't be accessed
-        
+
+    def _get_empty_data(self):
+        """Return an empty data structure (no default users)."""
+        return {
+            "users": {},
+            "audit": [],
+            "refresh_logs": []
+        }
+
     def _read(self):
-        """Read from local JSON file, fallback to cache if file not accessible"""
+        """Read from local JSON file, fallback to cache if file not accessible."""
         try:
             if os.path.exists(self.json_path):
                 with open(self.json_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                self.backup_data = data  # Update cache on successful read
+                self.backup_data = data
                 return data
             else:
-                # File doesn't exist, create it with default data
-                default_data = self._get_default_data()
-                self._write(default_data)
-                return default_data
+                # File doesn't exist: create an empty file and return empty data
+                empty_data = self._get_empty_data()
+                self._write(empty_data)  # This will create the file
+                return empty_data
         except Exception as e:
-            st.warning(f"Cannot access local JSON file: {e}. Using cached data.")
+            st.warning(f"Cannot access local JSON file: {e}. Using cached data if available.")
             if self.backup_data is not None:
                 return self.backup_data
-            # No cache available, return default
-            return self._get_default_data()
-    
-    def _get_default_data(self):
-        """Return default user data structure"""
-        return {
-            "users": {
-                "trs.regis": {"password": "trs.jfc", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": False},
-                "trs.aims": {"password": "trs.jfc", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": False},
-                "trs.jfc": {"password": "trs.jfc", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": False},
-                "aimsadmin": {"password": "trs.aims", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": True}
-            },
-            "audit": [],
-            "refresh_logs": []
-        }
-    
+            # No cache, return empty
+            return self._get_empty_data()
+
     def _write(self, data):
-        """Write to local JSON file with backup"""
+        """Write to local JSON file, with cache backup."""
         try:
-            # Ensure directory exists
             dirname = os.path.dirname(self.json_path)
             if dirname and not os.path.exists(dirname):
                 os.makedirs(dirname, exist_ok=True)
-            
-            # Write to file
             with open(self.json_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
-            self.backup_data = data  # Update cache on successful write
+            self.backup_data = data
             return True
         except Exception as e:
             st.error(f"Cannot write to local JSON file: {e}")
-            self.backup_data = data  # Still save to cache even if file write fails
+            self.backup_data = data  # Keep in cache
             return False
-    
+
     def load_users(self):
         data = self._read()
         return data.get("users", {})
-    
+
     def save_users(self, users):
         data = self._read()
         data["users"] = users
         return self._write(data)
-    
+
     def log_audit(self, username):
         data = self._read()
         if "audit" not in data:
             data["audit"] = []
         data["audit"].append({"user": username, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
         return self._write(data)
-    
+
     def log_refresh(self):
         data = self._read()
         if "refresh_logs" not in data:
             data["refresh_logs"] = []
         data["refresh_logs"].append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         return self._write(data)
-    
+
     def get_refresh_log(self):
         data = self._read()
         return data.get("refresh_logs", [])
-    
+
     def get_audit_log(self):
         data = self._read()
         return data.get("audit", [])
-    
+
     def get_file_content(self):
         try:
             with open(self.json_path, "r", encoding="utf-8") as f:
                 return f.read()
         except:
             return "Unable to read file."
-    
+
     def get_file_path(self):
         return os.path.abspath(self.json_path)
 
-#--- INITIALIZE USER STORE ---
-# Define the local path for adminlog.json
+#--- INITIALIZE USER STORE WITH LOCAL PATH ---
 ADMINLOG_PATH = r"C:\Users\PRIME_Dave\Desktop\adminlog.json"
 
 if 'user_store' not in st.session_state:
