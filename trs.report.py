@@ -21,13 +21,22 @@ import pickle
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-# --- Google Sheets persistence ---
+# --- Google Sheets persistence (prefer google-auth) ---
 try:
     import gspread
-    from oauth2client.service_account import ServiceAccountCredentials
+    from google.oauth2 import service_account
+    from google.auth.transport.requests import Request
     HAS_GSPREAD = True
+    HAS_GOOGLE_AUTH = True
 except ImportError:
     HAS_GSPREAD = False
+    HAS_GOOGLE_AUTH = False
+    # fallback to oauth2client if available
+    try:
+        from oauth2client.service_account import ServiceAccountCredentials
+        HAS_OAUTH2CLIENT = True
+    except:
+        HAS_OAUTH2CLIENT = False
 
 # Hardcoded service account credentials (for testing only)
 SERVICE_ACCOUNT_CREDS = {
@@ -193,7 +202,7 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- USER STORE CLASS (single sheet, using hardcoded credentials) ---
+#--- USER STORE CLASS (single sheet, using google-auth) ---
 class UserStore:
     def __init__(self):
         self.use_sheet = False
@@ -204,13 +213,18 @@ class UserStore:
 
     def _init_sheet(self):
         if not HAS_GSPREAD:
-            st.error("gspread library not installed. Please install gspread and oauth2client.")
+            st.error("gspread library not installed. Please install gspread.")
             return
+        if not HAS_GOOGLE_AUTH:
+            st.error("google-auth library not installed. Please install google-auth.")
+            return
+
         try:
-            # Use the hardcoded credentials
-            creds_dict = SERVICE_ACCOUNT_CREDS
-            scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-            creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+            # Use google-auth service account credentials
+            creds = service_account.Credentials.from_service_account_info(
+                SERVICE_ACCOUNT_CREDS,
+                scopes=["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+            )
             self.sheet_client = gspread.authorize(creds)
             # Extract spreadsheet ID from SOURCE_URL
             source_url = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
