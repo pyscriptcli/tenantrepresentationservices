@@ -172,22 +172,43 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- LOCAL JSON STORE CLASS (NO DEFAULTS) ---
+#--- LOCAL JSON STORE CLASS (WITH DEFAULT USERS) ---
 class LocalUserStore:
     def __init__(self, json_path):
         self.json_path = json_path
         self.backup_data = None  # Cache fallback if file can't be accessed
 
-    def _get_empty_data(self):
-        """Return an empty data structure (no default users)."""
+    def _get_default_data(self):
+        """Return the default user data (used when file is missing or unreadable)."""
         return {
-            "users": {},
+            "users": {
+                "regis": {
+                    "password": "trs.jfc",
+                    "permissions": {"view_sir": True, "export_sir": True},
+                    "is_admin": False
+                },
+                "trs.aims": {
+                    "password": "trs.jfc",
+                    "permissions": {"view_sir": True, "export_sir": True},
+                    "is_admin": False
+                },
+                "jfc": {
+                    "password": "trs.prime",
+                    "permissions": {"view_sir": True, "export_sir": True},
+                    "is_admin": False
+                },
+                "admin": {
+                    "password": "@47t00M!!",
+                    "permissions": {"view_sir": True, "export_sir": True},
+                    "is_admin": True
+                }
+            },
             "audit": [],
             "refresh_logs": []
         }
 
     def _read(self):
-        """Read from local JSON file, fallback to cache if file not accessible."""
+        """Read from local JSON file, fallback to default data if file not accessible."""
         try:
             if os.path.exists(self.json_path):
                 with open(self.json_path, "r", encoding="utf-8") as f:
@@ -195,16 +216,16 @@ class LocalUserStore:
                 self.backup_data = data
                 return data
             else:
-                # File doesn't exist: create an empty file and return empty data
-                empty_data = self._get_empty_data()
-                self._write(empty_data)  # This will create the file
-                return empty_data
+                # File doesn't exist: create with default data
+                default_data = self._get_default_data()
+                self._write(default_data)  # This will create the file
+                return default_data
         except Exception as e:
-            st.warning(f"Cannot access local JSON file: {e}. Using cached data if available.")
+            st.warning(f"Cannot access local JSON file: {e}. Using default/cached data.")
             if self.backup_data is not None:
                 return self.backup_data
-            # No cache, return empty
-            return self._get_empty_data()
+            # No cache, return default
+            return self._get_default_data()
 
     def _write(self, data):
         """Write to local JSON file, with cache backup."""
@@ -858,7 +879,8 @@ if st.session_state.role == "admin" and page == "Admin Panel":
         users[uname]["permissions"]["view_sir"] = view_sir
         users[uname]["permissions"]["export_sir"] = export_sir
 
-        if uname != "aimsadmin":
+        # Only allow deleting non-admin users (you can customize this logic)
+        if uname != "admin":  # prevent deleting the main admin
             new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
             if new_pw:
                 users[uname]["password"] = new_pw
@@ -876,7 +898,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
             if new_pw:
                 users[uname]["password"] = new_pw
                 st.success(f"Password for {uname} updated locally.")
-            cols[5].write("—")
+            cols[5].write("—")  # no delete button for admin
 
     # Add user
     st.write("---")
@@ -924,15 +946,11 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     st.subheader("Audit Log")
     audits = st.session_state.user_store.get_audit_log()
     if audits:
-        # Convert to DataFrame for easier manipulation
         df_audit = pd.DataFrame(audits)
-        # Group by user and count, and also collect timestamps
         summary = df_audit.groupby("user")["timestamp"].agg(["count", lambda x: list(x)]).reset_index()
         summary.columns = ["User", "Login Count", "Timestamps"]
-        # Show summary table
         st.write("**Login summary per user**")
         st.dataframe(summary, use_container_width=True)
-        # Also show detailed list
         st.write("**Detailed audit log (chronological)**")
         st.dataframe(df_audit.sort_values("timestamp", ascending=False), use_container_width=True, height=300)
     else:
