@@ -21,7 +21,7 @@ import pickle
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-# --- Google Sheets persistence (optional) ---
+# --- Google Sheets persistence ---
 try:
     import gspread
     from oauth2client.service_account import ServiceAccountCredentials
@@ -189,65 +189,65 @@ class UserStore:
 
     def _init_sheet(self):
         if not HAS_GSPREAD:
+            st.error("gspread library not installed. Please install gspread and oauth2client.")
             return
         try:
-            if "gcp_service_account" in st.secrets:
-                creds_dict = st.secrets["gcp_service_account"]
-                scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-                creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-                self.sheet_client = gspread.authorize(creds)
-                # Extract spreadsheet ID from SOURCE_URL
-                source_url = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
-                match = re.search(r'/d/([a-zA-Z0-9_-]+)', source_url)
-                if match:
-                    sheet_id = match.group(1)
-                    self.spreadsheet = self.sheet_client.open_by_key(sheet_id)
-                    self.use_sheet = True
-                    self._ensure_sheet()
+            if "gcp_service_account" not in st.secrets:
+                st.error("Missing gcp_service_account in secrets. Please add the service account JSON.")
+                return
+            creds_dict = st.secrets["gcp_service_account"]
+            scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+            creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+            self.sheet_client = gspread.authorize(creds)
+            # Extract spreadsheet ID from SOURCE_URL
+            source_url = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
+            match = re.search(r'/d/([a-zA-Z0-9_-]+)', source_url)
+            if not match:
+                st.error("Could not extract spreadsheet ID from SOURCE_URL.")
+                return
+            sheet_id = match.group(1)
+            self.spreadsheet = self.sheet_client.open_by_key(sheet_id)
+            self.use_sheet = True
+            self._ensure_sheet()
         except Exception as e:
-            st.warning(f"Google Sheets not available: {e}. Using in-memory storage.")
+            st.error(f"Failed to connect to Google Sheets: {str(e)}")
             self.use_sheet = False
 
     def _ensure_sheet(self):
-        # Create TRS ADMIN sheet if missing – only header, no default users
         try:
             self.admin_sheet = self.spreadsheet.worksheet("TRS ADMIN")
         except:
             self.admin_sheet = self.spreadsheet.add_worksheet("TRS ADMIN", rows=1000, cols=7)
             header = ["Type", "User", "Password", "ViewSIR", "ExportSIR", "IsAdmin", "Timestamp"]
             self.admin_sheet.update('A1:G1', [header])
-            # No default users – the admin must add them manually or via the admin panel
+            # No default users
 
     def load_users(self):
-        """Load user records from TRS ADMIN sheet. Returns dict or None if no users."""
-        if self.use_sheet:
-            try:
-                data = self.admin_sheet.get_all_values()
-                if len(data) > 1:
-                    users = {}
-                    for row in data[1:]:  # skip header
-                        if len(row) >= 7 and row[0].strip().upper() == "USER" and row[1]:
-                            users[row[1]] = {
-                                "password": row[2],
-                                "permissions": {
-                                    "view_sir": row[3].strip().upper() == "TRUE",
-                                    "export_sir": row[4].strip().upper() == "TRUE"
-                                },
-                                "is_admin": row[5].strip().upper() == "TRUE",
-                                "audit": []
-                            }
-                    return users if users else None
-                else:
-                    return None
-            except Exception as e:
-                st.error(f"Error loading users from sheet: {e}")
+        if not self.use_sheet:
+            return None
+        try:
+            data = self.admin_sheet.get_all_values()
+            if len(data) > 1:
+                users = {}
+                for row in data[1:]:
+                    if len(row) >= 7 and row[0].strip().upper() == "USER" and row[1]:
+                        users[row[1]] = {
+                            "password": row[2],
+                            "permissions": {
+                                "view_sir": row[3].strip().upper() == "TRUE",
+                                "export_sir": row[4].strip().upper() == "TRUE"
+                            },
+                            "is_admin": row[5].strip().upper() == "TRUE",
+                            "audit": []
+                        }
+                return users if users else None
+            else:
                 return None
-        else:
-            st.error("Google Sheets not available. Cannot load users.")
+        except Exception as e:
+            st.error(f"Error loading users from sheet: {e}")
             return None
 
     def save_users(self, users):
-        """Rewrite all USER rows in TRS ADMIN sheet."""
         if not self.use_sheet:
             st.error("Google Sheets not available. Cannot save users.")
             return
@@ -256,9 +256,7 @@ class UserStore:
             if not all_data:
                 return
             header = all_data[0]
-            # Keep non-USER rows (AUDIT and REFRESH)
             keep_rows = [row for row in all_data[1:] if len(row) > 0 and row[0].strip().upper() not in ("USER", "")]
-            # Build new USER rows
             user_rows = []
             for user, data in users.items():
                 user_rows.append([
@@ -788,7 +786,7 @@ if not st.session_state.authenticated:
         if st.button("Login", use_container_width=True):
             if username and password:
                 if st.session_state.users is None:
-                    st.error("No users found in TRS ADMIN sheet. Please add at least one user.")
+                    st.error("No users found in TRS ADMIN sheet. Please add at least one user manually or via the admin panel.")
                 elif authenticate(username, password):
                     st.rerun()
                 else:
@@ -866,11 +864,10 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     users = st.session_state.users
     if users is None:
         st.warning("No users found in TRS ADMIN sheet. Add a user below.")
-        users = {}  # empty dict for adding
+        users = {}
 
     usernames = list(users.keys())
 
-    # Header
     cols = st.columns([1.5, 1.2, 0.8, 0.8, 1.5, 0.5])
     cols[0].write("**Username**")
     cols[1].write("**Password**")
@@ -888,7 +885,6 @@ if st.session_state.role == "admin" and page == "Admin Panel":
         users[uname]["permissions"]["view_sir"] = view_sir
         users[uname]["permissions"]["export_sir"] = export_sir
 
-        # Only allow delete for non-admin users (we need at least one admin)
         if not users[uname].get("is_admin", False):
             new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
             if new_pw:
@@ -920,11 +916,9 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     with col_e:
         if st.button("Add User", use_container_width=True):
             if new_uname and new_pw:
-                if users is not None and new_uname in users:
+                if new_uname in users:
                     st.error("Username already exists.")
                 else:
-                    if users is None:
-                        users = {}
                     users[new_uname] = {
                         "password": new_pw,
                         "permissions": {"view_sir": view_sir_new, "export_sir": export_sir_new},
@@ -938,7 +932,6 @@ if st.session_state.role == "admin" and page == "Admin Panel":
             else:
                 st.warning("Fill in both fields.")
 
-    # Sync button (force save)
     if st.button("Sync to Sheet", use_container_width=True):
         if users:
             st.session_state.user_store.save_users(users)
