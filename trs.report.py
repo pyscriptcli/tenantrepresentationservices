@@ -172,16 +172,14 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- JSON STORE CLASS (with error handling) ---
+#--- JSON STORE CLASS ---
 class UserStore:
     def __init__(self, json_path="adminlog.json"):
         self.json_path = json_path
-        # Ensure the directory exists if path contains folders
         dirname = os.path.dirname(self.json_path)
         if dirname and not os.path.exists(dirname):
             os.makedirs(dirname, exist_ok=True)
         self._ensure_file()
-        # Save the full absolute path for debugging
         self.absolute_path = os.path.abspath(self.json_path)
 
     def _ensure_file(self):
@@ -209,16 +207,14 @@ class UserStore:
                 return json.load(f)
         except Exception as e:
             st.error(f"Error reading JSON file: {e}\n{traceback.format_exc()}")
-            # Return a default structure to avoid crashing
             return {"users": {}, "audit": [], "refresh_logs": []}
 
     def _write(self, data):
         try:
-            # Write to a temporary file first, then rename for atomicity
             temp_path = self.json_path + ".tmp"
             with open(temp_path, "w") as f:
                 json.dump(data, f, indent=2)
-            os.replace(temp_path, self.json_path)  # atomic on most systems
+            os.replace(temp_path, self.json_path)
             st.success(f"Successfully wrote to {self.absolute_path}")
             return True
         except Exception as e:
@@ -253,7 +249,6 @@ class UserStore:
         return data.get("audit", [])
 
     def get_file_content(self):
-        """Return the raw content of the JSON file for debugging."""
         try:
             with open(self.json_path, "r") as f:
                 return f.read()
@@ -264,7 +259,6 @@ class UserStore:
 if 'user_store' not in st.session_state:
     st.session_state.user_store = UserStore()
 
-# Load users from JSON
 if 'users' not in st.session_state:
     st.session_state.users = st.session_state.user_store.load_users()
 if 'refresh_log' not in st.session_state:
@@ -302,7 +296,6 @@ def authenticate(username, password):
             st.session_state.role = "admin"
         else:
             st.session_state.role = "member"
-        # Log audit
         success = st.session_state.user_store.log_audit(username)
         if not success:
             st.warning("Audit log could not be written. Please check file permissions.")
@@ -313,7 +306,7 @@ def authenticate(username, password):
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
-#--- HELPER FUNCTIONS (unchanged) ---
+#--- HELPER FUNCTIONS ---
 def download_file(url):
     try:
         response = requests.get(url, timeout=30)
@@ -781,7 +774,7 @@ else:
 if st.session_state.role == "admin" and page == "Admin Panel":
     st.title("Admin Control Panel")
 
-    # --- Debug info (file location) ---
+    # --- Debug info (collapsible) ---
     with st.expander("Debug: JSON File Location & Content", expanded=False):
         store = st.session_state.user_store
         st.write(f"**Absolute path:** `{store.absolute_path}`")
@@ -868,7 +861,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     with col_a:
         new_uname = st.text_input("Username", placeholder="New username", key="new_uname", label_visibility="collapsed")
     with col_b:
-        new_pw = st.text_input("Password", type="password", placeholder="Temporary password", key="new_pw", label_visibility="collapsed")
+        new_pw = st.text_input("Password", type="password", placeholder="Password", key="new_pw", label_visibility="collapsed")
     with col_c:
         view_sir_new = st.checkbox("View", value=True, key="new_view", label_visibility="collapsed")
     with col_d:
@@ -903,12 +896,21 @@ if st.session_state.role == "admin" and page == "Admin Panel":
 
     st.divider()
 
-    # --- Audit Log ---
+    # --- Audit Log with counts and timestamps ---
     st.subheader("Audit Log")
     audits = st.session_state.user_store.get_audit_log()
     if audits:
+        # Convert to DataFrame for easier manipulation
         df_audit = pd.DataFrame(audits)
-        st.dataframe(df_audit, use_container_width=True, height=300)
+        # Group by user and count, and also collect timestamps
+        summary = df_audit.groupby("user")["timestamp"].agg(["count", lambda x: list(x)]).reset_index()
+        summary.columns = ["User", "Login Count", "Timestamps"]
+        # Show summary table
+        st.write("**Login summary per user**")
+        st.dataframe(summary, use_container_width=True)
+        # Also show detailed list
+        st.write("**Detailed audit log (chronological)**")
+        st.dataframe(df_audit.sort_values("timestamp", ascending=False), use_container_width=True, height=300)
     else:
         st.write("No audit records yet.")
 
