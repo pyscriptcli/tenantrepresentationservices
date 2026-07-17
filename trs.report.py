@@ -172,14 +172,14 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- LOCAL JSON STORE CLASS (WITH DEFAULT USERS) ---
+#--- LOCAL JSON STORE CLASS (WITH SAFE DEFAULTS) ---
 class LocalUserStore:
     def __init__(self, json_path):
         self.json_path = json_path
-        self.backup_data = None  # Cache fallback if file can't be accessed
+        self.backup_data = None  # Cache fallback
 
     def _get_default_data(self):
-        """Return the default user data (used when file is missing or unreadable)."""
+        """Return the default user data (used when file is missing or empty)."""
         return {
             "users": {
                 "regis": {
@@ -194,7 +194,7 @@ class LocalUserStore:
                 },
                 "jfc": {
                     "password": "trs.prime",
-                    "permissions": {"view_sir": True, "export_sir": False},
+                    "permissions": {"view_sir": True, "export_sir": True},
                     "is_admin": False
                 },
                 "admin": {
@@ -208,23 +208,45 @@ class LocalUserStore:
         }
 
     def _read(self):
-        """Read from local JSON file, fallback to default data if file not accessible."""
+        """Read from local JSON file.
+        If file is missing, create with defaults.
+        If file exists but has empty users, merge defaults to guarantee at least one admin.
+        """
         try:
             if os.path.exists(self.json_path):
                 with open(self.json_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
+                # Ensure the data has the required structure
+                if not isinstance(data, dict):
+                    raise ValueError("JSON root is not a dict")
+                if "users" not in data or not isinstance(data["users"], dict):
+                    data["users"] = {}
+                if "audit" not in data or not isinstance(data["audit"], list):
+                    data["audit"] = []
+                if "refresh_logs" not in data or not isinstance(data["refresh_logs"], list):
+                    data["refresh_logs"] = []
+
+                # --- CRITICAL FIX: if the file has NO users, merge defaults ---
+                if not data["users"]:
+                    st.warning("Local adminlog.json has no users. Adding default users.")
+                    default_data = self._get_default_data()
+                    data["users"] = default_data["users"]
+                    data["audit"] = data.get("audit", [])
+                    data["refresh_logs"] = data.get("refresh_logs", [])
+                    self._write(data)
+
                 self.backup_data = data
                 return data
             else:
-                # File doesn't exist: create with default data
+                # File doesn't exist: create with defaults
                 default_data = self._get_default_data()
-                self._write(default_data)  # This will create the file
+                self._write(default_data)
                 return default_data
+
         except Exception as e:
-            st.warning(f"Cannot access local JSON file: {e}. Using default/cached data.")
+            st.warning(f"Cannot access local JSON file: {e}. Using cached/default data.")
             if self.backup_data is not None:
                 return self.backup_data
-            # No cache, return default
             return self._get_default_data()
 
     def _write(self, data):
@@ -239,7 +261,7 @@ class LocalUserStore:
             return True
         except Exception as e:
             st.error(f"Cannot write to local JSON file: {e}")
-            self.backup_data = data  # Keep in cache
+            self.backup_data = data
             return False
 
     def load_users(self):
@@ -750,6 +772,11 @@ if not st.session_state.authenticated:
     c1, c2, c3 = st.columns([1, 1.2, 1])
     with c2:
         st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
+
+        # --- DEBUG: Show loaded users ---
+        with st.expander("🔍 Debug: Loaded Users (click to expand)"):
+            st.write("Usernames in session_state.users:", list(st.session_state.users.keys()))
+
         username = st.text_input("Username", placeholder="Enter username", key="login_username")
         password = st.text_input("Password", placeholder="Enter password", type="password", key="login_password")
         if st.button("Login", use_container_width=True):
@@ -879,8 +906,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
         users[uname]["permissions"]["view_sir"] = view_sir
         users[uname]["permissions"]["export_sir"] = export_sir
 
-        # Only allow deleting non-admin users (you can customize this logic)
-        if uname != "admin":  # prevent deleting the main admin
+        if uname != "admin":  # protect the main admin from deletion
             new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
             if new_pw:
                 users[uname]["password"] = new_pw
@@ -898,7 +924,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
             if new_pw:
                 users[uname]["password"] = new_pw
                 st.success(f"Password for {uname} updated locally.")
-            cols[5].write("—")  # no delete button for admin
+            cols[5].write("—")
 
     # Add user
     st.write("---")
