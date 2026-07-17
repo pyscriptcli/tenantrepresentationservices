@@ -21,6 +21,7 @@ import pickle
 import pyarrow as pa
 import pyarrow.parquet as pq
 import json
+import traceback
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -171,11 +172,17 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- JSON STORE CLASS ---
+#--- JSON STORE CLASS (with error handling) ---
 class UserStore:
     def __init__(self, json_path="adminlog.json"):
         self.json_path = json_path
+        # Ensure the directory exists if path contains folders
+        dirname = os.path.dirname(self.json_path)
+        if dirname and not os.path.exists(dirname):
+            os.makedirs(dirname, exist_ok=True)
         self._ensure_file()
+        # Save the full absolute path for debugging
+        self.absolute_path = os.path.abspath(self.json_path)
 
     def _ensure_file(self):
         if not os.path.exists(self.json_path):
@@ -189,43 +196,69 @@ class UserStore:
                 "audit": [],
                 "refresh_logs": []
             }
-            with open(self.json_path, "w") as f:
-                json.dump(default_data, f, indent=2)
+            try:
+                with open(self.json_path, "w") as f:
+                    json.dump(default_data, f, indent=2)
+                st.success(f"Created new JSON file at: {self.absolute_path}")
+            except Exception as e:
+                st.error(f"Failed to create JSON file: {e}")
 
     def _read(self):
-        with open(self.json_path, "r") as f:
-            return json.load(f)
+        try:
+            with open(self.json_path, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            st.error(f"Error reading JSON file: {e}\n{traceback.format_exc()}")
+            # Return a default structure to avoid crashing
+            return {"users": {}, "audit": [], "refresh_logs": []}
 
     def _write(self, data):
-        with open(self.json_path, "w") as f:
-            json.dump(data, f, indent=2)
+        try:
+            # Write to a temporary file first, then rename for atomicity
+            temp_path = self.json_path + ".tmp"
+            with open(temp_path, "w") as f:
+                json.dump(data, f, indent=2)
+            os.replace(temp_path, self.json_path)  # atomic on most systems
+            st.success(f"Successfully wrote to {self.absolute_path}")
+            return True
+        except Exception as e:
+            st.error(f"Error writing to JSON file: {e}\n{traceback.format_exc()}")
+            return False
 
     def load_users(self):
         data = self._read()
-        return data["users"]
+        return data.get("users", {})
 
     def save_users(self, users):
         data = self._read()
         data["users"] = users
-        self._write(data)
+        return self._write(data)
 
     def log_audit(self, username):
         data = self._read()
         data["audit"].append({"user": username, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
-        self._write(data)
+        return self._write(data)
 
     def log_refresh(self):
         data = self._read()
         data["refresh_logs"].append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        self._write(data)
+        return self._write(data)
 
     def get_refresh_log(self):
         data = self._read()
-        return data["refresh_logs"]
+        return data.get("refresh_logs", [])
 
     def get_audit_log(self):
         data = self._read()
-        return data["audit"]
+        return data.get("audit", [])
+
+    def get_file_content(self):
+        """Return the raw content of the JSON file for debugging."""
+        try:
+            with open(self.json_path, "r") as f:
+                return f.read()
+        except:
+            return "Unable to read file."
 
 #--- INITIALIZE USER STORE ---
 if 'user_store' not in st.session_state:
@@ -236,6 +269,8 @@ if 'users' not in st.session_state:
     st.session_state.users = st.session_state.user_store.load_users()
 if 'refresh_log' not in st.session_state:
     st.session_state.refresh_log = st.session_state.user_store.get_refresh_log()
+if 'write_errors' not in st.session_state:
+    st.session_state.write_errors = []
 
 #--- SESSION STATE ---
 if 'authenticated' not in st.session_state:
@@ -267,7 +302,10 @@ def authenticate(username, password):
             st.session_state.role = "admin"
         else:
             st.session_state.role = "member"
-        st.session_state.user_store.log_audit(username)
+        # Log audit
+        success = st.session_state.user_store.log_audit(username)
+        if not success:
+            st.warning("Audit log could not be written. Please check file permissions.")
         return True
     return False
 
@@ -275,7 +313,7 @@ def authenticate(username, password):
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
-#--- HELPER FUNCTIONS ---
+#--- HELPER FUNCTIONS (unchanged) ---
 def download_file(url):
     try:
         response = requests.get(url, timeout=30)
@@ -743,6 +781,17 @@ else:
 if st.session_state.role == "admin" and page == "Admin Panel":
     st.title("Admin Control Panel")
 
+    # --- Debug info (file location) ---
+    with st.expander("Debug: JSON File Location & Content", expanded=False):
+        store = st.session_state.user_store
+        st.write(f"**Absolute path:** `{store.absolute_path}`")
+        st.write(f"**File exists:** {os.path.exists(store.json_path)}")
+        if os.path.exists(store.json_path):
+            st.write(f"**File size:** {os.path.getsize(store.json_path)} bytes")
+            st.write("**Raw content (first 500 chars):**")
+            st.code(store.get_file_content()[:500], language="json")
+        st.write("**Write status:**", "OK" if not st.session_state.get("write_errors", []) else "Errors occurred")
+
     # --- Refresh Data ---
     st.subheader("Data Refresh")
     col_refresh, col_status = st.columns([1, 3])
@@ -751,8 +800,12 @@ if st.session_state.role == "admin" and page == "Admin Panel":
             st.cache_data.clear()
             st.session_state.cache_version += 1
             st.session_state.data_loaded = False
-            st.session_state.user_store.log_refresh()
-            st.session_state.refresh_log = st.session_state.user_store.get_refresh_log()
+            success = st.session_state.user_store.log_refresh()
+            if success:
+                st.session_state.refresh_log = st.session_state.user_store.get_refresh_log()
+                st.success("Refresh logged.")
+            else:
+                st.error("Could not log refresh. Check file permissions.")
             st.rerun()
     with col_status:
         if st.session_state.refresh_log:
@@ -792,16 +845,20 @@ if st.session_state.role == "admin" and page == "Admin Panel":
             new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
             if new_pw:
                 users[uname]["password"] = new_pw
-                st.success(f"Password for {uname} updated.")
+                st.success(f"Password for {uname} updated locally.")
             if cols[5].button("Delete", key=f"del_{uname}", use_container_width=True):
                 del st.session_state.users[uname]
-                st.session_state.user_store.save_users(users)
+                success = st.session_state.user_store.save_users(users)
+                if success:
+                    st.success(f"User {uname} deleted.")
+                else:
+                    st.error("Failed to delete user. Check file permissions.")
                 st.rerun()
         else:
             new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
             if new_pw:
                 users[uname]["password"] = new_pw
-                st.success(f"Password for {uname} updated.")
+                st.success(f"Password for {uname} updated locally.")
             cols[5].write("—")
 
     # Add user
@@ -827,16 +884,22 @@ if st.session_state.role == "admin" and page == "Admin Panel":
                         "permissions": {"view_sir": view_sir_new, "export_sir": export_sir_new},
                         "is_admin": False
                     }
-                    st.session_state.user_store.save_users(st.session_state.users)
-                    st.success(f"User {new_uname} added.")
+                    success = st.session_state.user_store.save_users(st.session_state.users)
+                    if success:
+                        st.success(f"User {new_uname} added.")
+                    else:
+                        st.error("Failed to save user. Check file permissions.")
                     st.rerun()
             else:
                 st.warning("Fill in both fields.")
 
-    # Sync button (force save)
-    if st.button("Sync to File", use_container_width=True):
-        st.session_state.user_store.save_users(st.session_state.users)
-        st.success("User data synced to JSON file.")
+    # Force sync button
+    if st.button("Force Sync to File", use_container_width=True):
+        success = st.session_state.user_store.save_users(st.session_state.users)
+        if success:
+            st.success("Data synced.")
+        else:
+            st.error("Sync failed.")
 
     st.divider()
 
