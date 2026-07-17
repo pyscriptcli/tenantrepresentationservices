@@ -178,7 +178,7 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- USER STORE CLASS (single sheet) ---
+#--- USER STORE CLASS (single sheet, no hardcoded data) ---
 class UserStore:
     def __init__(self):
         self.use_sheet = False
@@ -209,23 +209,17 @@ class UserStore:
             self.use_sheet = False
 
     def _ensure_sheet(self):
+        # Create TRS ADMIN sheet if missing – only header, no default users
         try:
             self.admin_sheet = self.spreadsheet.worksheet("TRS ADMIN")
         except:
             self.admin_sheet = self.spreadsheet.add_worksheet("TRS ADMIN", rows=1000, cols=7)
             header = ["Type", "User", "Password", "ViewSIR", "ExportSIR", "IsAdmin", "Timestamp"]
             self.admin_sheet.update('A1:G1', [header])
-            default_users = [
-                ["USER", "trs.regis", "trs.jfc", "TRUE", "TRUE", "FALSE", ""],
-                ["USER", "trs.aims", "trs.jfc", "TRUE", "TRUE", "FALSE", ""],
-                ["USER", "trs.jfc", "trs.jfc", "TRUE", "TRUE", "FALSE", ""],
-                ["USER", "aimsadmin", "trs.aims", "TRUE", "TRUE", "TRUE", ""]
-            ]
-            if default_users:
-                self.admin_sheet.append_rows(default_users)
+            # No default users – the admin must add them manually or via the admin panel
 
     def load_users(self):
-        """Load user records from TRS ADMIN sheet."""
+        """Load user records from TRS ADMIN sheet. Returns dict or None if no users."""
         if self.use_sheet:
             try:
                 data = self.admin_sheet.get_all_values()
@@ -242,20 +236,20 @@ class UserStore:
                                 "is_admin": row[5].strip().upper() == "TRUE",
                                 "audit": []
                             }
-                    return users
+                    return users if users else None
+                else:
+                    return None
             except Exception as e:
-                st.warning(f"Error loading users from sheet: {e}. Falling back to defaults.")
-        # Fallback defaults
-        return {
-            "trs.regis": {"password": "trs.jfc", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": False, "audit": []},
-            "trs.aims": {"password": "trs.jfc", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": False, "audit": []},
-            "trs.jfc": {"password": "trs.jfc", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": False, "audit": []},
-            "aimsadmin": {"password": "trs.aims", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": True, "audit": []}
-        }
+                st.error(f"Error loading users from sheet: {e}")
+                return None
+        else:
+            st.error("Google Sheets not available. Cannot load users.")
+            return None
 
     def save_users(self, users):
         """Rewrite all USER rows in TRS ADMIN sheet."""
         if not self.use_sheet:
+            st.error("Google Sheets not available. Cannot save users.")
             return
         try:
             all_data = self.admin_sheet.get_all_values()
@@ -284,7 +278,6 @@ class UserStore:
             st.error(f"Error saving users to sheet: {e}")
 
     def log_audit(self, username):
-        """Append an AUDIT row."""
         if self.use_sheet:
             try:
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -293,7 +286,6 @@ class UserStore:
                 print(f"Audit log error: {e}")
 
     def log_refresh(self):
-        """Append a REFRESH row."""
         if self.use_sheet:
             try:
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -302,7 +294,6 @@ class UserStore:
                 print(f"Refresh log error: {e}")
 
     def get_refresh_log(self):
-        """Retrieve REFRESH rows."""
         if self.use_sheet:
             try:
                 data = self.admin_sheet.get_all_values()
@@ -316,7 +307,6 @@ class UserStore:
         return []
 
     def get_audit_log(self):
-        """Retrieve AUDIT rows."""
         if self.use_sheet:
             try:
                 data = self.admin_sheet.get_all_values()
@@ -333,7 +323,7 @@ class UserStore:
 if 'user_store' not in st.session_state:
     st.session_state.user_store = UserStore()
 
-# Load users (either from sheet or fallback)
+# Load users (from sheet – may be None if no users)
 if 'users' not in st.session_state:
     st.session_state.users = st.session_state.user_store.load_users()
 if 'refresh_log' not in st.session_state:
@@ -362,6 +352,8 @@ if 'cache_version' not in st.session_state:
 #--- LOGIN FUNCTION ---
 def authenticate(username, password):
     users = st.session_state.users
+    if users is None:
+        return False
     if username in users and users[username]["password"] == password:
         st.session_state.authenticated = True
         st.session_state.username = username
@@ -369,7 +361,6 @@ def authenticate(username, password):
             st.session_state.role = "admin"
         else:
             st.session_state.role = "member"
-        # Log audit
         st.session_state.user_store.log_audit(username)
         return True
     return False
@@ -796,7 +787,9 @@ if not st.session_state.authenticated:
         password = st.text_input("Password", placeholder="Enter password", type="password", key="login_password")
         if st.button("Login", use_container_width=True):
             if username and password:
-                if authenticate(username, password):
+                if st.session_state.users is None:
+                    st.error("No users found in TRS ADMIN sheet. Please add at least one user.")
+                elif authenticate(username, password):
                     st.rerun()
                 else:
                     st.error("Invalid username or password.")
@@ -871,6 +864,10 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     # --- User Management (compact) ---
     st.subheader("User Management")
     users = st.session_state.users
+    if users is None:
+        st.warning("No users found in TRS ADMIN sheet. Add a user below.")
+        users = {}  # empty dict for adding
+
     usernames = list(users.keys())
 
     # Header
@@ -891,7 +888,8 @@ if st.session_state.role == "admin" and page == "Admin Panel":
         users[uname]["permissions"]["view_sir"] = view_sir
         users[uname]["permissions"]["export_sir"] = export_sir
 
-        if uname != "aimsadmin":
+        # Only allow delete for non-admin users (we need at least one admin)
+        if not users[uname].get("is_admin", False):
             new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
             if new_pw:
                 users[uname]["password"] = new_pw
@@ -922,16 +920,19 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     with col_e:
         if st.button("Add User", use_container_width=True):
             if new_uname and new_pw:
-                if new_uname in st.session_state.users:
+                if users is not None and new_uname in users:
                     st.error("Username already exists.")
                 else:
-                    st.session_state.users[new_uname] = {
+                    if users is None:
+                        users = {}
+                    users[new_uname] = {
                         "password": new_pw,
                         "permissions": {"view_sir": view_sir_new, "export_sir": export_sir_new},
                         "is_admin": False,
                         "audit": []
                     }
-                    st.session_state.user_store.save_users(st.session_state.users)
+                    st.session_state.users = users
+                    st.session_state.user_store.save_users(users)
                     st.success(f"User {new_uname} added.")
                     st.rerun()
             else:
@@ -939,8 +940,11 @@ if st.session_state.role == "admin" and page == "Admin Panel":
 
     # Sync button (force save)
     if st.button("Sync to Sheet", use_container_width=True):
-        st.session_state.user_store.save_users(st.session_state.users)
-        st.success("User data synced to Google Sheet.")
+        if users:
+            st.session_state.user_store.save_users(users)
+            st.success("User data synced to Google Sheet.")
+        else:
+            st.warning("No users to sync.")
 
     st.divider()
 
@@ -979,7 +983,7 @@ else:
         selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
     with col3:
         if selected_ta:
-            if st.session_state.users[st.session_state.username]["permissions"]["export_sir"]:
+            if st.session_state.users and st.session_state.users[st.session_state.username]["permissions"]["export_sir"]:
                 report_bytes = generate_trade_area_report_cached(
                     selected_ta,
                     df,
@@ -1012,7 +1016,7 @@ else:
             if not media_row_data:
                 media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
 
-        if st.session_state.users[st.session_state.username]["permissions"]["view_sir"]:
+        if st.session_state.users and st.session_state.users[st.session_state.username]["permissions"]["view_sir"]:
             tab_report, tab_photos, tab_docs = st.tabs([
                 "PROPERTY INFORMATION",
                 "PROPERTY PHOTOS",
