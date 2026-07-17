@@ -23,6 +23,12 @@ import pyarrow.parquet as pq
 import json
 import traceback
 
+#--- CONFIGURATION ---
+# Set your full path to adminlog.json here
+JSON_FILE_PATH = r"C:\Users\PRIME_Dave\Desktop\adminlog.json"
+# If you want to use a relative path (e.g., for local testing), use:
+# JSON_FILE_PATH = "adminlog.json"
+
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="trs.sitesourcing.viewer",
@@ -172,56 +178,14 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- USER STORE (GITHUB GIST) ---
+#--- USER STORE (LOCAL JSON) ---
 class UserStore:
-    def __init__(self):
-        # Try to get from secrets first
-        self.token = st.secrets.get("GITHUB_TOKEN", None)
-        self.gist_id = st.secrets.get("GIST_ID", None)
-        # If not found, use hardcoded values (for PoC)
-        if not self.token or not self.gist_id:
-            # Hardcoded for testing – replace with environment or secrets
-            self.token = "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"
-            self.gist_id = "b6616d890f25db9941688622bc12b6ac"
-            st.warning("Using hardcoded GitHub credentials. This is not secure for production.")
-        self.filename = "adminlog.json"
-        self.raw_url = None
-        self.use_gist = bool(self.token and self.gist_id)
-        self.local_path = "adminlog.json"
-
-        if self.use_gist:
-            self._init_gist()
-        else:
-            st.warning("Gist credentials not set. Using local JSON file (may not persist).")
-            self._ensure_local()
-
-    def _init_gist(self):
-        """Fetch the gist and get the raw URL for the file."""
-        try:
-            headers = {"Authorization": f"token {self.token}"}
-            url = f"https://api.github.com/gists/{self.gist_id}"
-            resp = requests.get(url, headers=headers)
-            if resp.status_code == 200:
-                gist_data = resp.json()
-                files = gist_data.get("files", {})
-                if self.filename in files:
-                    self.raw_url = files[self.filename]["raw_url"]
-                    st.success(f"Connected to Gist #{self.gist_id}")
-                else:
-                    st.info(f"Gist #{self.gist_id} does not contain {self.filename}. Creating file.")
-                    self._create_or_update_gist(self._default_data())
-            else:
-                st.warning(f"Gist #{self.gist_id} not found (status {resp.status_code}). Falling back to local.")
-                self.use_gist = False
-                self._ensure_local()
-        except Exception as e:
-            st.error(f"Error connecting to Gist: {e}. Falling back to local.")
-            self.use_gist = False
-            self._ensure_local()
-
-    def _ensure_local(self):
-        if not os.path.exists(self.local_path):
-            self._write_local(self._default_data())
+    def __init__(self, json_path=JSON_FILE_PATH):
+        self.json_path = json_path
+        self.use_file = False
+        self.fallback_data = self._default_data()
+        # Try to read the file; if it fails, use in-memory fallback
+        self._init_store()
 
     def _default_data(self):
         return {
@@ -235,140 +199,117 @@ class UserStore:
             "refresh_logs": []
         }
 
-    def _read_local(self):
+    def _init_store(self):
         try:
-            with open(self.local_path, "r") as f:
+            # Ensure directory exists
+            dirname = os.path.dirname(self.json_path)
+            if dirname and not os.path.exists(dirname):
+                os.makedirs(dirname, exist_ok=True)
+            # Try to read the file
+            if os.path.exists(self.json_path):
+                with open(self.json_path, "r") as f:
+                    data = json.load(f)
+                self.fallback_data = data
+                self.use_file = True
+                st.success(f"Loaded admin data from {self.json_path}")
+            else:
+                # Create default file
+                self._write_file(self._default_data())
+                self.use_file = True
+                st.info(f"Created new admin file at {self.json_path}")
+        except Exception as e:
+            st.warning(f"Could not access JSON file at {self.json_path}. Using in-memory storage only. Error: {e}")
+            self.use_file = False
+
+    def _read_file(self):
+        try:
+            with open(self.json_path, "r") as f:
                 return json.load(f)
         except:
-            return self._default_data()
+            return None
 
-    def _write_local(self, data):
+    def _write_file(self, data):
         try:
-            with open(self.local_path, "w") as f:
+            with open(self.json_path, "w") as f:
                 json.dump(data, f, indent=2)
             return True
         except:
             return False
 
-    def _create_or_update_gist(self, data):
-        """Create or update the file in the gist."""
-        if not self.token or not self.gist_id:
-            return False
-        try:
-            headers = {"Authorization": f"token {self.token}"}
-            content = json.dumps(data, indent=2)
-            payload = {
-                "files": {
-                    self.filename: {"content": content}
-                }
-            }
-            url = f"https://api.github.com/gists/{self.gist_id}"
-            resp = requests.patch(url, headers=headers, json=payload)
-            if resp.status_code == 200:
-                self.raw_url = resp.json()["files"][self.filename]["raw_url"]
-                st.success("Gist updated.")
+    def _get_data(self):
+        """Get current data (from file if available, else from fallback)."""
+        if self.use_file:
+            data = self._read_file()
+            if data is not None:
+                return data
+        return self.fallback_data
+
+    def _set_data(self, data):
+        """Write data to file if possible, otherwise update fallback."""
+        if self.use_file:
+            success = self._write_file(data)
+            if success:
+                self.fallback_data = data
                 return True
             else:
-                st.error(f"Failed to update gist: {resp.text}")
+                st.error("Failed to write to JSON file. Updating in-memory only.")
+                self.fallback_data = data
                 return False
-        except Exception as e:
-            st.error(f"Error updating gist: {e}")
-            return False
-
-    def _read_gist(self):
-        """Read data from the gist raw URL."""
-        if not self.use_gist or not self.raw_url:
-            return None
-        try:
-            resp = requests.get(self.raw_url)
-            if resp.status_code == 200:
-                return json.loads(resp.text)
-            else:
-                return None
-        except:
-            return None
-
-    def _write_gist(self, data):
-        """Write data to the gist."""
-        if not self.use_gist:
-            return False
-        return self._create_or_update_gist(data)
-
-    # --- Public methods ---
-    def load_users(self):
-        if self.use_gist:
-            data = self._read_gist()
-            if data:
-                return data.get("users", {})
-            else:
-                st.warning("Failed to read from Gist, falling back to local.")
-                data = self._read_local()
-                return data.get("users", {})
         else:
-            data = self._read_local()
-            return data.get("users", {})
+            self.fallback_data = data
+            return False
+
+    # Public methods
+    def load_users(self):
+        data = self._get_data()
+        return data.get("users", {})
 
     def save_users(self, users):
-        data = self._read_local() if not self.use_gist else self._read_gist()
-        if not data:
-            data = self._default_data()
+        data = self._get_data()
         data["users"] = users
-        if self.use_gist:
-            return self._write_gist(data)
-        else:
-            return self._write_local(data)
+        return self._set_data(data)
 
     def log_audit(self, username):
-        data = self._read_local() if not self.use_gist else self._read_gist()
-        if not data:
-            data = self._default_data()
+        data = self._get_data()
         data["audit"].append({"user": username, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
-        if self.use_gist:
-            return self._write_gist(data)
-        else:
-            return self._write_local(data)
+        return self._set_data(data)
 
     def log_refresh(self):
-        data = self._read_local() if not self.use_gist else self._read_gist()
-        if not data:
-            data = self._default_data()
+        data = self._get_data()
         data["refresh_logs"].append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        if self.use_gist:
-            return self._write_gist(data)
-        else:
-            return self._write_local(data)
+        return self._set_data(data)
 
     def get_refresh_log(self):
-        data = self._read_local() if not self.use_gist else self._read_gist()
-        if data:
-            return data.get("refresh_logs", [])
-        return []
+        data = self._get_data()
+        return data.get("refresh_logs", [])
 
     def get_audit_log(self):
-        data = self._read_local() if not self.use_gist else self._read_gist()
-        if data:
-            return data.get("audit", [])
-        return []
+        data = self._get_data()
+        return data.get("audit", [])
 
     def get_file_content(self):
-        if self.use_gist and self.raw_url:
+        if self.use_file:
             try:
-                resp = requests.get(self.raw_url)
-                if resp.status_code == 200:
-                    return resp.text
+                with open(self.json_path, "r") as f:
+                    return f.read()
             except:
-                pass
-        try:
-            with open(self.local_path, "r") as f:
-                return f.read()
-        except:
-            return "Unable to read file."
+                return "Unable to read file."
+        else:
+            return "File not available; using in-memory storage."
+
+    def force_sync(self):
+        """Force a write of current in-memory data to the file."""
+        if self.use_file:
+            return self._write_file(self.fallback_data)
+        else:
+            st.warning("Cannot sync – file is not writable in this environment.")
+            return False
 
 #--- INITIALIZE USER STORE ---
 if 'user_store' not in st.session_state:
     st.session_state.user_store = UserStore()
 
-# Load users from store
+# Load users from store (either file or memory)
 if 'users' not in st.session_state:
     st.session_state.users = st.session_state.user_store.load_users()
 if 'refresh_log' not in st.session_state:
@@ -406,7 +347,7 @@ def authenticate(username, password):
             st.session_state.role = "member"
         success = st.session_state.user_store.log_audit(username)
         if not success:
-            st.warning("Audit log could not be written. Check file permissions.")
+            st.warning("Audit log could not be written. Changes stored in memory only.")
         return True
     return False
 
@@ -883,16 +824,15 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     st.title("Admin Control Panel")
 
     # --- Debug info (collapsible) ---
-    with st.expander("Debug: JSON File Location & Content", expanded=False):
+    with st.expander("File / Storage Status", expanded=False):
         store = st.session_state.user_store
-        st.write(f"**Gist ID:** {store.gist_id if store.use_gist else 'Not set'}")
-        st.write(f"**Using Gist:** {store.use_gist}")
-        if store.use_gist:
-            st.write(f"**Raw URL:** {store.raw_url}")
-            # Mask token for display
-            token_display = store.token[:5] + "..." + store.token[-5:] if store.token else "None"
-            st.write(f"**Token:** {token_display}")
-        st.write(f"**Local fallback path:** `{store.local_path}`")
+        st.write(f"**JSON file path:** `{store.json_path}`")
+        st.write(f"**File accessible:** {store.use_file}")
+        if store.use_file:
+            st.write(f"**File exists:** {os.path.exists(store.json_path)}")
+            if os.path.exists(store.json_path):
+                st.write(f"**File size:** {os.path.getsize(store.json_path)} bytes")
+        st.write("**Storage mode:**", "File-backed" if store.use_file else "In-memory only (changes lost on restart)")
         st.write("**Raw content (first 500 chars):**")
         st.code(store.get_file_content()[:500], language="json")
 
@@ -909,7 +849,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
                 st.session_state.refresh_log = st.session_state.user_store.get_refresh_log()
                 st.success("Refresh logged.")
             else:
-                st.error("Could not log refresh. Check Gist token/permissions.")
+                st.warning("Refresh logged in memory only; file not writable.")
             st.rerun()
     with col_status:
         if st.session_state.refresh_log:
@@ -956,7 +896,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
                 if success:
                     st.success(f"User {uname} deleted.")
                 else:
-                    st.error("Failed to delete user. Check Gist token/permissions.")
+                    st.warning("User deleted in memory only; file not writable.")
                 st.rerun()
         else:
             new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
@@ -992,18 +932,18 @@ if st.session_state.role == "admin" and page == "Admin Panel":
                     if success:
                         st.success(f"User {new_uname} added.")
                     else:
-                        st.error("Failed to save user. Check Gist token/permissions.")
+                        st.warning("User added in memory only; file not writable.")
                     st.rerun()
             else:
                 st.warning("Fill in both fields.")
 
     # Force sync button
-    if st.button("Force Sync to Gist", use_container_width=True):
-        success = st.session_state.user_store.save_users(st.session_state.users)
+    if st.button("Force Sync to File", use_container_width=True):
+        success = st.session_state.user_store.force_sync()
         if success:
-            st.success("Data synced to Gist.")
+            st.success("Data synced to JSON file.")
         else:
-            st.error("Sync failed. Check Gist token/permissions.")
+            st.error("Sync failed. Check file path and permissions.")
 
     st.divider()
 
