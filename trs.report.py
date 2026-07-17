@@ -23,12 +23,6 @@ import pyarrow.parquet as pq
 import json
 import traceback
 
-#--- CONFIGURATION ---
-# Set your full path to adminlog.json here
-JSON_FILE_PATH = r"C:\Users\PRIME_Dave\Desktop\adminlog.json"
-# If you want to use a relative path (e.g., for local testing), use:
-# JSON_FILE_PATH = "adminlog.json"
-
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="trs.sitesourcing.viewer",
@@ -178,16 +172,34 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- USER STORE (LOCAL JSON) ---
-class UserStore:
-    def __init__(self, json_path=JSON_FILE_PATH):
+#--- LOCAL JSON STORE CLASS ---
+class LocalUserStore:
+    def __init__(self, json_path="adminlog.json"):
         self.json_path = json_path
-        self.use_file = False
-        self.fallback_data = self._default_data()
-        # Try to read the file; if it fails, use in-memory fallback
-        self._init_store()
-
-    def _default_data(self):
+        self.backup_data = None  # Cache fallback if file can't be accessed
+        
+    def _read(self):
+        """Read from local JSON file, fallback to cache if file not accessible"""
+        try:
+            if os.path.exists(self.json_path):
+                with open(self.json_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.backup_data = data  # Update cache on successful read
+                return data
+            else:
+                # File doesn't exist, create it with default data
+                default_data = self._get_default_data()
+                self._write(default_data)
+                return default_data
+        except Exception as e:
+            st.warning(f"Cannot access local JSON file: {e}. Using cached data.")
+            if self.backup_data is not None:
+                return self.backup_data
+            # No cache available, return default
+            return self._get_default_data()
+    
+    def _get_default_data(self):
+        """Return default user data structure"""
         return {
             "users": {
                 "trs.regis": {"password": "trs.jfc", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": False},
@@ -198,122 +210,79 @@ class UserStore:
             "audit": [],
             "refresh_logs": []
         }
-
-    def _init_store(self):
+    
+    def _write(self, data):
+        """Write to local JSON file with backup"""
         try:
             # Ensure directory exists
             dirname = os.path.dirname(self.json_path)
             if dirname and not os.path.exists(dirname):
                 os.makedirs(dirname, exist_ok=True)
-            # Try to read the file
-            if os.path.exists(self.json_path):
-                with open(self.json_path, "r") as f:
-                    data = json.load(f)
-                self.fallback_data = data
-                self.use_file = True
-                st.success(f"Loaded admin data from {self.json_path}")
-            else:
-                # Create default file
-                self._write_file(self._default_data())
-                self.use_file = True
-                st.info(f"Created new admin file at {self.json_path}")
-        except Exception as e:
-            st.warning(f"Could not access JSON file at {self.json_path}. Using in-memory storage only. Error: {e}")
-            self.use_file = False
-
-    def _read_file(self):
-        try:
-            with open(self.json_path, "r") as f:
-                return json.load(f)
-        except:
-            return None
-
-    def _write_file(self, data):
-        try:
-            with open(self.json_path, "w") as f:
+            
+            # Write to file
+            with open(self.json_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
+            self.backup_data = data  # Update cache on successful write
             return True
-        except:
+        except Exception as e:
+            st.error(f"Cannot write to local JSON file: {e}")
+            self.backup_data = data  # Still save to cache even if file write fails
             return False
-
-    def _get_data(self):
-        """Get current data (from file if available, else from fallback)."""
-        if self.use_file:
-            data = self._read_file()
-            if data is not None:
-                return data
-        return self.fallback_data
-
-    def _set_data(self, data):
-        """Write data to file if possible, otherwise update fallback."""
-        if self.use_file:
-            success = self._write_file(data)
-            if success:
-                self.fallback_data = data
-                return True
-            else:
-                st.error("Failed to write to JSON file. Updating in-memory only.")
-                self.fallback_data = data
-                return False
-        else:
-            self.fallback_data = data
-            return False
-
-    # Public methods
+    
     def load_users(self):
-        data = self._get_data()
+        data = self._read()
         return data.get("users", {})
-
+    
     def save_users(self, users):
-        data = self._get_data()
+        data = self._read()
         data["users"] = users
-        return self._set_data(data)
-
+        return self._write(data)
+    
     def log_audit(self, username):
-        data = self._get_data()
+        data = self._read()
+        if "audit" not in data:
+            data["audit"] = []
         data["audit"].append({"user": username, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
-        return self._set_data(data)
-
+        return self._write(data)
+    
     def log_refresh(self):
-        data = self._get_data()
+        data = self._read()
+        if "refresh_logs" not in data:
+            data["refresh_logs"] = []
         data["refresh_logs"].append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        return self._set_data(data)
-
+        return self._write(data)
+    
     def get_refresh_log(self):
-        data = self._get_data()
+        data = self._read()
         return data.get("refresh_logs", [])
-
+    
     def get_audit_log(self):
-        data = self._get_data()
+        data = self._read()
         return data.get("audit", [])
-
+    
     def get_file_content(self):
-        if self.use_file:
-            try:
-                with open(self.json_path, "r") as f:
-                    return f.read()
-            except:
-                return "Unable to read file."
-        else:
-            return "File not available; using in-memory storage."
-
-    def force_sync(self):
-        """Force a write of current in-memory data to the file."""
-        if self.use_file:
-            return self._write_file(self.fallback_data)
-        else:
-            st.warning("Cannot sync – file is not writable in this environment.")
-            return False
+        try:
+            with open(self.json_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except:
+            return "Unable to read file."
+    
+    def get_file_path(self):
+        return os.path.abspath(self.json_path)
 
 #--- INITIALIZE USER STORE ---
-if 'user_store' not in st.session_state:
-    st.session_state.user_store = UserStore()
+# Define the local path for adminlog.json
+ADMINLOG_PATH = r"C:\Users\PRIME_Dave\Desktop\adminlog.json"
 
-# Load users from store (either file or memory)
+if 'user_store' not in st.session_state:
+    st.session_state.user_store = LocalUserStore(ADMINLOG_PATH)
+
 if 'users' not in st.session_state:
     st.session_state.users = st.session_state.user_store.load_users()
 if 'refresh_log' not in st.session_state:
     st.session_state.refresh_log = st.session_state.user_store.get_refresh_log()
+if 'write_errors' not in st.session_state:
+    st.session_state.write_errors = []
 
 #--- SESSION STATE ---
 if 'authenticated' not in st.session_state:
@@ -347,7 +316,7 @@ def authenticate(username, password):
             st.session_state.role = "member"
         success = st.session_state.user_store.log_audit(username)
         if not success:
-            st.warning("Audit log could not be written. Changes stored in memory only.")
+            st.warning("Audit log could not be written. Please check file permissions.")
         return True
     return False
 
@@ -355,7 +324,7 @@ def authenticate(username, password):
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
-#--- HELPER FUNCTIONS (unchanged) ---
+#--- HELPER FUNCTIONS ---
 def download_file(url):
     try:
         response = requests.get(url, timeout=30)
@@ -824,17 +793,30 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     st.title("Admin Control Panel")
 
     # --- Debug info (collapsible) ---
-    with st.expander("File / Storage Status", expanded=False):
+    with st.expander("Debug: JSON File Location & Content", expanded=False):
         store = st.session_state.user_store
-        st.write(f"**JSON file path:** `{store.json_path}`")
-        st.write(f"**File accessible:** {store.use_file}")
-        if store.use_file:
-            st.write(f"**File exists:** {os.path.exists(store.json_path)}")
-            if os.path.exists(store.json_path):
-                st.write(f"**File size:** {os.path.getsize(store.json_path)} bytes")
-        st.write("**Storage mode:**", "File-backed" if store.use_file else "In-memory only (changes lost on restart)")
-        st.write("**Raw content (first 500 chars):**")
-        st.code(store.get_file_content()[:500], language="json")
+        st.write(f"**Absolute path:** `{store.get_file_path()}`")
+        st.write(f"**File exists:** {os.path.exists(store.json_path)}")
+        if os.path.exists(store.json_path):
+            st.write(f"**File size:** {os.path.getsize(store.json_path)} bytes")
+            st.write("**Raw content (first 500 chars):**")
+            st.code(store.get_file_content()[:500], language="json")
+        st.write("**Using cached data:**", store.backup_data is not None and not os.path.exists(store.json_path))
+
+    # --- Save to Local File Button ---
+    st.subheader("Sync to Local File")
+    col_sync, col_status = st.columns([1, 3])
+    with col_sync:
+        if st.button("Save to Local File", use_container_width=True):
+            success = st.session_state.user_store.save_users(st.session_state.users)
+            if success:
+                st.success(f"Successfully saved to {st.session_state.user_store.get_file_path()}")
+            else:
+                st.error("Failed to save to local file. Check permissions.")
+    with col_status:
+        st.write(f"Current file path: `{st.session_state.user_store.get_file_path()}`")
+
+    st.divider()
 
     # --- Refresh Data ---
     st.subheader("Data Refresh")
@@ -849,7 +831,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
                 st.session_state.refresh_log = st.session_state.user_store.get_refresh_log()
                 st.success("Refresh logged.")
             else:
-                st.warning("Refresh logged in memory only; file not writable.")
+                st.error("Could not log refresh. Check file permissions.")
             st.rerun()
     with col_status:
         if st.session_state.refresh_log:
@@ -896,7 +878,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
                 if success:
                     st.success(f"User {uname} deleted.")
                 else:
-                    st.warning("User deleted in memory only; file not writable.")
+                    st.error("Failed to delete user. Check file permissions.")
                 st.rerun()
         else:
             new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
@@ -932,18 +914,18 @@ if st.session_state.role == "admin" and page == "Admin Panel":
                     if success:
                         st.success(f"User {new_uname} added.")
                     else:
-                        st.warning("User added in memory only; file not writable.")
+                        st.error("Failed to save user. Check file permissions.")
                     st.rerun()
             else:
                 st.warning("Fill in both fields.")
 
     # Force sync button
     if st.button("Force Sync to File", use_container_width=True):
-        success = st.session_state.user_store.force_sync()
+        success = st.session_state.user_store.save_users(st.session_state.users)
         if success:
-            st.success("Data synced to JSON file.")
+            st.success("Data synced to local file.")
         else:
-            st.error("Sync failed. Check file path and permissions.")
+            st.error("Sync failed.")
 
     st.divider()
 
@@ -951,11 +933,15 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     st.subheader("Audit Log")
     audits = st.session_state.user_store.get_audit_log()
     if audits:
+        # Convert to DataFrame for easier manipulation
         df_audit = pd.DataFrame(audits)
+        # Group by user and count, and also collect timestamps
         summary = df_audit.groupby("user")["timestamp"].agg(["count", lambda x: list(x)]).reset_index()
         summary.columns = ["User", "Login Count", "Timestamps"]
+        # Show summary table
         st.write("**Login summary per user**")
         st.dataframe(summary, use_container_width=True)
+        # Also show detailed list
         st.write("**Detailed audit log (chronological)**")
         st.dataframe(df_audit.sort_values("timestamp", ascending=False), use_container_width=True, height=300)
     else:
