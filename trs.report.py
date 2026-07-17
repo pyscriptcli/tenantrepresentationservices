@@ -332,7 +332,7 @@ def init_user_db():
                 "audit": []
             },
             "aimsadmin": {
-                "password": "trs.aims",
+                "password": "trs.aimsadmin",
                 "permissions": {"view_sir": True, "export_sir": True},
                 "audit": [],
                 "is_admin": True
