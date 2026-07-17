@@ -310,10 +310,46 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- LOGIN VERIFICATION LOGIC ---
-TARGET_HASH = "6e7dfba0b39da481db37c3263c61cac6"
+#--- USER MANAGEMENT (IN-MEMORY) ---
+# We store users in session_state so changes persist during the session.
+# On app restart, this resets to defaults.
+def init_user_db():
+    if "users" not in st.session_state:
+        st.session_state.users = {
+            "trs.regis": {
+                "password": "trs.jfc",
+                "permissions": {"view_sir": True, "export_sir": True},
+                "audit": []
+            },
+            "trs.aims": {
+                "password": "trs.jfc",
+                "permissions": {"view_sir": True, "export_sir": True},
+                "audit": []
+            },
+            "trs.jfc": {
+                "password": "trs.jfc",
+                "permissions": {"view_sir": True, "export_sir": True},
+                "audit": []
+            },
+            "aimsadmin": {
+                "password": "trs.aims",
+                "permissions": {"view_sir": True, "export_sir": True},
+                "audit": [],
+                "is_admin": True
+            }
+        }
+    if "refresh_log" not in st.session_state:
+        st.session_state.refresh_log = []
+
+init_user_db()
+
+#--- SESSION STATE FOR AUTH AND DATA ---
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
+if 'username' not in st.session_state:
+    st.session_state.username = ""
+if 'role' not in st.session_state:
+    st.session_state.role = "member"  # or "admin"
 if 'data_loaded' not in st.session_state:
     st.session_state.data_loaded = False
 if 'df' not in st.session_state:
@@ -324,23 +360,24 @@ if 'template_bytes_raw' not in st.session_state:
     st.session_state.template_bytes_raw = None
 if 'media_data_list' not in st.session_state:
     st.session_state.media_data_list = None
-if 'export_in_progress' not in st.session_state:
-    st.session_state.export_in_progress = False
-if 'first_load_complete' not in st.session_state:
-    st.session_state.first_load_complete = False
-
-# --- Admin refresh states ---
 if 'cache_version' not in st.session_state:
     st.session_state.cache_version = 0
-if 'admin_refresh_requested' not in st.session_state:
-    st.session_state.admin_refresh_requested = False
-if 'admin_dialog_shown' not in st.session_state:
-    st.session_state.admin_dialog_shown = False
-if 'admin_pwd_error' not in st.session_state:
-    st.session_state.admin_pwd_error = None
 
-def check_password(password):
-    return hashlib.md5(password.encode('utf-8')).hexdigest() == TARGET_HASH
+#--- LOGIN FUNCTION ---
+def authenticate(username, password):
+    users = st.session_state.users
+    if username in users and users[username]["password"] == password:
+        st.session_state.authenticated = True
+        st.session_state.username = username
+        # Determine role
+        if users[username].get("is_admin", False):
+            st.session_state.role = "admin"
+        else:
+            st.session_state.role = "member"
+        # Log access timestamp
+        users[username]["audit"].append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        return True
+    return False
 
 #--- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
@@ -843,142 +880,33 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
-#--- MAIN LOGIC BEGINS ---
+#--- MAIN APP LOGIC ---
 
-# --- Step 1: Display Login Function ---
+# --- LOGIN SCREEN ---
 if not st.session_state.authenticated:
-    r1_col1, r1_col2, r1_col3 = st.columns([1, 1.2, 1])
-    with r1_col2:
+    # Center the login form
+    c1, c2, c3 = st.columns([1, 1.2, 1])
+    with c2:
         st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
-        password_input = st.text_input("", placeholder="Enter password", type="password")
-        if st.button("Login", use_container_width=True) or (password_input and len(password_input) > 0):
-            if check_password(password_input):
-                st.session_state.authenticated = True
-                st.rerun()
+        username = st.text_input("Username", placeholder="Enter username", key="login_username")
+        password = st.text_input("Password", placeholder="Enter password", type="password", key="login_password")
+        if st.button("Login", use_container_width=True):
+            if username and password:
+                if authenticate(username, password):
+                    st.rerun()
+                else:
+                    st.error("Invalid username or password.")
             else:
-                st.error("Invalid token string provided.")
+                st.warning("Please enter both username and password.")
     st.stop()
 
-# --- Step 2: Admin refresh handler (hidden shortcut) ---
-# First, inject JavaScript to listen for Ctrl+Shift+1 and set query param
-admin_js = """
-<script>
-document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && e.shiftKey && e.key === '1') {
-        e.preventDefault();
-        // Set the query param to trigger admin refresh
-        window.location.search = '?admin_action=refresh';
-    }
-});
-</script>
-"""
-components.html(admin_js, height=0, width=0)
-
-# --- Step 3: Handle query params for admin actions ---
-query_params = st.query_params
-
-# If action=refresh and no password provided, show the dialog
-if "admin_action" in query_params and query_params["admin_action"] == "refresh" and "admin_pwd" not in query_params:
-    st.session_state.admin_refresh_requested = True
-    st.session_state.admin_dialog_shown = False  # allow showing dialog
-
-# If cancel action, clear the state
-if "admin_action" in query_params and query_params["admin_action"] == "cancel":
-    st.session_state.admin_refresh_requested = False
-    st.session_state.admin_dialog_shown = False
-    st.session_state.admin_pwd_error = None
-    st.query_params.clear()
-    st.rerun()
-
-# If we have a password, validate it
-if "admin_action" in query_params and query_params["admin_action"] == "refresh" and "admin_pwd" in query_params:
-    pwd = query_params["admin_pwd"]
-    if check_password(pwd):
-        # Valid: clear cache, increment version, clear data, clear query params
-        st.cache_data.clear()
-        st.session_state.cache_version += 1
-        st.session_state.admin_refresh_requested = False
-        st.session_state.admin_dialog_shown = False
-        st.session_state.admin_pwd_error = None
-        st.session_state.data_loaded = False  # force reload
-        st.query_params.clear()
-        st.rerun()
-    else:
-        # Invalid: set error, keep dialog open
-        st.session_state.admin_pwd_error = "Invalid password"
-        # Keep the dialog shown by not clearing admin_refresh_requested
-        st.session_state.admin_refresh_requested = True
-        st.session_state.admin_dialog_shown = False  # re-render to show error
-        # Remove the password param to avoid re-processing
-        st.query_params.pop("admin_pwd", None)
-        st.rerun()
-
-# --- Step 4: Show admin password dialog if requested ---
-if st.session_state.admin_refresh_requested and not st.session_state.admin_dialog_shown:
-    # Set flag to prevent multiple overlays
-    st.session_state.admin_dialog_shown = True
-
-if st.session_state.admin_refresh_requested:
-    # Render the dialog overlay
-    dialog_html = f"""
-    <div id="admin-dialog-overlay" style="
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5); z-index: 99999;
-        display: flex; justify-content: center; align-items: center;
-    ">
-        <div style="
-            background: white; padding: 30px; border-radius: 12px;
-            max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            text-align: center;
-        ">
-            <h3 style="margin-top:0;">Admin Refresh</h3>
-            <p style="color:#555;">Enter the admin password to refresh data from source.</p>
-            <input type="password" id="admin-password-input" placeholder="Password" style="
-                width: 100%; padding: 10px; margin: 15px 0;
-                border: 1px solid #ccc; border-radius: 4px;
-                font-size: 1rem;
-            ">
-            <div style="display:flex; gap:10px; justify-content:center;">
-                <button id="admin-confirm-btn" style="
-                    background: #003366; color: white; border: none;
-                    padding: 8px 24px; border-radius: 100px;
-                    cursor: pointer; font-weight: 500;
-                ">Refresh</button>
-                <button id="admin-cancel-btn" style="
-                    background: #f1f3f4; color: #333; border: none;
-                    padding: 8px 24px; border-radius: 100px;
-                    cursor: pointer; font-weight: 500;
-                ">Cancel</button>
-            </div>
-            <div id="admin-error-msg" style="color: red; margin-top:10px; font-size:0.9rem;">
-                {st.session_state.admin_pwd_error or ''}
-            </div>
-        </div>
-    </div>
-    <script>
-    document.getElementById('admin-confirm-btn').addEventListener('click', function() {{
-        var pwd = document.getElementById('admin-password-input').value;
-        // encode and set query params
-        var encoded = encodeURIComponent(pwd);
-        window.location.search = '?admin_action=refresh&admin_pwd=' + encoded;
-    }});
-    document.getElementById('admin-cancel-btn').addEventListener('click', function() {{
-        window.location.search = '?admin_action=cancel';
-    }});
-    </script>
-    """
-    components.html(dialog_html, height=0, width=0)
-
-# --- Step 5: Load data (cached) ---
-# If data not loaded or cache_version changed, load fresh
+# --- AFTER LOGIN: DATA LOADING (if not loaded) ---
 if not st.session_state.data_loaded:
-    # Show loading overlay
     loading_placeholder = st.empty()
     loading_placeholder.markdown(get_loading_overlay_html(
         message="Fetching Site Information..."
     ), unsafe_allow_html=True)
 
-    # Call cached data loader with current cache_version
     result = get_cached_data(st.session_state.cache_version)
     if result and result[0] is not None:
         df, placeholders, template_bytes_raw, media_data_list, data_timestamp = result
@@ -988,7 +916,6 @@ if not st.session_state.data_loaded:
         st.session_state.media_data_list = media_data_list
         st.session_state.data_timestamp = data_timestamp
         st.session_state.data_loaded = True
-        st.session_state.first_load_complete = True
         loading_placeholder.empty()
         st.rerun()
     else:
@@ -996,325 +923,435 @@ if not st.session_state.data_loaded:
         st.error("Failed to load data assets. Please verify link paths.")
         st.stop()
 
-# --- Step 6: Data is loaded – render the main UI ---
+# --- MAIN UI ---
 df = st.session_state.df
 placeholders = st.session_state.placeholders
 template_bytes_raw = st.session_state.template_bytes_raw
 media_data_list = st.session_state.media_data_list
 
-# Determine default selections
-trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
-first_row = df.iloc[0] if not df.empty else None
-first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
-first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
-default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
-
 # Security protocols
 deploy_workspace_security_protocols()
 
-#--- ROW 1: CONTROLS ROW ---
-col1, col2, col3 = st.columns([1.2, 1.2, 0.9])
+# --- SIDEBAR FOR ADMIN ---
+if st.session_state.role == "admin":
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio("Go to", ["Viewer", "Admin Panel"])
+else:
+    page = "Viewer"  # non-admin only sees viewer
 
-with col1:
-    selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
+# --- ADMIN PANEL ---
+if st.session_state.role == "admin" and page == "Admin Panel":
+    st.title("Admin Control Panel")
 
-with col2:
-    if selected_ta:
-        raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
-        sites_in_ta = sorted(raw_sites, key=parse_site_number)
-
-        if selected_ta == first_trade_area and first_site_display in sites_in_ta:
-            default_site_index = sites_in_ta.index(first_site_display)
+    # --- Refresh Data Section ---
+    st.subheader("Data Refresh")
+    col_refresh, col_status = st.columns([1, 2])
+    with col_refresh:
+        if st.button("Refresh Data Now"):
+            # Clear cache and force reload
+            st.cache_data.clear()
+            st.session_state.cache_version += 1
+            st.session_state.data_loaded = False
+            # Log refresh
+            st.session_state.refresh_log.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            st.rerun()
+    with col_status:
+        if st.session_state.refresh_log:
+            last_refresh = st.session_state.refresh_log[-1]
+            st.write(f"Last refresh: {last_refresh}")
+            st.write(f"Total refreshes: {len(st.session_state.refresh_log)}")
+            if len(st.session_state.refresh_log) > 1:
+                st.write("Previous refreshes:")
+                for ts in st.session_state.refresh_log[-5:]:  # show last 5
+                    st.write(f"- {ts}")
         else:
-            default_site_index = 0
+            st.write("No refresh performed yet.")
+
+    st.divider()
+
+    # --- User Management ---
+    st.subheader("User Management")
+    users = st.session_state.users
+    usernames = list(users.keys())
+
+    # Display current users with permissions
+    st.write("Current users:")
+    for uname in usernames:
+        with st.container():
+            cols = st.columns([2, 1, 1, 1, 1])
+            cols[0].write(uname)
+            view_sir = cols[1].checkbox("View SIR", value=users[uname]["permissions"]["view_sir"], key=f"view_{uname}")
+            export_sir = cols[2].checkbox("Export SIR", value=users[uname]["permissions"]["export_sir"], key=f"export_{uname}")
+            # Update permissions if changed
+            users[uname]["permissions"]["view_sir"] = view_sir
+            users[uname]["permissions"]["export_sir"] = export_sir
+            if uname != "aimsadmin":  # don't allow delete admin
+                if cols[3].button("Delete", key=f"del_{uname}"):
+                    del st.session_state.users[uname]
+                    st.rerun()
+            # Change password
+            new_pw = cols[4].text_input("New password", type="password", key=f"pw_{uname}", placeholder="Change password")
+            if new_pw:
+                users[uname]["password"] = new_pw
+                st.success(f"Password for {uname} updated.")
+
+    # Add new user
+    st.write("Add new user:")
+    with st.form("add_user_form"):
+        new_uname = st.text_input("Username")
+        new_pw = st.text_input("Temporary password", type="password")
+        view_sir_new = st.checkbox("View SIR", value=True)
+        export_sir_new = st.checkbox("Export SIR", value=True)
+        submitted = st.form_submit_button("Add User")
+        if submitted:
+            if new_uname and new_pw:
+                if new_uname in st.session_state.users:
+                    st.error("Username already exists.")
+                else:
+                    st.session_state.users[new_uname] = {
+                        "password": new_pw,
+                        "permissions": {"view_sir": view_sir_new, "export_sir": export_sir_new},
+                        "audit": []
+                    }
+                    st.success(f"User {new_uname} added.")
+                    st.rerun()
+            else:
+                st.warning("Please fill in both username and password.")
+
+    st.divider()
+
+    # --- Audit Log ---
+    st.subheader("Audit Log")
+    # Build a table of all users' access timestamps
+    audit_data = []
+    for uname, data in st.session_state.users.items():
+        for ts in data.get("audit", []):
+            audit_data.append({"Username": uname, "Access Time": ts})
+    if audit_data:
+        df_audit = pd.DataFrame(audit_data)
+        st.dataframe(df_audit, use_container_width=True)
     else:
-        sites_in_ta = []
-        default_site_index = 0
+        st.write("No access records yet.")
 
-    selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
+else:
+    # --- VIEWER (same as before) ---
+    # Determine default selections
+    trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
+    first_row = df.iloc[0] if not df.empty else None
+    first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
+    first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
+    default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
 
-with col3:
-    if selected_ta:
-        # Use cached report generation
-        report_bytes = generate_trade_area_report_cached(
-            selected_ta,
-            df,
-            template_bytes_raw,
-            tuple(placeholders),  # convert to hashable
-            st.session_state.cache_version
-        )
-        st.download_button(
-            label="Export",
-            data=report_bytes,
-            file_name=f"{selected_ta}_Site_Information_Report.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
-            key="export_btn"
-        )
+    #--- ROW 1: CONTROLS ROW ---
+    col1, col2, col3 = st.columns([1.2, 1.2, 0.9])
 
-#--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER ---
-if selected_ta and selected_site_display:
-    site_data = df[df["SITE_DISPLAY"] == selected_site_display]
-    site_row_data = site_data.iloc[0] if not site_data.empty else None
+    with col1:
+        selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
 
-    target_ta = str(site_row_data["TRADE AREA"]) if site_row_data is not None else ""
-    target_sn = str(site_row_data["SITE NAME"]) if site_row_data is not None else ""
-    media_row_data = {}
-    if site_row_data is not None:
-        for m in media_data_list:
-            if m['TRADE AREA'] == target_ta and m['SITE NAME'] == target_sn:
-                media_row_data = m
-                break
-        if not media_row_data:
-            media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
+    with col2:
+        if selected_ta:
+            raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
+            sites_in_ta = sorted(raw_sites, key=parse_site_number)
 
-    tab_report, tab_photos, tab_docs = st.tabs([
-        "PROPERTY INFORMATION",
-        "PROPERTY PHOTOS",
-        "PROPERTY DOCS"
-    ])
+            if selected_ta == first_trade_area and first_site_display in sites_in_ta:
+                default_site_index = sites_in_ta.index(first_site_display)
+            else:
+                default_site_index = 0
+        else:
+            sites_in_ta = []
+            default_site_index = 0
 
-    # --- TAB 1: SITE INFORMATION REPORT (height = 1600) ---
-    with tab_report:
+        selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
+
+    with col3:
+        if selected_ta:
+            # Check export permission
+            if st.session_state.users[st.session_state.username]["permissions"]["export_sir"]:
+                report_bytes = generate_trade_area_report_cached(
+                    selected_ta,
+                    df,
+                    template_bytes_raw,
+                    tuple(placeholders),
+                    st.session_state.cache_version
+                )
+                st.download_button(
+                    label="Export",
+                    data=report_bytes,
+                    file_name=f"{selected_ta}_Site_Information_Report.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True,
+                    key="export_btn"
+                )
+            else:
+                st.button("Export", disabled=True, help="You do not have permission to export.")
+
+    #--- ROW 2: MULTI-TAB REPORT & MEDIA VIEWER ---
+    if selected_ta and selected_site_display:
+        site_data = df[df["SITE_DISPLAY"] == selected_site_display]
+        site_row_data = site_data.iloc[0] if not site_data.empty else None
+
+        target_ta = str(site_row_data["TRADE AREA"]) if site_row_data is not None else ""
+        target_sn = str(site_row_data["SITE NAME"]) if site_row_data is not None else ""
+        media_row_data = {}
         if site_row_data is not None:
-            try:
-                def process_val(key_string):
-                    val = site_row_data.get(key_string.upper(), "")
-                    if pd.isna(val) or val is None: 
-                        return ""
-                    return val
-                
-                rendered_view = HTML_FRAMEWORK
-                rendered_view = rendered_view.replace("_TRADE_AREA_", str(process_val("TRADE AREA")))
-                rendered_view = rendered_view.replace("_SITE_NAME_", str(process_val("SITE NAME")))
-                rendered_view = rendered_view.replace("_SITE_NO_", str(process_val("SITE NO")))
-                rendered_view = rendered_view.replace("_TIMESTAMP_", str(process_val("TIMESTAMP")))
-                rendered_view = rendered_view.replace("_DATE_OF_REPORT_", str(process_val("DATE OF REPORT")))
-                rendered_view = rendered_view.replace("_UNIT_BLDG_ST_NAME_", str(process_val("UNIT #, BLDG/ST # AND ST NAME")))
-                rendered_view = rendered_view.replace("_BARANGAY_DISTRICT_NAME_", str(process_val("BARANGAY/DISTRICT NAME")))
-                rendered_view = rendered_view.replace("_CITY_MUNICIPALITY_", str(process_val("CITY/MUNICIPALITY")))
-                rendered_view = rendered_view.replace("_REGION_", str(process_val("REGION")))
-                rendered_view = rendered_view.replace("_POSTAL_CODE_", str(process_val("POSTAL CODE")))
-                rendered_view = rendered_view.replace("_SITE_AVAILABILITY_DATE_", str(process_val("SITE AVAILABILITY DATE")))
-                rendered_view = rendered_view.replace("_MONTHLY_RENTAL_RATE_", str(process_val("MONTHLY RENTAL RATE")))
-                rendered_view = rendered_view.replace("_COL_START_DATE_", str(process_val("COL START DATE")))
-                rendered_view = rendered_view.replace("_COL_END_DATE_", str(process_val("COL END DATE")))
-                rendered_view = rendered_view.replace("_LEASE_TERMS_", str(process_val("LEASE TERMS")))
-                rendered_view = rendered_view.replace("_ESCALATION_", str(process_val("ESCALATION")))
-                rendered_view = rendered_view.replace("_ADVANCE_RENTAL_", str(process_val("ADVANCE RENTAL")))
-                rendered_view = rendered_view.replace("_SECURITY_DEPOSIT_", str(process_val("SECURITY DEPOSIT")))
-                rendered_view = rendered_view.replace("_CUSA_", str(process_val("CUSA")))
-                rendered_view = rendered_view.replace("_LOT_FLOOR_AREA_SQM_", str(process_val("LOT/FLOOR AREA SQM")))
-                rendered_view = rendered_view.replace("_FRONTAGE_", str(process_val("FRONTAGE")))
-                rendered_view = rendered_view.replace("_LEASE_TYPE_", str(process_val("LEASE TYPE")))
-                rendered_view = rendered_view.replace("_LESSOR_", str(process_val("LESSOR")))
-                rendered_view = rendered_view.replace("_CONTACT_PERSON_SOURCE_", str(process_val("CONTACT PERSON/SOURCE")))
-                rendered_view = rendered_view.replace("_CONTACT_NUMBER_", str(process_val("CONTACT NUMBER")))
-                rendered_view = rendered_view.replace("_EMAIL_ADDRESS_", str(process_val("EMAIL ADDRESS")))
-                rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", str(process_val("SITE AVAILABILITY CLASS")))
-                rendered_view = rendered_view.replace("_REMARKS_", str(process_val("REMARKS")))
-                
-                rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-                
-                components.html(rendered_view, height=1600, scrolling=False)
-            except Exception as e:
-                st.error(f"Error compiling visual matrix framework: {str(e)}")
-        else:
-            st.info("No data available for the selected site.")
-    
-    # --- TAB 2: PROPERTY PHOTOS ---
-    with tab_photos:
-        if site_row_data is not None and media_row_data:
-            direct_photo_mapping = {
-                "PROPERTY PHOTOS 1": "__DIRECT_PHOTO_1",
-                "PROPERTY PHOTOS 2": "__DIRECT_PHOTO_2",
-                "PROPERTY PHOTOS 3": "__DIRECT_PHOTO_3",
-                "PROPERTY PHOTOS 4": "__DIRECT_PHOTO_4",
-                "PROPERTY PHOTOS 5": "__DIRECT_PHOTO_5"
-            }
-            valid_photos = []
-            for label, key in direct_photo_mapping.items():
-                raw_url = media_row_data.get(key, "")
-                if raw_url:
-                    file_id = extract_google_drive_id(raw_url)
-                    if file_id:
-                        thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
-                        full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
-                    else:
-                        thumb_url = raw_url
-                        full_url = raw_url
-                    valid_photos.append((label, thumb_url, full_url))
-            if valid_photos:
-                grid_html = '''
-                <style>
-                    .image-grid-3x3 {
-                        display: grid;
-                        grid-template-columns: repeat(3, 1fr);
-                        gap: 15px;
-                        padding: 10px 0;
-                        max-width: 100%;
-                    }
-                    .image-grid-item {
-                        border: 1px solid #dadce0;
-                        border-radius: 8px;
-                        overflow: hidden;
-                        background: #f8f9fa;
-                        transition: transform 0.2s;
-                        aspect-ratio: 4/3;
-                        display: flex;
-                        flex-direction: column;
-                    }
-                    .image-grid-item:hover {
-                        transform: scale(1.02);
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    }
-                    .image-grid-item img {
-                        width: 100%;
-                        height: 100%;
-                        object-fit: cover;
-                        display: block;
-                        flex: 1;
-                    }
-                    .image-grid-item .label {
-                        padding: 6px 8px;
-                        font-size: 0.7rem;
-                        font-weight: 600;
-                        color: #5f6368;
-                        background: white;
-                        text-align: center;
-                        border-top: 1px solid #dadce0;
-                        flex-shrink: 0;
-                    }
-                    .image-grid-item a {
-                        text-decoration: none;
-                        color: inherit;
-                        display: flex;
-                        flex-direction: column;
-                        height: 100%;
-                    }
-                    @media (max-width: 768px) {
-                        .image-grid-3x3 {
-                            grid-template-columns: repeat(2, 1fr);
-                        }
-                    }
-                    @media (max-width: 480px) {
-                        .image-grid-3x3 {
-                            grid-template-columns: 1fr;
-                        }
-                    }
-                </style>
-                <div class="image-grid-3x3">
-                '''
-                for label, thumb_url, full_url in valid_photos:
-                    grid_html += f'''
-                        <div class="image-grid-item">
-                            <a href="{full_url}" target="_blank">
-                                <img src="{thumb_url}" alt="{label}" loading="lazy">
-                                <div class="label">{label}</div>
-                            </a>
-                        </div>
-                    '''
-                grid_html += '</div>'
-                components.html(grid_html, height=1200, scrolling=False)
-            else:
-                st.info("No photo links configured for this property record selection.")
-        else:
-            st.info("No data available for the selected site.")
+            for m in media_data_list:
+                if m['TRADE AREA'] == target_ta and m['SITE NAME'] == target_sn:
+                    media_row_data = m
+                    break
+            if not media_row_data:
+                media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
 
-    # --- TAB 3: PROPERTY DOCS ---
-    with tab_docs:
-        if site_row_data is not None and media_row_data:
-            direct_doc_mapping = {
-                "TCT": "__DIRECT_TCT",
-                "LOT PLAN": "__DIRECT_LOT_PLAN",
-                "BLDG PLAN": "__DIRECT_BLDG_PLAN",
-                "TAX MAP": "__DIRECT_TAX_MAP"
-            }
-            valid_docs = []
-            for label, key in direct_doc_mapping.items():
-                raw_url = media_row_data.get(key, "")
-                if raw_url:
-                    file_id = extract_google_drive_id(raw_url)
-                    if file_id:
-                        thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
-                        full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+        # Check view permission
+        if st.session_state.users[st.session_state.username]["permissions"]["view_sir"]:
+            tab_report, tab_photos, tab_docs = st.tabs([
+                "PROPERTY INFORMATION",
+                "PROPERTY PHOTOS",
+                "PROPERTY DOCS"
+            ])
+
+            # --- TAB 1: SITE INFORMATION REPORT ---
+            with tab_report:
+                if site_row_data is not None:
+                    try:
+                        def process_val(key_string):
+                            val = site_row_data.get(key_string.upper(), "")
+                            if pd.isna(val) or val is None: 
+                                return ""
+                            return val
+                        
+                        rendered_view = HTML_FRAMEWORK
+                        rendered_view = rendered_view.replace("_TRADE_AREA_", str(process_val("TRADE AREA")))
+                        rendered_view = rendered_view.replace("_SITE_NAME_", str(process_val("SITE NAME")))
+                        rendered_view = rendered_view.replace("_SITE_NO_", str(process_val("SITE NO")))
+                        rendered_view = rendered_view.replace("_TIMESTAMP_", str(process_val("TIMESTAMP")))
+                        rendered_view = rendered_view.replace("_DATE_OF_REPORT_", str(process_val("DATE OF REPORT")))
+                        rendered_view = rendered_view.replace("_UNIT_BLDG_ST_NAME_", str(process_val("UNIT #, BLDG/ST # AND ST NAME")))
+                        rendered_view = rendered_view.replace("_BARANGAY_DISTRICT_NAME_", str(process_val("BARANGAY/DISTRICT NAME")))
+                        rendered_view = rendered_view.replace("_CITY_MUNICIPALITY_", str(process_val("CITY/MUNICIPALITY")))
+                        rendered_view = rendered_view.replace("_REGION_", str(process_val("REGION")))
+                        rendered_view = rendered_view.replace("_POSTAL_CODE_", str(process_val("POSTAL CODE")))
+                        rendered_view = rendered_view.replace("_SITE_AVAILABILITY_DATE_", str(process_val("SITE AVAILABILITY DATE")))
+                        rendered_view = rendered_view.replace("_MONTHLY_RENTAL_RATE_", str(process_val("MONTHLY RENTAL RATE")))
+                        rendered_view = rendered_view.replace("_COL_START_DATE_", str(process_val("COL START DATE")))
+                        rendered_view = rendered_view.replace("_COL_END_DATE_", str(process_val("COL END DATE")))
+                        rendered_view = rendered_view.replace("_LEASE_TERMS_", str(process_val("LEASE TERMS")))
+                        rendered_view = rendered_view.replace("_ESCALATION_", str(process_val("ESCALATION")))
+                        rendered_view = rendered_view.replace("_ADVANCE_RENTAL_", str(process_val("ADVANCE RENTAL")))
+                        rendered_view = rendered_view.replace("_SECURITY_DEPOSIT_", str(process_val("SECURITY DEPOSIT")))
+                        rendered_view = rendered_view.replace("_CUSA_", str(process_val("CUSA")))
+                        rendered_view = rendered_view.replace("_LOT_FLOOR_AREA_SQM_", str(process_val("LOT/FLOOR AREA SQM")))
+                        rendered_view = rendered_view.replace("_FRONTAGE_", str(process_val("FRONTAGE")))
+                        rendered_view = rendered_view.replace("_LEASE_TYPE_", str(process_val("LEASE TYPE")))
+                        rendered_view = rendered_view.replace("_LESSOR_", str(process_val("LESSOR")))
+                        rendered_view = rendered_view.replace("_CONTACT_PERSON_SOURCE_", str(process_val("CONTACT PERSON/SOURCE")))
+                        rendered_view = rendered_view.replace("_CONTACT_NUMBER_", str(process_val("CONTACT NUMBER")))
+                        rendered_view = rendered_view.replace("_EMAIL_ADDRESS_", str(process_val("EMAIL ADDRESS")))
+                        rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", str(process_val("SITE AVAILABILITY CLASS")))
+                        rendered_view = rendered_view.replace("_REMARKS_", str(process_val("REMARKS")))
+                        
+                        rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
+                        
+                        components.html(rendered_view, height=1600, scrolling=False)
+                    except Exception as e:
+                        st.error(f"Error compiling visual matrix framework: {str(e)}")
+                else:
+                    st.info("No data available for the selected site.")
+            
+            # --- TAB 2: PROPERTY PHOTOS ---
+            with tab_photos:
+                if site_row_data is not None and media_row_data:
+                    direct_photo_mapping = {
+                        "PROPERTY PHOTOS 1": "__DIRECT_PHOTO_1",
+                        "PROPERTY PHOTOS 2": "__DIRECT_PHOTO_2",
+                        "PROPERTY PHOTOS 3": "__DIRECT_PHOTO_3",
+                        "PROPERTY PHOTOS 4": "__DIRECT_PHOTO_4",
+                        "PROPERTY PHOTOS 5": "__DIRECT_PHOTO_5"
+                    }
+                    valid_photos = []
+                    for label, key in direct_photo_mapping.items():
+                        raw_url = media_row_data.get(key, "")
+                        if raw_url:
+                            file_id = extract_google_drive_id(raw_url)
+                            if file_id:
+                                thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
+                                full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                            else:
+                                thumb_url = raw_url
+                                full_url = raw_url
+                            valid_photos.append((label, thumb_url, full_url))
+                    if valid_photos:
+                        grid_html = '''
+                        <style>
+                            .image-grid-3x3 {
+                                display: grid;
+                                grid-template-columns: repeat(3, 1fr);
+                                gap: 15px;
+                                padding: 10px 0;
+                                max-width: 100%;
+                            }
+                            .image-grid-item {
+                                border: 1px solid #dadce0;
+                                border-radius: 8px;
+                                overflow: hidden;
+                                background: #f8f9fa;
+                                transition: transform 0.2s;
+                                aspect-ratio: 4/3;
+                                display: flex;
+                                flex-direction: column;
+                            }
+                            .image-grid-item:hover {
+                                transform: scale(1.02);
+                                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                            }
+                            .image-grid-item img {
+                                width: 100%;
+                                height: 100%;
+                                object-fit: cover;
+                                display: block;
+                                flex: 1;
+                            }
+                            .image-grid-item .label {
+                                padding: 6px 8px;
+                                font-size: 0.7rem;
+                                font-weight: 600;
+                                color: #5f6368;
+                                background: white;
+                                text-align: center;
+                                border-top: 1px solid #dadce0;
+                                flex-shrink: 0;
+                            }
+                            .image-grid-item a {
+                                text-decoration: none;
+                                color: inherit;
+                                display: flex;
+                                flex-direction: column;
+                                height: 100%;
+                            }
+                            @media (max-width: 768px) {
+                                .image-grid-3x3 {
+                                    grid-template-columns: repeat(2, 1fr);
+                                }
+                            }
+                            @media (max-width: 480px) {
+                                .image-grid-3x3 {
+                                    grid-template-columns: 1fr;
+                                }
+                            }
+                        </style>
+                        <div class="image-grid-3x3">
+                        '''
+                        for label, thumb_url, full_url in valid_photos:
+                            grid_html += f'''
+                                <div class="image-grid-item">
+                                    <a href="{full_url}" target="_blank">
+                                        <img src="{thumb_url}" alt="{label}" loading="lazy">
+                                        <div class="label">{label}</div>
+                                    </a>
+                                </div>
+                            '''
+                        grid_html += '</div>'
+                        components.html(grid_html, height=1200, scrolling=False)
                     else:
-                        thumb_url = raw_url
-                        full_url = raw_url
-                    valid_docs.append((label, thumb_url, full_url))
-            if valid_docs:
-                grid_html = '''
-                <style>
-                    .image-grid-3x3 {
-                        display: grid;
-                        grid-template-columns: repeat(3, 1fr);
-                        gap: 15px;
-                        padding: 10px 0;
-                        max-width: 100%;
+                        st.info("No photo links configured for this property record selection.")
+                else:
+                    st.info("No data available for the selected site.")
+
+            # --- TAB 3: PROPERTY DOCS ---
+            with tab_docs:
+                if site_row_data is not None and media_row_data:
+                    direct_doc_mapping = {
+                        "TCT": "__DIRECT_TCT",
+                        "LOT PLAN": "__DIRECT_LOT_PLAN",
+                        "BLDG PLAN": "__DIRECT_BLDG_PLAN",
+                        "TAX MAP": "__DIRECT_TAX_MAP"
                     }
-                    .image-grid-item {
-                        border: 1px solid #dadce0;
-                        border-radius: 8px;
-                        overflow: hidden;
-                        background: #f8f9fa;
-                        transition: transform 0.2s;
-                        aspect-ratio: 4/3;
-                        display: flex;
-                        flex-direction: column;
-                    }
-                    .image-grid-item:hover {
-                        transform: scale(1.02);
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    }
-                    .image-grid-item img {
-                        width: 100%;
-                        height: 100%;
-                        object-fit: cover;
-                        display: block;
-                        flex: 1;
-                    }
-                    .image-grid-item .label {
-                        padding: 6px 8px;
-                        font-size: 0.7rem;
-                        font-weight: 600;
-                        color: #5f6368;
-                        background: white;
-                        text-align: center;
-                        border-top: 1px solid #dadce0;
-                        flex-shrink: 0;
-                    }
-                    .image-grid-item a {
-                        text-decoration: none;
-                        color: inherit;
-                        display: flex;
-                        flex-direction: column;
-                        height: 100%;
-                    }
-                    @media (max-width: 768px) {
-                        .image-grid-3x3 {
-                            grid-template-columns: repeat(2, 1fr);
-                        }
-                    }
-                    @media (max-width: 480px) {
-                        .image-grid-3x3 {
-                            grid-template-columns: 1fr;
-                        }
-                    }
-                </style>
-                <div class="image-grid-3x3">
-                '''
-                for label, thumb_url, full_url in valid_docs:
-                    grid_html += f'''
-                        <div class="image-grid-item">
-                            <a href="{full_url}" target="_blank">
-                                <img src="{thumb_url}" alt="{label}" loading="lazy">
-                                <div class="label">{label}</div>
-                            </a>
-                        </div>
-                    '''
-                grid_html += '</div>'
-                components.html(grid_html, height=1200, scrolling=False)
-            else:
-                st.info("No layout documents configured for this property record selection.")
+                    valid_docs = []
+                    for label, key in direct_doc_mapping.items():
+                        raw_url = media_row_data.get(key, "")
+                        if raw_url:
+                            file_id = extract_google_drive_id(raw_url)
+                            if file_id:
+                                thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
+                                full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                            else:
+                                thumb_url = raw_url
+                                full_url = raw_url
+                            valid_docs.append((label, thumb_url, full_url))
+                    if valid_docs:
+                        grid_html = '''
+                        <style>
+                            .image-grid-3x3 {
+                                display: grid;
+                                grid-template-columns: repeat(3, 1fr);
+                                gap: 15px;
+                                padding: 10px 0;
+                                max-width: 100%;
+                            }
+                            .image-grid-item {
+                                border: 1px solid #dadce0;
+                                border-radius: 8px;
+                                overflow: hidden;
+                                background: #f8f9fa;
+                                transition: transform 0.2s;
+                                aspect-ratio: 4/3;
+                                display: flex;
+                                flex-direction: column;
+                            }
+                            .image-grid-item:hover {
+                                transform: scale(1.02);
+                                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                            }
+                            .image-grid-item img {
+                                width: 100%;
+                                height: 100%;
+                                object-fit: cover;
+                                display: block;
+                                flex: 1;
+                            }
+                            .image-grid-item .label {
+                                padding: 6px 8px;
+                                font-size: 0.7rem;
+                                font-weight: 600;
+                                color: #5f6368;
+                                background: white;
+                                text-align: center;
+                                border-top: 1px solid #dadce0;
+                                flex-shrink: 0;
+                            }
+                            .image-grid-item a {
+                                text-decoration: none;
+                                color: inherit;
+                                display: flex;
+                                flex-direction: column;
+                                height: 100%;
+                            }
+                            @media (max-width: 768px) {
+                                .image-grid-3x3 {
+                                    grid-template-columns: repeat(2, 1fr);
+                                }
+                            }
+                            @media (max-width: 480px) {
+                                .image-grid-3x3 {
+                                    grid-template-columns: 1fr;
+                                }
+                            }
+                        </style>
+                        <div class="image-grid-3x3">
+                        '''
+                        for label, thumb_url, full_url in valid_docs:
+                            grid_html += f'''
+                                <div class="image-grid-item">
+                                    <a href="{full_url}" target="_blank">
+                                        <img src="{thumb_url}" alt="{label}" loading="lazy">
+                                        <div class="label">{label}</div>
+                                    </a>
+                                </div>
+                            '''
+                        grid_html += '</div>'
+                        components.html(grid_html, height=1200, scrolling=False)
+                    else:
+                        st.info("No layout documents configured for this property record selection.")
+                else:
+                    st.info("No data available for the selected site.")
         else:
-            st.info("No data available for the selected site.")
+            st.warning("You do not have permission to view site information reports.")
