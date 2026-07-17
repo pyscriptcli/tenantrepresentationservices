@@ -21,6 +21,14 @@ import pickle
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+# --- Google Sheets persistence (optional) ---
+try:
+    import gspread
+    from oauth2client.service_account import ServiceAccountCredentials
+    HAS_GSPREAD = True
+except ImportError:
+    HAS_GSPREAD = False
+
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="trs.sitesourcing.viewer",
@@ -28,9 +36,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-#--- FULL SCREEN LOADING OVERLAY (MINIMALIST VERSION) ---
+#--- FULL SCREEN LOADING OVERLAY ---
 def get_loading_overlay_html(message="Loading data..."):
-    """Return HTML for a clean, minimalist full-screen loading overlay."""
     return f"""
     <div id="loading-overlay" style="
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -60,171 +67,32 @@ def get_loading_overlay_html(message="Loading data..."):
     </style>
     """
 
-#--- LINE 1 GLOBAL STYLESHEET ENFORCER ---
+#--- GLOBAL STYLES ---
 st.markdown("""
 <style >
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&display=swap');
-
 * { font-family: 'Google Sans', 'Roboto', 'Segoe UI', sans-serif !important; }
-
-/* Hide the label of the password input on the login screen */
-div[data-testid="stTextInput"] label {
-    display: none !important;
-}
-
-/* Hide the broken visibility text/icon inside the password input */
-div[data-testid="stTextInput"] button {
-    display: none !important;
-}
-
-/* 1. FIXED: MAIN VIEWPORT WITH OUTER SCROLLBAR ONLY */
-html, body {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    height: 100% !important;
-    margin: 0px !important;
-    padding: 0px !important;
-    background-color: #ffffff !important;
-}
-
-/* 2. NUKE STREAMLIT HEADER & PADDING GHOSTS */
-header[data-testid="stHeader"], 
-[data-testid="stHeader"], 
-.stApp > header,
-div[data-testid="stDecoration"] {
-    display: none !important;
-    height: 0px !important;
-    min-height: 0px !important;
-    padding: 0px !important;
-    margin: 0px !important;
-    opacity: 0 !important;
-}
-
-/* 3. FIXED: ALLOW SCROLLING WITH INCREASED GLOBAL HEIGHT */
-.stApp,
-.appview-container, 
-.main, 
-[data-testid="stAppViewContainer"], 
-[data-testid="stMain"],
-.block-container, 
-[data-testid="stMainBlockContainer"] {
-    padding-top: 0.2rem !important;
-    margin-top: 0px !important;
-    padding-bottom: 0px !important;
-    padding-left: 0.4rem !important;
-    padding-right: 0.4rem !important;
-    overflow: visible !important;
-    height: auto !important;
-    max-height: none !important;
-    min-height: calc(100vh + 100px) !important;
-}
-
-/* Catch and crush any empty layout blocks */
-div[data-testid="stVerticalBlock"] > div:has(style),
-div[data-testid="stVerticalBlock"] > div:empty {
-    display: none !important;
-    height: 0px !important;
-    margin: 0px !important;
-    padding: 0px !important;
-}
-
-/* 4. FIXED: REPORT VIEWER - HIDE INNER SCROLLBARS */
-iframe[title="streamlit_components.components.html"] {
-    height: 1200px !important;
-    max-height: none !important;
-    border: none !important;
-    margin-bottom: 10px !important;
-    width: 100% !important;
-    overflow: hidden !important;
-}
-
-/* Optimize Tab Headers */
-button[data-baseweb="tab"] {
-    padding-top: 0.1rem !important;
-    padding-bottom: 0.1rem !important;
-    font-size: 0.85rem !important;
-}
-
-div[data-testid="stTabs"] {
-    margin-top: -5px !important;
-}
-
-/* 5. Ultra-Compact Control Bar */
-div[data-testid="stHorizontalBlock"] { 
-    gap: 0.5rem !important; 
-    align-items: flex-end !important; 
-    background: #ffffff;
-    padding: 0.4rem 0.5rem !important; 
-    border-radius: 8px;
-    margin-top: 0px !important; 
-    margin-bottom: 10px !important;
-}
-
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) {
-    align-self: flex-end !important;
-    padding-bottom: 4px !important;
-}
-
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"] {
-    margin-bottom: 0px !important;
-    padding-bottom: 0px !important;
-}
-
-.stSelectbox > div > div {
-    background-color: #fff !important;
-    border: 1px solid #747775 !important;
-    border-radius: 4px !important;
-    min-height: 28px !important;
-    height: 28px !important;
-}
-
-.stSelectbox > div > div > div { 
-    padding-top: 0px !important; 
-    padding-bottom: 0px !important;
-    font-size: 0.8rem !important; 
-    line-height: 26px !important;
-}
-
-.stButton > button, .stDownloadButton > button {
-    background-color: #003366 !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 100px !important;
-    padding: 0.1rem 0.5rem !important;
-    font-size: 0.7rem !important;
-    font-weight: 500 !important;
-    min-height: 28px !important; 
-    height: 28px !important;
-    width: 100% !important;
-    box-shadow: 0 1px 2px 0 rgba(60,64,67,0.2) !important;
-    line-height: 1 !important;
-}
+div[data-testid="stTextInput"] label { display: none !important; }
+div[data-testid="stTextInput"] button { display: none !important; }
+html, body { overflow-y: auto !important; overflow-x: hidden !important; height: 100% !important; margin: 0px !important; padding: 0px !important; background-color: #ffffff !important; }
+header[data-testid="stHeader"], [data-testid="stHeader"], .stApp > header, div[data-testid="stDecoration"] { display: none !important; height: 0px !important; min-height: 0px !important; padding: 0px !important; margin: 0px !important; opacity: 0 !important; }
+.stApp, .appview-container, .main, [data-testid="stAppViewContainer"], [data-testid="stMain"], .block-container, [data-testid="stMainBlockContainer"] { padding-top: 0.2rem !important; margin-top: 0px !important; padding-bottom: 0px !important; padding-left: 0.4rem !important; padding-right: 0.4rem !important; overflow: visible !important; height: auto !important; max-height: none !important; min-height: calc(100vh + 100px) !important; }
+div[data-testid="stVerticalBlock"] > div:has(style), div[data-testid="stVerticalBlock"] > div:empty { display: none !important; height: 0px !important; margin: 0px !important; padding: 0px !important; }
+iframe[title="streamlit_components.components.html"] { height: 1200px !important; max-height: none !important; border: none !important; margin-bottom: 10px !important; width: 100% !important; overflow: hidden !important; }
+button[data-baseweb="tab"] { padding-top: 0.1rem !important; padding-bottom: 0.1rem !important; font-size: 0.85rem !important; }
+div[data-testid="stTabs"] { margin-top: -5px !important; }
+div[data-testid="stHorizontalBlock"] { gap: 0.5rem !important; align-items: flex-end !important; background: #ffffff; padding: 0.4rem 0.5rem !important; border-radius: 8px; margin-top: 0px !important; margin-bottom: 10px !important; }
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) { align-self: flex-end !important; padding-bottom: 4px !important; }
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"] { margin-bottom: 0px !important; padding-bottom: 0px !important; }
+.stSelectbox > div > div { background-color: #fff !important; border: 1px solid #747775 !important; border-radius: 4px !important; min-height: 28px !important; height: 28px !important; }
+.stSelectbox > div > div > div { padding-top: 0px !important; padding-bottom: 0px !important; font-size: 0.8rem !important; line-height: 26px !important; }
+.stButton > button, .stDownloadButton > button { background-color: #003366 !important; color: #ffffff !important; border: none !important; border-radius: 100px !important; padding: 0.1rem 0.5rem !important; font-size: 0.7rem !important; font-weight: 500 !important; min-height: 28px !important; height: 28px !important; width: 100% !important; box-shadow: 0 1px 2px 0 rgba(60,64,67,0.2) !important; line-height: 1 !important; }
 .stButton > button:hover, .stDownloadButton > button:hover { background-color: #0b4cb4 !important; }
-
-/* CSS Blocking Engine to Hide Deployment Watermarks */
-._profilePreview_gzau3_63,
-._link_gzau3_10,
-[class*='_profilePreview'],
-[class*='_link_gzau3'],
-a[href*='share.streamlit.io'],
-a[href*='streamlit.io'],
-img[src*='avatar'],
-[class*='avatar'],
-#MainMenu,
-button[title="View source"],
-.stAppDeployButton,
-div[data-testid="stStatusWidget"] {
-    display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    height: 0 !important;
-    width: 0 !important;
-    pointer-events: none !important;
-}
+._profilePreview_gzau3_63, ._link_gzau3_10, [class*='_profilePreview'], [class*='_link_gzau3'], a[href*='share.streamlit.io'], a[href*='streamlit.io'], img[src*='avatar'], [class*='avatar'], #MainMenu, button[title="View source"], .stAppDeployButton, div[data-testid="stStatusWidget"] { display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0 !important; width: 0 !important; pointer-events: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
-#--- RUNTIME WORKSPACE SECURITY OBSERVERS ---
+#--- SECURITY OBSERVERS ---
 def deploy_workspace_security_protocols():
     injected_js = """
     <script>
@@ -302,7 +170,7 @@ def deploy_workspace_security_protocols():
 
 deploy_workspace_security_protocols()
 
-#--- PROGRAMMATIC LIGHT MODE LOCK ---
+#--- LIGHT MODE LOCK ---
 _config_dir = ".streamlit"
 _config_file = os.path.join(_config_dir, "config.toml")
 if not os.path.exists(_config_file):
@@ -310,44 +178,174 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- USER MANAGEMENT (IN-MEMORY) ---
-def init_user_db():
-    if "users" not in st.session_state:
-        st.session_state.users = {
-            "trs.regis": {
-                "password": "trs.jfc",
-                "permissions": {"view_sir": True, "export_sir": True},
-                "audit": []
-            },
-            "trs.aims": {
-                "password": "trs.jfc",
-                "permissions": {"view_sir": True, "export_sir": True},
-                "audit": []
-            },
-            "trs.jfc": {
-                "password": "trs.jfc",
-                "permissions": {"view_sir": True, "export_sir": True},
-                "audit": []
-            },
-            "aimsadmin": {
-                "password": "trs.aims",
-                "permissions": {"view_sir": True, "export_sir": True},
-                "audit": [],
-                "is_admin": True
-            }
+#--- USER STORE CLASS (single sheet) ---
+class UserStore:
+    def __init__(self):
+        self.use_sheet = False
+        self.sheet_client = None
+        self.spreadsheet = None
+        self.admin_sheet = None
+        self._init_sheet()
+
+    def _init_sheet(self):
+        if not HAS_GSPREAD:
+            return
+        try:
+            if "gcp_service_account" in st.secrets:
+                creds_dict = st.secrets["gcp_service_account"]
+                scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+                creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+                self.sheet_client = gspread.authorize(creds)
+                # Extract spreadsheet ID from SOURCE_URL
+                source_url = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
+                match = re.search(r'/d/([a-zA-Z0-9_-]+)', source_url)
+                if match:
+                    sheet_id = match.group(1)
+                    self.spreadsheet = self.sheet_client.open_by_key(sheet_id)
+                    self.use_sheet = True
+                    self._ensure_sheet()
+        except Exception as e:
+            st.warning(f"Google Sheets not available: {e}. Using in-memory storage.")
+            self.use_sheet = False
+
+    def _ensure_sheet(self):
+        try:
+            self.admin_sheet = self.spreadsheet.worksheet("TRS ADMIN")
+        except:
+            self.admin_sheet = self.spreadsheet.add_worksheet("TRS ADMIN", rows=1000, cols=7)
+            header = ["Type", "User", "Password", "ViewSIR", "ExportSIR", "IsAdmin", "Timestamp"]
+            self.admin_sheet.update('A1:G1', [header])
+            default_users = [
+                ["USER", "trs.regis", "trs.jfc", "TRUE", "TRUE", "FALSE", ""],
+                ["USER", "trs.aims", "trs.jfc", "TRUE", "TRUE", "FALSE", ""],
+                ["USER", "trs.jfc", "trs.jfc", "TRUE", "TRUE", "FALSE", ""],
+                ["USER", "aimsadmin", "trs.aims", "TRUE", "TRUE", "TRUE", ""]
+            ]
+            if default_users:
+                self.admin_sheet.append_rows(default_users)
+
+    def load_users(self):
+        """Load user records from TRS ADMIN sheet."""
+        if self.use_sheet:
+            try:
+                data = self.admin_sheet.get_all_values()
+                if len(data) > 1:
+                    users = {}
+                    for row in data[1:]:  # skip header
+                        if len(row) >= 7 and row[0].strip().upper() == "USER" and row[1]:
+                            users[row[1]] = {
+                                "password": row[2],
+                                "permissions": {
+                                    "view_sir": row[3].strip().upper() == "TRUE",
+                                    "export_sir": row[4].strip().upper() == "TRUE"
+                                },
+                                "is_admin": row[5].strip().upper() == "TRUE",
+                                "audit": []
+                            }
+                    return users
+            except Exception as e:
+                st.warning(f"Error loading users from sheet: {e}. Falling back to defaults.")
+        # Fallback defaults
+        return {
+            "trs.regis": {"password": "trs.jfc", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": False, "audit": []},
+            "trs.aims": {"password": "trs.jfc", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": False, "audit": []},
+            "trs.jfc": {"password": "trs.jfc", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": False, "audit": []},
+            "aimsadmin": {"password": "trs.aims", "permissions": {"view_sir": True, "export_sir": True}, "is_admin": True, "audit": []}
         }
-    if "refresh_log" not in st.session_state:
-        st.session_state.refresh_log = []
 
-init_user_db()
+    def save_users(self, users):
+        """Rewrite all USER rows in TRS ADMIN sheet."""
+        if not self.use_sheet:
+            return
+        try:
+            all_data = self.admin_sheet.get_all_values()
+            if not all_data:
+                return
+            header = all_data[0]
+            # Keep non-USER rows (AUDIT and REFRESH)
+            keep_rows = [row for row in all_data[1:] if len(row) > 0 and row[0].strip().upper() not in ("USER", "")]
+            # Build new USER rows
+            user_rows = []
+            for user, data in users.items():
+                user_rows.append([
+                    "USER",
+                    user,
+                    data["password"],
+                    "TRUE" if data["permissions"]["view_sir"] else "FALSE",
+                    "TRUE" if data["permissions"]["export_sir"] else "FALSE",
+                    "TRUE" if data.get("is_admin", False) else "FALSE",
+                    ""
+                ])
+            new_rows = [header] + keep_rows + user_rows
+            self.admin_sheet.clear()
+            if new_rows:
+                self.admin_sheet.update('A1:G{}'.format(len(new_rows)), new_rows)
+        except Exception as e:
+            st.error(f"Error saving users to sheet: {e}")
 
-#--- SESSION STATE FOR AUTH AND DATA ---
+    def log_audit(self, username):
+        """Append an AUDIT row."""
+        if self.use_sheet:
+            try:
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                self.admin_sheet.append_row(["AUDIT", username, "", "", "", "", timestamp])
+            except Exception as e:
+                print(f"Audit log error: {e}")
+
+    def log_refresh(self):
+        """Append a REFRESH row."""
+        if self.use_sheet:
+            try:
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                self.admin_sheet.append_row(["REFRESH", "", "", "", "", "", timestamp])
+            except Exception as e:
+                print(f"Refresh log error: {e}")
+
+    def get_refresh_log(self):
+        """Retrieve REFRESH rows."""
+        if self.use_sheet:
+            try:
+                data = self.admin_sheet.get_all_values()
+                refreshes = []
+                for row in data[1:]:
+                    if len(row) >= 7 and row[0].strip().upper() == "REFRESH" and row[6]:
+                        refreshes.append(row[6])
+                return refreshes
+            except:
+                return []
+        return []
+
+    def get_audit_log(self):
+        """Retrieve AUDIT rows."""
+        if self.use_sheet:
+            try:
+                data = self.admin_sheet.get_all_values()
+                audits = []
+                for row in data[1:]:
+                    if len(row) >= 7 and row[0].strip().upper() == "AUDIT" and row[1] and row[6]:
+                        audits.append({"User": row[1], "Timestamp": row[6]})
+                return audits
+            except:
+                return []
+        return []
+
+#--- INITIALIZE USER STORE ---
+if 'user_store' not in st.session_state:
+    st.session_state.user_store = UserStore()
+
+# Load users (either from sheet or fallback)
+if 'users' not in st.session_state:
+    st.session_state.users = st.session_state.user_store.load_users()
+if 'refresh_log' not in st.session_state:
+    st.session_state.refresh_log = st.session_state.user_store.get_refresh_log()
+
+#--- SESSION STATE ---
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 if 'username' not in st.session_state:
     st.session_state.username = ""
 if 'role' not in st.session_state:
-    st.session_state.role = "member"  # or "admin"
+    st.session_state.role = "member"
 if 'data_loaded' not in st.session_state:
     st.session_state.data_loaded = False
 if 'df' not in st.session_state:
@@ -367,13 +365,12 @@ def authenticate(username, password):
     if username in users and users[username]["password"] == password:
         st.session_state.authenticated = True
         st.session_state.username = username
-        # Determine role
         if users[username].get("is_admin", False):
             st.session_state.role = "admin"
         else:
             st.session_state.role = "member"
-        # Log access timestamp
-        users[username]["audit"].append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        # Log audit
+        st.session_state.user_store.log_audit(username)
         return True
     return False
 
@@ -381,7 +378,7 @@ def authenticate(username, password):
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
-#--- OPTIMIZED HELPER FUNCTIONS ---
+#--- HELPER FUNCTIONS ---
 def download_file(url):
     try:
         response = requests.get(url, timeout=30)
@@ -538,12 +535,10 @@ def load_data_parallel():
     print(f"Data loaded in {elapsed:.2f} seconds")
     return df, placeholders, template_data, media_data_list, datetime.now()
 
-# --- CACHED DATA LOADER (cached by version) ---
 @st.cache_data(ttl=None, show_spinner=False)
 def get_cached_data(cache_version):
     return load_data_parallel()
 
-# --- CACHED REPORT GENERATION ---
 @st.cache_data(ttl=None, show_spinner=False)
 def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeholders_tuple, cache_version):
     placeholders = list(placeholders_tuple)
@@ -591,48 +586,16 @@ def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeh
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
-#--- COMPLETE HTML BLUEPRINT ---
+#--- HTML FRAMEWORK (unchanged) ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
 <head>
 <style type="text/css">
-html, body { 
-    margin: 0; 
-    padding: 0; 
-    background-color: #ffffff; 
-    font-family: Arial, sans-serif; 
-    height: 100%;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-}
-.report-wrapper {
-    width: 100%;
-    overflow-y: visible !important;
-    overflow-x: hidden !important;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 0;
-    margin: 0;
-    min-height: 100%;
-}
-.report-scaler {
-    transform-origin: center top;
-    width: 100%;
-    display: inline-block;
-    overflow: visible;
-    text-align: center;
-}
-.ritz.grid-container {
-    height: auto;
-    overflow: visible !important;
-    padding: 10px;
-    box-sizing: border-box;
-    width: 100%;
-    display: inline-block;
-    text-align: left;
-}
+html, body { margin: 0; padding: 0; background-color: #ffffff; font-family: Arial, sans-serif; height: 100%; overflow-y: auto !important; overflow-x: hidden !important; }
+.report-wrapper { width: 100%; overflow-y: visible !important; overflow-x: hidden !important; display: flex; justify-content: center; align-items: flex-start; padding: 0; margin: 0; min-height: 100%; }
+.report-scaler { transform-origin: center top; width: 100%; display: inline-block; overflow: visible; text-align: center; }
+.ritz.grid-container { height: auto; overflow: visible !important; padding: 10px; box-sizing: border-box; width: 100%; display: inline-block; text-align: left; }
 .ritz .waffle a { color: inherit; }
 .ritz .waffle td { padding: 2px 3px !important; vertical-align: middle; border: none !important; }
 .freezebar-origin-ltr { background-color: #f8f9fa; border: none !important; }
@@ -737,16 +700,10 @@ document.addEventListener('DOMContentLoaded', function() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(scaleReportToFit, 100);
     });
-    const observer = new MutationObserver(function() { 
-        setTimeout(scaleReportToFit, 100);
-    });
+    const observer = new MutationObserver(function() { setTimeout(scaleReportToFit, 100); });
     const tableBody = document.querySelector('.waffle tbody');
-    if (tableBody) { 
-        observer.observe(tableBody, { childList: true, subtree: true, characterData: true }); 
-    }
-    window.addEventListener('load', function() {
-        setTimeout(scaleReportToFit, 200);
-    });
+    if (tableBody) { observer.observe(tableBody, { childList: true, subtree: true, characterData: true }); }
+    window.addEventListener('load', function() { setTimeout(scaleReportToFit, 200); });
 });
 </script>
 </head>
@@ -828,9 +785,9 @@ document.addEventListener('DOMContentLoaded', function() {
 </html>
 """
 
-#--- MAIN APP LOGIC ---
+#--- MAIN APP ---
 
-# --- LOGIN SCREEN ---
+# --- LOGIN ---
 if not st.session_state.authenticated:
     c1, c2, c3 = st.columns([1, 1.2, 1])
     with c2:
@@ -847,7 +804,7 @@ if not st.session_state.authenticated:
                 st.warning("Please enter both username and password.")
     st.stop()
 
-# --- AFTER LOGIN: DATA LOADING ---
+# --- DATA LOADING ---
 if not st.session_state.data_loaded:
     loading_placeholder = st.empty()
     loading_placeholder.markdown(get_loading_overlay_html(
@@ -878,7 +835,7 @@ media_data_list = st.session_state.media_data_list
 
 deploy_workspace_security_protocols()
 
-# --- SIDEBAR NAVIGATION ---
+# --- SIDEBAR ---
 if st.session_state.role == "admin":
     st.sidebar.title("Navigation")
     page = st.sidebar.radio("Go to", ["Admin Panel", "Viewer"], index=0)
@@ -889,7 +846,7 @@ else:
 if st.session_state.role == "admin" and page == "Admin Panel":
     st.title("Admin Control Panel")
 
-    # --- Refresh Data Section (compact) ---
+    # --- Refresh Data ---
     st.subheader("Data Refresh")
     col_refresh, col_status = st.columns([1, 3])
     with col_refresh:
@@ -897,7 +854,8 @@ if st.session_state.role == "admin" and page == "Admin Panel":
             st.cache_data.clear()
             st.session_state.cache_version += 1
             st.session_state.data_loaded = False
-            st.session_state.refresh_log.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            st.session_state.user_store.log_refresh()
+            st.session_state.refresh_log = st.session_state.user_store.get_refresh_log()
             st.rerun()
     with col_status:
         if st.session_state.refresh_log:
@@ -910,12 +868,12 @@ if st.session_state.role == "admin" and page == "Admin Panel":
 
     st.divider()
 
-    # --- User Management (compact rows) ---
+    # --- User Management (compact) ---
     st.subheader("User Management")
     users = st.session_state.users
     usernames = list(users.keys())
 
-    # Header row
+    # Header
     cols = st.columns([1.5, 1.2, 0.8, 0.8, 1.5, 0.5])
     cols[0].write("**Username**")
     cols[1].write("**Password**")
@@ -927,7 +885,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     for uname in usernames:
         cols = st.columns([1.5, 1.2, 0.8, 0.8, 1.5, 0.5])
         cols[0].write(uname)
-        cols[1].write(users[uname]["password"])  # plaintext for PoC
+        cols[1].write(users[uname]["password"])
         view_sir = cols[2].checkbox("", value=users[uname]["permissions"]["view_sir"], key=f"view_{uname}", label_visibility="collapsed")
         export_sir = cols[3].checkbox("", value=users[uname]["permissions"]["export_sir"], key=f"export_{uname}", label_visibility="collapsed")
         users[uname]["permissions"]["view_sir"] = view_sir
@@ -940,16 +898,16 @@ if st.session_state.role == "admin" and page == "Admin Panel":
                 st.success(f"Password for {uname} updated.")
             if cols[5].button("Delete", key=f"del_{uname}", use_container_width=True):
                 del st.session_state.users[uname]
+                st.session_state.user_store.save_users(users)
                 st.rerun()
         else:
-            # Admin user: no delete, password field can still change
             new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
             if new_pw:
                 users[uname]["password"] = new_pw
                 st.success(f"Password for {uname} updated.")
             cols[5].write("—")
 
-    # Add new user (compact)
+    # Add user
     st.write("---")
     st.write("**Add new user**")
     col_a, col_b, col_c, col_d, col_e = st.columns([1.5, 1.2, 0.8, 0.8, 1])
@@ -970,30 +928,34 @@ if st.session_state.role == "admin" and page == "Admin Panel":
                     st.session_state.users[new_uname] = {
                         "password": new_pw,
                         "permissions": {"view_sir": view_sir_new, "export_sir": export_sir_new},
+                        "is_admin": False,
                         "audit": []
                     }
+                    st.session_state.user_store.save_users(st.session_state.users)
                     st.success(f"User {new_uname} added.")
                     st.rerun()
             else:
                 st.warning("Fill in both fields.")
 
+    # Sync button (force save)
+    if st.button("Sync to Sheet", use_container_width=True):
+        st.session_state.user_store.save_users(st.session_state.users)
+        st.success("User data synced to Google Sheet.")
+
     st.divider()
 
-    # --- Audit Log (compact) ---
+    # --- Audit Log ---
     st.subheader("Audit Log")
-    audit_data = []
-    for uname, data in st.session_state.users.items():
-        for ts in data.get("audit", []):
-            audit_data.append({"Username": uname, "Access Time": ts})
-    if audit_data:
-        df_audit = pd.DataFrame(audit_data)
-        st.dataframe(df_audit, use_container_width=True, height=200)
+    audits = st.session_state.user_store.get_audit_log()
+    if audits:
+        df_audit = pd.DataFrame(audits)
+        st.dataframe(df_audit, use_container_width=True, height=300)
     else:
-        st.write("No access records yet.")
+        st.write("No audit records yet.")
 
-# --- VIEWER ---
+# --- VIEWER (unchanged) ---
 else:
-    # (Unchanged viewer code – same as before)
+    # Determine default selections
     trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
     first_row = df.iloc[0] if not df.empty else None
     first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
@@ -1056,6 +1018,7 @@ else:
                 "PROPERTY PHOTOS",
                 "PROPERTY DOCS"
             ])
+
             with tab_report:
                 if site_row_data is not None:
                     try:
@@ -1099,6 +1062,7 @@ else:
                         st.error(f"Error compiling visual matrix framework: {str(e)}")
                 else:
                     st.info("No data available for the selected site.")
+
             with tab_photos:
                 if site_row_data is not None and media_row_data:
                     direct_photo_mapping = {
@@ -1196,6 +1160,7 @@ else:
                         st.info("No photo links configured for this property record selection.")
                 else:
                     st.info("No data available for the selected site.")
+
             with tab_docs:
                 if site_row_data is not None and media_row_data:
                     direct_doc_mapping = {
