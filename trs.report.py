@@ -172,151 +172,29 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- LOCAL JSON STORE CLASS (WITH SAFE DEFAULTS) ---
-class LocalUserStore:
-    def __init__(self, json_path):
-        self.json_path = json_path
-        self.backup_data = None  # Cache fallback
-
-    def _get_default_data(self):
-        """Return the default user data (used when file is missing or empty)."""
-        return {
-            "users": {
-                "regis": {
-                    "password": "trs.jfc",
-                    "permissions": {"view_sir": True, "export_sir": True},
-                    "is_admin": False
-                },
-                "trs.aims": {
-                    "password": "trs.jfc",
-                    "permissions": {"view_sir": True, "export_sir": True},
-                    "is_admin": False
-                },
-                "jfc": {
-                    "password": "trs.prime",
-                    "permissions": {"view_sir": True, "export_sir": True},
-                    "is_admin": False
-                },
-                "admin": {
-                    "password": "@47t00M!!",
-                    "permissions": {"view_sir": True, "export_sir": True},
-                    "is_admin": True
-                }
-            },
-            "audit": [],
-            "refresh_logs": []
-        }
-
-    def _read(self):
-        """Read from local JSON file.
-        If file is missing, create with defaults.
-        If file exists but has empty users, merge defaults to guarantee at least one admin.
-        """
-        try:
-            if os.path.exists(self.json_path):
-                with open(self.json_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                # Ensure the data has the required structure
-                if not isinstance(data, dict):
-                    raise ValueError("JSON root is not a dict")
-                if "users" not in data or not isinstance(data["users"], dict):
-                    data["users"] = {}
-                if "audit" not in data or not isinstance(data["audit"], list):
-                    data["audit"] = []
-                if "refresh_logs" not in data or not isinstance(data["refresh_logs"], list):
-                    data["refresh_logs"] = []
-
-                # --- CRITICAL FIX: if the file has NO users, merge defaults ---
-                if not data["users"]:
-                    st.warning("Local adminlog.json has no users. Adding default users.")
-                    default_data = self._get_default_data()
-                    data["users"] = default_data["users"]
-                    data["audit"] = data.get("audit", [])
-                    data["refresh_logs"] = data.get("refresh_logs", [])
-                    self._write(data)
-
-                self.backup_data = data
-                return data
-            else:
-                # File doesn't exist: create with defaults
-                default_data = self._get_default_data()
-                self._write(default_data)
-                return default_data
-
-        except Exception as e:
-            st.warning(f"Cannot access local JSON file: {e}. Using cached/default data.")
-            if self.backup_data is not None:
-                return self.backup_data
-            return self._get_default_data()
-
-    def _write(self, data):
-        """Write to local JSON file, with cache backup."""
-        try:
-            dirname = os.path.dirname(self.json_path)
-            if dirname and not os.path.exists(dirname):
-                os.makedirs(dirname, exist_ok=True)
-            with open(self.json_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2)
-            self.backup_data = data
-            return True
-        except Exception as e:
-            st.error(f"Cannot write to local JSON file: {e}")
-            self.backup_data = data
-            return False
-
-    def load_users(self):
-        data = self._read()
-        return data.get("users", {})
-
-    def save_users(self, users):
-        data = self._read()
-        data["users"] = users
-        return self._write(data)
-
-    def log_audit(self, username):
-        data = self._read()
-        if "audit" not in data:
-            data["audit"] = []
-        data["audit"].append({"user": username, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
-        return self._write(data)
-
-    def log_refresh(self):
-        data = self._read()
-        if "refresh_logs" not in data:
-            data["refresh_logs"] = []
-        data["refresh_logs"].append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        return self._write(data)
-
-    def get_refresh_log(self):
-        data = self._read()
-        return data.get("refresh_logs", [])
-
-    def get_audit_log(self):
-        data = self._read()
-        return data.get("audit", [])
-
-    def get_file_content(self):
-        try:
-            with open(self.json_path, "r", encoding="utf-8") as f:
-                return f.read()
-        except:
-            return "Unable to read file."
-
-    def get_file_path(self):
-        return os.path.abspath(self.json_path)
-
-#--- INITIALIZE USER STORE WITH LOCAL PATH ---
-ADMINLOG_PATH = r"C:\Users\PRIME_Dave\Desktop\adminlog.json"
-
-if 'user_store' not in st.session_state:
-    st.session_state.user_store = LocalUserStore(ADMINLOG_PATH)
-
-if 'users' not in st.session_state:
-    st.session_state.users = st.session_state.user_store.load_users()
-if 'refresh_log' not in st.session_state:
-    st.session_state.refresh_log = st.session_state.user_store.get_refresh_log()
-if 'write_errors' not in st.session_state:
-    st.session_state.write_errors = []
+#--- HARDCODED USERS (no JSON file) ---
+HARDCODED_USERS = {
+    "regis": {
+        "password": "trs.jfc",
+        "permissions": {"view_sir": True, "export_sir": True},
+        "is_admin": False
+    },
+    "trs.aims": {
+        "password": "trs.jfc",
+        "permissions": {"view_sir": True, "export_sir": True},
+        "is_admin": False
+    },
+    "jfc": {
+        "password": "trs.prime",
+        "permissions": {"view_sir": True, "export_sir": True},
+        "is_admin": False
+    },
+    "admin": {
+        "password": "@47t00M!!",
+        "permissions": {"view_sir": True, "export_sir": True},
+        "is_admin": True
+    }
+}
 
 #--- SESSION STATE ---
 if 'authenticated' not in st.session_state:
@@ -337,20 +215,19 @@ if 'media_data_list' not in st.session_state:
     st.session_state.media_data_list = None
 if 'cache_version' not in st.session_state:
     st.session_state.cache_version = 0
+if 'audit_log' not in st.session_state:
+    st.session_state.audit_log = []  # list of {"user": ..., "timestamp": ...}
+if 'refresh_log' not in st.session_state:
+    st.session_state.refresh_log = []  # list of timestamp strings
 
 #--- LOGIN FUNCTION ---
 def authenticate(username, password):
-    users = st.session_state.users
-    if username in users and users[username]["password"] == password:
+    if username in HARDCODED_USERS and HARDCODED_USERS[username]["password"] == password:
         st.session_state.authenticated = True
         st.session_state.username = username
-        if users[username].get("is_admin", False):
-            st.session_state.role = "admin"
-        else:
-            st.session_state.role = "member"
-        success = st.session_state.user_store.log_audit(username)
-        if not success:
-            st.warning("Audit log could not be written. Please check file permissions.")
+        st.session_state.role = "admin" if HARDCODED_USERS[username]["is_admin"] else "member"
+        # Log audit
+        st.session_state.audit_log.append({"user": username, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
         return True
     return False
 
@@ -772,11 +649,6 @@ if not st.session_state.authenticated:
     c1, c2, c3 = st.columns([1, 1.2, 1])
     with c2:
         st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
-
-        # --- DEBUG: Show loaded users ---
-        with st.expander("🔍 Debug: Loaded Users (click to expand)"):
-            st.write("Usernames in session_state.users:", list(st.session_state.users.keys()))
-
         username = st.text_input("Username", placeholder="Enter username", key="login_username")
         password = st.text_input("Password", placeholder="Enter password", type="password", key="login_password")
         if st.button("Login", use_container_width=True):
@@ -831,32 +703,6 @@ else:
 if st.session_state.role == "admin" and page == "Admin Panel":
     st.title("Admin Control Panel")
 
-    # --- Debug info (collapsible) ---
-    with st.expander("Debug: JSON File Location & Content", expanded=False):
-        store = st.session_state.user_store
-        st.write(f"**Absolute path:** `{store.get_file_path()}`")
-        st.write(f"**File exists:** {os.path.exists(store.json_path)}")
-        if os.path.exists(store.json_path):
-            st.write(f"**File size:** {os.path.getsize(store.json_path)} bytes")
-            st.write("**Raw content (first 500 chars):**")
-            st.code(store.get_file_content()[:500], language="json")
-        st.write("**Using cached data:**", store.backup_data is not None and not os.path.exists(store.json_path))
-
-    # --- Save to Local File Button ---
-    st.subheader("Sync to Local File")
-    col_sync, col_status = st.columns([1, 3])
-    with col_sync:
-        if st.button("Save to Local File", use_container_width=True):
-            success = st.session_state.user_store.save_users(st.session_state.users)
-            if success:
-                st.success(f"Successfully saved to {st.session_state.user_store.get_file_path()}")
-            else:
-                st.error("Failed to save to local file. Check permissions.")
-    with col_status:
-        st.write(f"Current file path: `{st.session_state.user_store.get_file_path()}`")
-
-    st.divider()
-
     # --- Refresh Data ---
     st.subheader("Data Refresh")
     col_refresh, col_status = st.columns([1, 3])
@@ -865,12 +711,8 @@ if st.session_state.role == "admin" and page == "Admin Panel":
             st.cache_data.clear()
             st.session_state.cache_version += 1
             st.session_state.data_loaded = False
-            success = st.session_state.user_store.log_refresh()
-            if success:
-                st.session_state.refresh_log = st.session_state.user_store.get_refresh_log()
-                st.success("Refresh logged.")
-            else:
-                st.error("Could not log refresh. Check file permissions.")
+            st.session_state.refresh_log.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            st.success("Refresh logged.")
             st.rerun()
     with col_status:
         if st.session_state.refresh_log:
@@ -883,94 +725,9 @@ if st.session_state.role == "admin" and page == "Admin Panel":
 
     st.divider()
 
-    # --- User Management (compact) ---
-    st.subheader("User Management")
-    users = st.session_state.users
-    usernames = list(users.keys())
-
-    # Header
-    cols = st.columns([1.5, 1.2, 0.8, 0.8, 1.5, 0.5])
-    cols[0].write("**Username**")
-    cols[1].write("**Password**")
-    cols[2].write("**View SIR**")
-    cols[3].write("**Export SIR**")
-    cols[4].write("**Change Password**")
-    cols[5].write("**Delete**")
-
-    for uname in usernames:
-        cols = st.columns([1.5, 1.2, 0.8, 0.8, 1.5, 0.5])
-        cols[0].write(uname)
-        cols[1].write(users[uname]["password"])
-        view_sir = cols[2].checkbox("", value=users[uname]["permissions"]["view_sir"], key=f"view_{uname}", label_visibility="collapsed")
-        export_sir = cols[3].checkbox("", value=users[uname]["permissions"]["export_sir"], key=f"export_{uname}", label_visibility="collapsed")
-        users[uname]["permissions"]["view_sir"] = view_sir
-        users[uname]["permissions"]["export_sir"] = export_sir
-
-        if uname != "admin":  # protect the main admin from deletion
-            new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
-            if new_pw:
-                users[uname]["password"] = new_pw
-                st.success(f"Password for {uname} updated locally.")
-            if cols[5].button("Delete", key=f"del_{uname}", use_container_width=True):
-                del st.session_state.users[uname]
-                success = st.session_state.user_store.save_users(users)
-                if success:
-                    st.success(f"User {uname} deleted.")
-                else:
-                    st.error("Failed to delete user. Check file permissions.")
-                st.rerun()
-        else:
-            new_pw = cols[4].text_input("", type="password", key=f"pw_{uname}", placeholder="New password", label_visibility="collapsed")
-            if new_pw:
-                users[uname]["password"] = new_pw
-                st.success(f"Password for {uname} updated locally.")
-            cols[5].write("—")
-
-    # Add user
-    st.write("---")
-    st.write("**Add new user**")
-    col_a, col_b, col_c, col_d, col_e = st.columns([1.5, 1.2, 0.8, 0.8, 1])
-    with col_a:
-        new_uname = st.text_input("Username", placeholder="New username", key="new_uname", label_visibility="collapsed")
-    with col_b:
-        new_pw = st.text_input("Password", type="password", placeholder="Password", key="new_pw", label_visibility="collapsed")
-    with col_c:
-        view_sir_new = st.checkbox("View", value=True, key="new_view", label_visibility="collapsed")
-    with col_d:
-        export_sir_new = st.checkbox("Export", value=True, key="new_export", label_visibility="collapsed")
-    with col_e:
-        if st.button("Add User", use_container_width=True):
-            if new_uname and new_pw:
-                if new_uname in st.session_state.users:
-                    st.error("Username already exists.")
-                else:
-                    st.session_state.users[new_uname] = {
-                        "password": new_pw,
-                        "permissions": {"view_sir": view_sir_new, "export_sir": export_sir_new},
-                        "is_admin": False
-                    }
-                    success = st.session_state.user_store.save_users(st.session_state.users)
-                    if success:
-                        st.success(f"User {new_uname} added.")
-                    else:
-                        st.error("Failed to save user. Check file permissions.")
-                    st.rerun()
-            else:
-                st.warning("Fill in both fields.")
-
-    # Force sync button
-    if st.button("Force Sync to File", use_container_width=True):
-        success = st.session_state.user_store.save_users(st.session_state.users)
-        if success:
-            st.success("Data synced to local file.")
-        else:
-            st.error("Sync failed.")
-
-    st.divider()
-
-    # --- Audit Log with counts and timestamps ---
+    # --- Audit Log ---
     st.subheader("Audit Log")
-    audits = st.session_state.user_store.get_audit_log()
+    audits = st.session_state.audit_log
     if audits:
         df_audit = pd.DataFrame(audits)
         summary = df_audit.groupby("user")["timestamp"].agg(["count", lambda x: list(x)]).reset_index()
@@ -1008,7 +765,8 @@ else:
         selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
     with col3:
         if selected_ta:
-            if st.session_state.users[st.session_state.username]["permissions"]["export_sir"]:
+            user_perms = HARDCODED_USERS.get(st.session_state.username, {}).get("permissions", {})
+            if user_perms.get("export_sir", False):
                 report_bytes = generate_trade_area_report_cached(
                     selected_ta,
                     df,
@@ -1041,7 +799,9 @@ else:
             if not media_row_data:
                 media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
 
-        if st.session_state.users[st.session_state.username]["permissions"]["view_sir"]:
+        # Check view permission
+        user_perms = HARDCODED_USERS.get(st.session_state.username, {}).get("permissions", {})
+        if user_perms.get("view_sir", False):
             tab_report, tab_photos, tab_docs = st.tabs([
                 "PROPERTY INFORMATION",
                 "PROPERTY PHOTOS",
