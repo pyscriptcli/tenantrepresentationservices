@@ -29,6 +29,21 @@ try:
 except ImportError:
     HAS_GSPREAD = False
 
+# Hardcoded service account credentials (for testing only)
+SERVICE_ACCOUNT_CREDS = {
+    "type": "service_account",
+    "project_id": "trs-sitesourcing-viewer",
+    "private_key_id": "1191a0d6d74bb16786681476664821ee6deb673a",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDBp3HcCLqtFDAm\nT0ijccbdttiMaPhhSDOHWl02nRhzJ0IFzx4P7Wrd7YlNMWokgyBbfux6MjnCJm8q\nqaLlZPY/L6rqN1YgE3l9jfeq26EoBv50uxtbafp9zScb1YIPXPLFCChIT/1B1n4F\n95bugmYY2Gmc9WHRu3C4Rw45PNFjuOpz/fN+ycnpTMQ/tEFpw/BGT+0Nby9VHPFq\nhr6Fmp1ezNA4quOU1nL0p7CrLglR7dASe5IDfvoZpMXwICCCjOYAP/SZ2pa+DzTB\nKEDDlQqgByeWG33M6S6CL2mTgFJapHY5cvMCIjfpGBgnd46ZUUCLx9AX8s6CelTo\nIsqjBt0JAgMBAAECggEAA/UwUYcbV/0CoukATgukPQgtbGk0y+z8bwOJkvUqkifq\nPh4mhu+bCiAYEnjN3e/3Ue3J8Kr+g5l8SiRSmcEyrl+C01IzZpwFrp6fjvr5umZL\nywaL7GL1GJ8ZvoR79pgEUI/DHjJsTzn0zc03ZRAX/OGamJE3R5PYhBuhQcnP0B7m\n1l2DqxhvWF8QfRtUf/8m9NU7d4K5s4EfDQX6VpO//54V5qHAiICSPMFqBhvjrLYD\nDpB6rskZfan7MxYgifWha0zyMpmIoH32NcPOgqfVnRqa6oDL+0TOGZQM9u95II+2\n00TP1mOd8/Ks0Df0YBQfczUipw9jaGyYO568/xHxlQKBgQDwN/jOTmL1x2T/i0yA\nrtpR7uU0XI2vXWaSPST127yZA1fmPPzxKT/0ncqvxWSz1ddBkXUJbsIxFLZOX6BS\n0zioFzyIYlolnreY/9WVWjfsQNC6Twi6W0svhqGItwhmO6QArkrOn0r0ghFqEwaf\nWyjwZE1Oct2Xz3Ujz2HQMH2gCwKBgQDOYFgW5AGZJf5jAR8Vc/5FAo6ih92jA+b3\nNoMzZjp9lA2uU/i5TNWKNBFWxJ9w+B17Uaz1+L1/NjDuFy8G5IuseSHewKG7UHcC\nwA7rKSeM+MNc0dnAkHfaNlr43q2n/uJNJFJSytf2YjRKhXGMHcLf7458tu03WMSd\n9jP1jYj/uwKBgQCyqX6EuqpBkJ6erZUltGauP5b7fcbnYflS1OUzcs3vpBvxIvUh\nzINDxUQlvRNr6aTioHPCoz0NUhFRczADyhM+eaHM8hGIH2cABW9uWJ51ObPEjdm4\n+QOPgnuL+k3l83/D/d2nlbQi7MZU9XeceCmXuZIBwc7sBSFjk+9070vQBwKBgCZQ\nXqpJRD6xfgvVXnb2JOOc+OwVu0ETbWLB/ROizAMaZHvT3R5RtGdHCV0JfexUM+z8\nGddEibG/VtAs/68Q6RlpF6+qJZyH8MBS9bIU3uHeIS7vSrTkXUvmwXboqGbC/DKE\nJsB2Jif4zWp0YcM4l0BJ0jM3Js0ars4Asl7JGwEXAoGAIRzG3IpBh8jlLlZDe63Y\n1hKfo4JHxlidnHjEeN4UdSpnIyw/Cii0OS89VxL641mUYUUP1OsKzzXRWiBMPM2y\nCMMTpAqdbh5Y5j/AShZi8DGYhJ6ylA2esc2mjRMtT3pvRq6/nNxgTxRYLhjToHXg\nidr8ma/v5dzcyYC2bZpwkco=\n-----END PRIVATE KEY-----\n",
+    "client_email": "trs-drive-api-648@trs-sitesourcing-viewer.iam.gserviceaccount.com",
+    "client_id": "106044499685095859528",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/trs-drive-api-648%40trs-sitesourcing-viewer.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
+}
+
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
     page_title="trs.sitesourcing.viewer",
@@ -178,7 +193,7 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- USER STORE CLASS (single sheet, no hardcoded data) ---
+#--- USER STORE CLASS (single sheet, using hardcoded credentials) ---
 class UserStore:
     def __init__(self):
         self.use_sheet = False
@@ -192,10 +207,8 @@ class UserStore:
             st.error("gspread library not installed. Please install gspread and oauth2client.")
             return
         try:
-            if "gcp_service_account" not in st.secrets:
-                st.error("Missing gcp_service_account in secrets. Please add the service account JSON.")
-                return
-            creds_dict = st.secrets["gcp_service_account"]
+            # Use the hardcoded credentials
+            creds_dict = SERVICE_ACCOUNT_CREDS
             scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
             creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
             self.sheet_client = gspread.authorize(creds)
@@ -220,7 +233,6 @@ class UserStore:
             self.admin_sheet = self.spreadsheet.add_worksheet("TRS ADMIN", rows=1000, cols=7)
             header = ["Type", "User", "Password", "ViewSIR", "ExportSIR", "IsAdmin", "Timestamp"]
             self.admin_sheet.update('A1:G1', [header])
-            # No default users
 
     def load_users(self):
         if not self.use_sheet:
@@ -950,7 +962,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     else:
         st.write("No audit records yet.")
 
-# --- VIEWER (unchanged) ---
+# --- VIEWER ---
 else:
     # Determine default selections
     trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
