@@ -194,7 +194,7 @@ class LocalUserStore:
                 },
                 "jfc": {
                     "password": "trs.prime",
-                    "permissions": {"view_sir": True, "export_sir": True},
+                    "permissions": {"view_sir": True, "export_sir": False},
                     "is_admin": False
                 },
                 "admin": {
