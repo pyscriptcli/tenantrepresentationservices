@@ -311,8 +311,6 @@ if not os.path.exists(_config_file):
         f.write('[theme]\nbase="light"\n')
 
 #--- USER MANAGEMENT (IN-MEMORY) ---
-# We store users in session_state so changes persist during the session.
-# On app restart, this resets to defaults.
 def init_user_db():
     if "users" not in st.session_state:
         st.session_state.users = {
@@ -332,7 +330,7 @@ def init_user_db():
                 "audit": []
             },
             "aimsadmin": {
-                "password": "trs.aimsadmin",
+                "password": "trs.aims",
                 "permissions": {"view_sir": True, "export_sir": True},
                 "audit": [],
                 "is_admin": True
@@ -884,7 +882,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 # --- LOGIN SCREEN ---
 if not st.session_state.authenticated:
-    # Center the login form
     c1, c2, c3 = st.columns([1, 1.2, 1])
     with c2:
         st.markdown("<h3 style='text-align: center; margin-top:50px;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
@@ -932,12 +929,13 @@ media_data_list = st.session_state.media_data_list
 # Security protocols
 deploy_workspace_security_protocols()
 
-# --- SIDEBAR FOR ADMIN ---
+# --- SIDEBAR NAVIGATION FOR ADMIN ---
 if st.session_state.role == "admin":
     st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", ["Viewer", "Admin Panel"])
+    # Default to Admin Panel (index 0)
+    page = st.sidebar.radio("Go to", ["Admin Panel", "Viewer"], index=0)
 else:
-    page = "Viewer"  # non-admin only sees viewer
+    page = "Viewer"  # non‑admin always sees viewer
 
 # --- ADMIN PANEL ---
 if st.session_state.role == "admin" and page == "Admin Panel":
@@ -948,11 +946,9 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     col_refresh, col_status = st.columns([1, 2])
     with col_refresh:
         if st.button("Refresh Data Now"):
-            # Clear cache and force reload
             st.cache_data.clear()
             st.session_state.cache_version += 1
             st.session_state.data_loaded = False
-            # Log refresh
             st.session_state.refresh_log.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             st.rerun()
     with col_status:
@@ -962,7 +958,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
             st.write(f"Total refreshes: {len(st.session_state.refresh_log)}")
             if len(st.session_state.refresh_log) > 1:
                 st.write("Previous refreshes:")
-                for ts in st.session_state.refresh_log[-5:]:  # show last 5
+                for ts in st.session_state.refresh_log[-5:]:
                     st.write(f"- {ts}")
         else:
             st.write("No refresh performed yet.")
@@ -974,7 +970,6 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     users = st.session_state.users
     usernames = list(users.keys())
 
-    # Display current users with permissions
     st.write("Current users:")
     for uname in usernames:
         with st.container():
@@ -982,20 +977,17 @@ if st.session_state.role == "admin" and page == "Admin Panel":
             cols[0].write(uname)
             view_sir = cols[1].checkbox("View SIR", value=users[uname]["permissions"]["view_sir"], key=f"view_{uname}")
             export_sir = cols[2].checkbox("Export SIR", value=users[uname]["permissions"]["export_sir"], key=f"export_{uname}")
-            # Update permissions if changed
             users[uname]["permissions"]["view_sir"] = view_sir
             users[uname]["permissions"]["export_sir"] = export_sir
-            if uname != "aimsadmin":  # don't allow delete admin
+            if uname != "aimsadmin":
                 if cols[3].button("Delete", key=f"del_{uname}"):
                     del st.session_state.users[uname]
                     st.rerun()
-            # Change password
             new_pw = cols[4].text_input("New password", type="password", key=f"pw_{uname}", placeholder="Change password")
             if new_pw:
                 users[uname]["password"] = new_pw
                 st.success(f"Password for {uname} updated.")
 
-    # Add new user
     st.write("Add new user:")
     with st.form("add_user_form"):
         new_uname = st.text_input("Username")
@@ -1022,7 +1014,6 @@ if st.session_state.role == "admin" and page == "Admin Panel":
 
     # --- Audit Log ---
     st.subheader("Audit Log")
-    # Build a table of all users' access timestamps
     audit_data = []
     for uname, data in st.session_state.users.items():
         for ts in data.get("audit", []):
@@ -1033,8 +1024,8 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     else:
         st.write("No access records yet.")
 
+# --- VIEWER ---
 else:
-    # --- VIEWER (same as before) ---
     # Determine default selections
     trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
     first_row = df.iloc[0] if not df.empty else None
@@ -1065,7 +1056,6 @@ else:
 
     with col3:
         if selected_ta:
-            # Check export permission
             if st.session_state.users[st.session_state.username]["permissions"]["export_sir"]:
                 report_bytes = generate_trade_area_report_cached(
                     selected_ta,
@@ -1101,7 +1091,6 @@ else:
             if not media_row_data:
                 media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
 
-        # Check view permission
         if st.session_state.users[st.session_state.username]["permissions"]["view_sir"]:
             tab_report, tab_photos, tab_docs = st.tabs([
                 "PROPERTY INFORMATION",
@@ -1109,7 +1098,6 @@ else:
                 "PROPERTY DOCS"
             ])
 
-            # --- TAB 1: SITE INFORMATION REPORT ---
             with tab_report:
                 if site_row_data is not None:
                     try:
@@ -1157,7 +1145,6 @@ else:
                 else:
                     st.info("No data available for the selected site.")
             
-            # --- TAB 2: PROPERTY PHOTOS ---
             with tab_photos:
                 if site_row_data is not None and media_row_data:
                     direct_photo_mapping = {
@@ -1256,7 +1243,6 @@ else:
                 else:
                     st.info("No data available for the selected site.")
 
-            # --- TAB 3: PROPERTY DOCS ---
             with tab_docs:
                 if site_row_data is not None and media_row_data:
                     direct_doc_mapping = {
