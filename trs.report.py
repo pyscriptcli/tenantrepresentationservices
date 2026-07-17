@@ -175,12 +175,19 @@ if not os.path.exists(_config_file):
 #--- USER STORE (GITHUB GIST) ---
 class UserStore:
     def __init__(self):
+        # Try to get from secrets first
         self.token = st.secrets.get("GITHUB_TOKEN", None)
         self.gist_id = st.secrets.get("GIST_ID", None)
+        # If not found, use hardcoded values (for PoC)
+        if not self.token or not self.gist_id:
+            # Hardcoded for testing – replace with environment or secrets
+            self.token = "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"
+            self.gist_id = "b6616d890f25db9941688622bc12b6ac"
+            st.warning("Using hardcoded GitHub credentials. This is not secure for production.")
         self.filename = "adminlog.json"
         self.raw_url = None
         self.use_gist = bool(self.token and self.gist_id)
-        self.local_path = "adminlog.json"  # fallback if Gist fails
+        self.local_path = "adminlog.json"
 
         if self.use_gist:
             self._init_gist()
@@ -255,7 +262,6 @@ class UserStore:
                     self.filename: {"content": content}
                 }
             }
-            # Use PATCH to update the gist
             url = f"https://api.github.com/gists/{self.gist_id}"
             resp = requests.patch(url, headers=headers, json=payload)
             if resp.status_code == 200:
@@ -883,6 +889,9 @@ if st.session_state.role == "admin" and page == "Admin Panel":
         st.write(f"**Using Gist:** {store.use_gist}")
         if store.use_gist:
             st.write(f"**Raw URL:** {store.raw_url}")
+            # Mask token for display
+            token_display = store.token[:5] + "..." + store.token[-5:] if store.token else "None"
+            st.write(f"**Token:** {token_display}")
         st.write(f"**Local fallback path:** `{store.local_path}`")
         st.write("**Raw content (first 500 chars):**")
         st.code(store.get_file_content()[:500], language="json")
