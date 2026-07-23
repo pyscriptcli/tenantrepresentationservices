@@ -444,6 +444,7 @@ def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeh
     return wb_buffer.getvalue()
 
 #--- HTML FRAMEWORK (UPDATED WITH ALL PLACEHOLDERS) ---
+#--- HTML FRAMEWORK (UPDATED WITH CORRECT STRUCTURE) ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
@@ -486,6 +487,8 @@ html, body { margin: 0; padding: 0; background-color: #ffffff; font-family: Aria
 .ritz .waffle .s23{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
 .ritz .waffle .s24{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
 .ritz .waffle .s25{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s26{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s27{background-color:#b7b7b7;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
 .ritz .waffle { border-collapse: collapse; width: 100%; }
 .ritz .waffle tr { height: auto !important; }
 .ritz .waffle td[class*="s4"], .ritz .waffle td[class*="s9"] { height: auto !important; min-height: 20px; }
@@ -612,10 +615,10 @@ document.addEventListener('DOMContentLoaded', function() {
         <tr style="height: auto;"> <td class="s2">Company Name</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_COMPANY_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Company Name</td> <td class="s9" colspan="5">_SUBLESSOR_COMPANY_NAME_</td> </tr>
         <tr style="height: auto;"> <td class="s5" colspan="2">Developer Account Name</td> <td class="s4" colspan="5">_LESSOR_DEVELOPER_ACCOUNT_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Developer Account Name</td> <td class="s9" colspan="5">_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_</td> </tr>
         <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_BUSINESS_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5">_SUBLESSOR_BUSINESS_ADDRESS_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5">_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_LESSOR_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5">_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
         <tr style="height: auto;"> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s4" colspan="5">_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s9" colspan="5">_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_CONTACT_NUMBER_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUBLESSOR_CONTACT_NO_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_EMAIL_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUBLESSOR_EMAIL_ADDRESS_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_AUTHORIZED_REP_CONTACT_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUBLESSOR_CONTACT_NO_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_AUTHORIZED_REP_EMAIL_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUBLESSOR_EMAIL_ADDRESS_</td> </tr>
         <tr style="height: auto;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3" colspan="5"></td> </tr>
         <tr style="height: auto;"> <td class="s2">Name of Lessee</td> <td class="s2"></td> <td class="s4" colspan="5">_NAME_OF_LESSEE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Sub-Lessee</td> <td class="s9" colspan="5">_NAME_OF_SUB_LESSEE_</td> </tr>
         <tr style="height: auto;"> <td class="s2">Position</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_POSITION_</td> <td class="s3"></td> <td class="s5" colspan="2">Position</td> <td class="s9" colspan="5">_SUB_LESSEE_POSITION_</td> </tr>
@@ -630,9 +633,12 @@ document.addEventListener('DOMContentLoaded', function() {
         <tr style="height: auto;"> <td class="s19">Pedestrian Overpass</td> <td class="s20" colspan="4">_PEDESTRIAN_OVERPASS_</td> <td class="s19" colspan="2">Infrastructure Programs</td> <td class="s20"></td> <td class="s20" colspan="2">_INFRASTRUCTURE_PROGRAMS_</td> <td class="s21" colspan="5">Gas Station</td> </tr>
         <tr style="height: auto;"> <td class="s2" colspan="14"></td> <td class="s3"></td> </tr>
         <tr style="height: 19px;"> <td class="s22">Site Acquirability:</td> <td class="s2" colspan="13"></td> <td class="s3"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Confidence Level</td> <td class="s4" colspan="2">_CONFIDENCE_LEVEL_</td> <td class="s2" colspan="11"></td> <td class="s3"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Site Availability</td> <td class="s23" colspan="2"><div style="width:184px;left:-1px">_SITE_AVAILABILITY_CLASS_</div></td> <td class="s24"></td> <td class="s25"></td> <td class="s2" colspan="10"></td> <td class="s3"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Site Availability Remarks</td> <td class="s23" colspan="2"><div style="width:184px;left:-1px">_SITE_AVAILABILITY_REMARKS_</div></td> <td class="s24"></td> <td class="s25"></td> <td class="s2" colspan="10"></td> <td class="s3"></td> </tr>
+        <tr style="height: auto;"> <td class="s2">Confidence Level</td> <td class="s4" colspan="14">_CONFIDENCE_LEVEL_</td> </tr>
+        <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
+        <tr style="height: 19px;"> <td class="s26" colspan="15">Site Availability</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Site Availability Class</td> <td class="s23" colspan="14">_SITE_AVAILABILITY_CLASS_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Site Availability Remarks</td> <td class="s23" colspan="14">_SITE_AVAILABILITY_REMARKS_</td> </tr>
+        <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
         <tr class="remarks-row" style="height: auto;"> <td class="s6 remarks-label" style="white-space: nowrap; vertical-align: top; padding-top: 8px;">Other Remarks:</td> <td class="s5" colspan="7" style="white-space: normal; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: auto; line-height: 1.6; padding: 8px 6px;">_REMARKS_</td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
         </tbody>
         </table>
@@ -865,7 +871,7 @@ else:
                         rendered_view = rendered_view.replace("_PRE_TERM_PARTIAL_TERM_", process_val("PRE-TERM/PARTIAL TERM"))
                         rendered_view = rendered_view.replace("_TRIPARTITE_AGREEMENT_", process_val("TRIPARTITE AGREEMENT"))
                         
-                        # Lessor Details
+                        # Lessor Details (Main)
                         rendered_view = rendered_view.replace("_LESSOR_", process_val("LESSOR"))
                         rendered_view = rendered_view.replace("_LESSOR_CONTACT_NO_", process_val("LESSOR CONTACT NO."))
                         rendered_view = rendered_view.replace("_LESSOR_EMAIL_ADDRESS_", process_val("LESSOR E-MAIL ADDRESS"))
@@ -873,7 +879,12 @@ else:
                         rendered_view = rendered_view.replace("_LESSOR_COMPANY_NAME_", process_val("LESSOR COMPANY NAME"))
                         rendered_view = rendered_view.replace("_LESSOR_DEVELOPER_ACCOUNT_NAME_", process_val("LESSOR DEVELOPER ACCOUNT NAME"))
                         rendered_view = rendered_view.replace("_LESSOR_BUSINESS_ADDRESS_", process_val("LESSOR BUSINESS ADDRESS"))
+                        
+                        # Lessor Authorized Representative
+                        rendered_view = rendered_view.replace("_LESSOR_AUTHORIZED_REPRESENTATIVE_", process_val("LESSOR AUTHORIZED REPRESENTATIVE"))
                         rendered_view = rendered_view.replace("_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val("LESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE"))
+                        rendered_view = rendered_view.replace("_LESSOR_AUTHORIZED_REP_CONTACT_NO_", process_val("LESSOR AUTHORIZED REP CONTACT NO."))
+                        rendered_view = rendered_view.replace("_LESSOR_AUTHORIZED_REP_EMAIL_", process_val("LESSOR AUTHORIZED REP EMAIL"))
                         
                         # Lessee Details
                         rendered_view = rendered_view.replace("_NAME_OF_LESSEE_", process_val("NAME OF LESSEE"))
@@ -902,11 +913,6 @@ else:
                         rendered_view = rendered_view.replace("_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val("SUB-LESSEE NAME OF AUTHORIZED REPRESENTATIVE"))
                         rendered_view = rendered_view.replace("_SUB_LESSEE_BUSINESS_ADDRESS_", process_val("SUB-LESSEE BUSINESS ADDRESS"))
                         
-                        # Contact Person (already in code)
-                        rendered_view = rendered_view.replace("_CONTACT_PERSON_SOURCE_", process_val("CONTACT PERSON/SOURCE"))
-                        rendered_view = rendered_view.replace("_CONTACT_NUMBER_", process_val("CONTACT NUMBER"))
-                        rendered_view = rendered_view.replace("_EMAIL_ADDRESS_", process_val("EMAIL ADDRESS"))
-                        
                         # Regulatory
                         rendered_view = rendered_view.replace("_SETBACK_REQUIREMENT_", process_val("SETBACK REQUIREMENT"))
                         rendered_view = rendered_view.replace("_ROAD_WIDENING_", process_val("ROAD WIDENING"))
@@ -917,6 +923,8 @@ else:
                         
                         # Site Acquirability
                         rendered_view = rendered_view.replace("_CONFIDENCE_LEVEL_", process_val("CONFIDENCE LEVEL"))
+                        
+                        # Site Availability
                         rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS"))
                         rendered_view = rendered_view.replace("_SITE_AVAILABILITY_REMARKS_", process_val("SITE AVAILABILITY REMARKS"))
                         
