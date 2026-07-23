@@ -676,12 +676,12 @@ document.addEventListener('DOMContentLoaded', function() {
             <td class="s22" colspan="2" style="border: 1px solid #cccccc !important;">Site Availability</td> 
             <td class="s17" colspan="5" style="border: 1px solid #cccccc !important;">_SITE_AVAILABILITY_CLASS_</td> 
         </tr>
-        <tr class="remarks-row" style="height: auto;"> 
+            <tr class="remarks-row" style="height: 300px !important;"> 
             <td class="s6 remarks-label" style="white-space: nowrap; vertical-align: top; padding-top: 8px; border: 1px solid #cccccc !important;">Other Remarks:</td> 
-            <td class="s5" colspan="6" style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: 1000px; line-height: 1.6; padding: 8px 6px; border: 1px solid #cccccc !important; vertical-align: top;">_REMARKS_</td> 
+            <td class="s5" colspan="6" style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: 300px !important; line-height: 1.6; padding: 8px 6px; border: 1px solid #cccccc !important; vertical-align: top;">_REMARKS_</td> 
             <td class="s3"></td> 
             <td class="s6 remarks-label" style="white-space: normal; vertical-align: top; padding-top: 8px; border: 1px solid #cccccc !important;" colspan="2">Site Availability<br>Remarks:</td> 
-            <td class="s5" colspan="5" style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: 1000px; line-height: 1.6; padding: 8px 6px; border: 1px solid #cccccc !important; vertical-align: top;">_SITE_AVAILABILITY_REMARKS_</td> 
+            <td class="s5" colspan="5" style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: 300px !important; line-height: 1.6; padding: 8px 6px; border: 1px solid #cccccc !important; vertical-align: top;">_SITE_AVAILABILITY_REMARKS_</td> 
         </tr>
         </tbody>
         </table>
