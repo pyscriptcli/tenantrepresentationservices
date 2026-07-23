@@ -861,27 +861,7 @@ else:
                             val = row_data.get(key_string.upper(), "")
                             if pd.isna(val) or val is None:
                                 return ""
-                            if hasattr(val, 'strftime'):
-                                return val.strftime('%B %d, %Y')
-                            if isinstance(val, str):
-                                try:
-                                    for fmt in ['%Y-%m-%d', '%Y/%m/%d', '%m/%d/%Y', '%d/%m/%Y']:
-                                        try:
-                                            date_obj = datetime.strptime(val.strip(), fmt)
-                                            return date_obj.strftime('%B %d, %Y')
-                                        except ValueError:
-                                            continue
-                                except Exception:
-                                    pass
-                            if isinstance(val, (int, float)):
-                                try:
-                                    from datetime import timedelta
-                                    excel_epoch = datetime(1899, 12, 30)
-                                    date_obj = excel_epoch + timedelta(days=float(val))
-                                    return date_obj.strftime('%B %d, %Y')
-                                except Exception:
-                                    pass
-                            return str(val)
+                            return str(val)  # Just return the raw value as string
             
                         parent_site_no = parse_site_number(selected_site_display)
                         ta_df = df[df["TRADE AREA"] == target_ta]
