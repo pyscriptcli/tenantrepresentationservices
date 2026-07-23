@@ -847,44 +847,44 @@ else:
                 "PROPERTY DOCS"
             ])
 
-    with tab_report:
-        if site_row_data is not None:
-            try:
-                def process_val(key_string):
-                    val = site_row_data.get(key_string.upper(), "")
-                    if pd.isna(val) or val is None:
-                        return ""
-                    
-                    # Check if it's a datetime object
-                    if hasattr(val, 'strftime'):
-                        return val.strftime('%B %d, %Y')  # Format: July 16, 2026
-                    
-                    # Check if it's a string that looks like a date (YYYY-MM-DD)
-                    if isinstance(val, str):
-                        # Try to parse as date
+                with tab_report:
+                    if site_row_data is not None:
                         try:
-                            # Try standard date formats
-                            for fmt in ['%Y-%m-%d', '%Y/%m/%d', '%m/%d/%Y', '%d/%m/%Y']:
-                                try:
-                                    date_obj = datetime.strptime(val.strip(), fmt)
-                                    return date_obj.strftime('%B %d, %Y')
-                                except ValueError:
-                                    continue
-                        except:
-                            pass
-                    
-                    # Handle float/integer that might be Excel date
-                    if isinstance(val, (int, float)):
-                        try:
-                            # Excel dates are stored as days since 1900-01-01
-                            from datetime import timedelta
-                            excel_epoch = datetime(1899, 12, 30)
-                            date_obj = excel_epoch + timedelta(days=float(val))
-                            return date_obj.strftime('%B %d, %Y')
-                        except:
-                            pass
-                    
-                    return str(val)
+                            def process_val(key_string):
+                                val = site_row_data.get(key_string.upper(), "")
+                                if pd.isna(val) or val is None:
+                                    return ""
+                                
+                                # Check if it's a datetime object
+                                if hasattr(val, 'strftime'):
+                                    return val.strftime('%B %d, %Y')  # Format: July 16, 2026
+                                
+                                # Check if it's a string that looks like a date (YYYY-MM-DD)
+                                if isinstance(val, str):
+                                    # Try to parse as date
+                                    try:
+                                        # Try standard date formats
+                                        for fmt in ['%Y-%m-%d', '%Y/%m/%d', '%m/%d/%Y', '%d/%m/%Y']:
+                                            try:
+                                                date_obj = datetime.strptime(val.strip(), fmt)
+                                                return date_obj.strftime('%B %d, %Y')
+                                            except ValueError:
+                                                continue
+                                    except:
+                                        pass
+                                
+                                # Handle float/integer that might be Excel date
+                                if isinstance(val, (int, float)):
+                                    try:
+                                        # Excel dates are stored as days since 1900-01-01
+                                        from datetime import timedelta
+                                        excel_epoch = datetime(1899, 12, 30)
+                                        date_obj = excel_epoch + timedelta(days=float(val))
+                                        return date_obj.strftime('%B %d, %Y')
+                                    except:
+                                        pass
+                                
+                                return str(val)
             
             # Rest of your code...
                         
