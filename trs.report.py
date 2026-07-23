@@ -238,25 +238,71 @@ TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSM
 def get_excel_display_value(cell):
     """
     Get the EXACT value as displayed in Excel
-    This mirrors whatever you see in the Excel cell
+    This mirrors whatever you see in the Excel cell including commas, currency symbols, etc.
     """
     if cell.value is None:
         return ""
     
-    # For everything, just get the value as is
-    # openpyxl with data_only=True already gives us the displayed value
     value = cell.value
     
-    # Convert to string, preserving the exact display
+    # Handle datetime
     if isinstance(value, datetime):
-        # For dates, format as MMMM DD, YYYY
         return value.strftime('%B %d, %Y')
-    elif isinstance(value, float) and value.is_integer():
-        # For whole numbers, remove .0
-        return str(int(value))
-    else:
-        # Everything else - just convert to string
-        return str(value)
+    
+    # Handle numbers with formatting
+    if isinstance(value, (int, float)):
+        # Get the cell's number format
+        number_format = cell.number_format
+        
+        # If there's a number format, try to apply it
+        if number_format:
+            # Check for thousands separator (comma) in the format
+            if ',' in number_format:
+                # Format with commas
+                if isinstance(value, float) and value.is_integer():
+                    return f"{int(value):,}"
+                elif isinstance(value, float):
+                    # Check if it's a whole number
+                    if value == int(value):
+                        return f"{int(value):,}"
+                    else:
+                        # For decimals, check the format for decimal places
+                        if '.' in number_format:
+                            # Count decimal places in the format
+                            decimal_part = number_format.split('.')[1] if '.' in number_format else ''
+                            # Count the number of # or 0 after the decimal
+                            decimal_places = len(re.findall(r'[#0]', decimal_part)) if decimal_part else 0
+                            if decimal_places > 0:
+                                return f"{value:,.{decimal_places}f}"
+                        return f"{value:,}"
+                else:
+                    return f"{value:,}"
+            
+            # Check for currency format (₱)
+            if '₱' in number_format:
+                if isinstance(value, float) and value.is_integer():
+                    return f"₱{int(value):,}"
+                else:
+                    # Check for decimal places in currency format
+                    if '.' in number_format:
+                        decimal_part = number_format.split('.')[1] if '.' in number_format else ''
+                        decimal_places = len(re.findall(r'[#0]', decimal_part)) if decimal_part else 0
+                        if decimal_places > 0:
+                            return f"₱{value:,.{decimal_places}f}"
+                    return f"₱{value:,}"
+            
+            # Check for percentage format
+            if '%' in number_format:
+                return f"{value * 100}%"
+        
+        # Default number formatting - remove .0 for whole numbers
+        if isinstance(value, float) and value.is_integer():
+            return str(int(value))
+        else:
+            return str(value)
+    
+    # Everything else - just convert to string
+    return str(value)
 
 #--- HELPER FUNCTIONS ---
 def download_file(url):
