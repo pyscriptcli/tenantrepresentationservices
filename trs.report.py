@@ -1051,7 +1051,7 @@ else:
                             rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
                             
                             # Render the HTML block. Use a unique key per block to avoid Streamlit conflicts
-                            components.html(rendered_view, height=1600, scrolling=False)
+                            components.html(rendered_view, height=1300, scrolling=False)
                             
                             # Add a nice visual divider between the main site and the subsite
                             if i < len(family_df) - 1:
