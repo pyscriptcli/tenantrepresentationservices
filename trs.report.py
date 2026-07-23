@@ -296,8 +296,9 @@ def sanitize_tab_name(name, existing_names):
         counter += 1
 
 def parse_site_number(site_display_str):
-    match = re.match(r"^(\d+)", site_display_str)
-    return int(match.group(1)) if match else float('inf')
+    # Modified to capture decimal site numbers (e.g. 1.2)
+    match = re.match(r"^(\d+(?:\.\d+)?)", site_display_str)
+    return float(match.group(1)) if match else float('inf')
 
 def load_main_data_optimized(source_bytes):
     try:
@@ -320,15 +321,23 @@ def load_main_data_optimized(source_bytes):
         wb.close()
         df = pd.DataFrame(parsed_data_list)
         df = df.loc[:, ~df.columns.str.contains('^$')]
+        
         def create_site_display(row):
             site_no = row.get('SITE NO', '')
             site_name = row.get('SITE NAME', '')
             if pd.notna(site_no) and site_no != '':
                 try:
-                    return f"{int(float(str(site_no)))} - {site_name}"
-                except:
+                    f_val = float(str(site_no))
+                    # If it's a whole number (e.g., 1.0), display as '1'
+                    if f_val.is_integer():
+                        return f"{int(f_val)} - {site_name}"
+                    # If it's a decimal (e.g., 1.2), display as '1.2'
+                    else:
+                        return f"{f_val} - {site_name}"
+                except ValueError:
                     return f"{site_no} - {site_name}"
             return str(site_name)
+            
         df["SITE_DISPLAY"] = df.apply(create_site_display, axis=1)
         return df
     except Exception as e:
@@ -676,7 +685,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <td class="s22" colspan="2" style="border: 1px solid #cccccc !important;">Site Availability</td> 
             <td class="s17" colspan="5" style="border: 1px solid #cccccc !important;">_SITE_AVAILABILITY_CLASS_</td> 
         </tr>
-            <tr class="remarks-row" style="height: 300px !important;"> 
+        <tr class="remarks-row" style="height: 300px !important;"> 
             <td class="s6 remarks-label" style="white-space: nowrap; vertical-align: top; padding-top: 8px; border: 1px solid #cccccc !important;">Other Remarks:</td> 
             <td class="s5" colspan="6" style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: 300px !important; line-height: 1.6; padding: 8px 6px; border: 1px solid #cccccc !important; vertical-align: top;">_REMARKS_</td> 
             <td class="s3"></td> 
@@ -803,7 +812,10 @@ else:
     with col2:
         if selected_ta:
             raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
-            sites_in_ta = sorted(raw_sites, key=parse_site_number)
+            # ONLY keep sites where the site number is a whole number (Main Sites)
+            parent_sites = [s for s in raw_sites if parse_site_number(s).is_integer()]
+            sites_in_ta = sorted(parent_sites, key=parse_site_number)
+            
             if selected_ta == first_trade_area and first_site_display in sites_in_ta:
                 default_site_index = sites_in_ta.index(first_site_display)
             else:
@@ -860,8 +872,8 @@ else:
             with tab_report:
                 if site_row_data is not None:
                     try:
-                        def process_val(key_string):
-                            val = site_row_data.get(key_string.upper(), "")
+                        def process_val(row_data, key_string):
+                            val = row_data.get(key_string.upper(), "")
                             if pd.isna(val) or val is None:
                                 return ""
                             
@@ -896,130 +908,153 @@ else:
                             
                             return str(val)
             
-                        # Rest of your code...
+                        # Identify the parent site number (e.g., 1.0)
+                        parent_site_no = parse_site_number(selected_site_display)
                         
-                        rendered_view = HTML_FRAMEWORK
+                        # Find all sites in this Trade Area that share this parent number (e.g., 1, 1.1, 1.2)
+                        ta_df = df[df["TRADE AREA"] == target_ta]
                         
-                        # Define all replacements as tuples (placeholder, value)
-                        replacements = [
-                            # General Information & Location
-                            ("_TRADE_AREA_", process_val("TRADE AREA")),
-                            ("_SITE_NAME_", process_val("SITE NAME")),
-                            ("_SITE_NO_", process_val("SITE NO")),
-                            ("_TIMESTAMP_", process_val("TIMESTAMP")),
-                            ("_DATE_OF_REPORT_", process_val("DATE OF REPORT")),
-                            ("_UNIT_BLDG_ST_NAME_", process_val("UNIT #, BLDG/ST # AND ST NAME")),
-                            ("_BARANGAY_DISTRICT_NAME_", process_val("BARANGAY/DISTRICT NAME")),
-                            ("_CITY_MUNICIPALITY_", process_val("CITY/MUNICIPALITY")),
-                            ("_REGION_", process_val("REGION")),
-                            ("_POSTAL_CODE_", process_val("POSTAL CODE")),
+                        def get_integer_part(val):
+                            try: return int(float(str(val)))
+                            except: return -1
                             
-                            # Terms
-                            ("_SITE_AVAILABILITY_DATE_", process_val("SITE AVAILABILITY DATE")),
-                            ("_COL_START_DATE_", process_val("COL START DATE")),
-                            ("_COL_END_DATE_", process_val("COL END DATE")),
-                            ("_LEASE_TERMS_", process_val("LEASE TERMS")),
-                            
-                            # Rates
-                            ("_MONTHLY_RENTAL_RATE_", process_val("MONTHLY RENTAL RATE")),
-                            ("_PERCENTAGE_RENT_", process_val("PERCENTAGE RENT")),
-                            ("_MINIMUM_GUARANTEED_RENT_", process_val("MINIMUM GUARANTEED RENT")),
-                            ("_ESCALATION_", process_val("ESCALATION")),
-                            ("_ADVANCE_RENTAL_", process_val("ADVANCE RENTAL")),
-                            ("_SECURITY_DEPOSIT_", process_val("SECURITY DEPOSIT")),
-                            ("_CUSA_", process_val("CUSA")),
-                            ("_ESTIMATED_REVENUE_PER_MO_", process_val("ESTIMATED REVENUE PER MO.")),
-                            
-                            # Technical Info
-                            ("_LOT_FLOOR_AREA_SQM_", process_val("LOT/FLOOR AREA SQM")),
-                            ("_FRONTAGE_", process_val("FRONTAGE")),
-                            ("_DEPTH_IN_M_", process_val("DEPTH (IN M)")),
-                            ("_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_", process_val("FLOOR TO SLAB HEIGHT (IN M) - IF BLDG")),
-                            ("_NO_OF_STOREYS_", process_val("NO. OF STOREYS (IF BLDG LESSEE)")),
-                            ("_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_", process_val("TYPE OF STRUCTURE (IF BLDG LESSEE)")),
-                            ("_SOIL_PROFILE_", process_val("SOIL PROFILE")),
-                            
-                            # Provisions
-                            ("_TENANT_IS_THE_OWNER_", process_val("TENANT IS THE OWNER")),
-                            ("_LEASE_TYPE_", process_val("LEASE TYPE")),
-                            ("_PRINCIPAL_COL_", process_val("PRINCIPAL COL")),
-                            ("_SUB_LEASE_PROVISION_", process_val("SUB-LEASE PROVISION")),
-                            ("_PRE_TERM_PARTIAL_TERM_", process_val("PRE-TERM/PARTIAL TERM")),
-                            ("_TRIPARTITE_AGREEMENT_", process_val("TRIPARTITE AGREEMENT")),
-                            
-                            # Lessor Details (Main)
-                            ("_LESSOR_", process_val("LESSOR")),
-                            ("_LESSOR_CONTACT_NO_", process_val("LESSOR CONTACT NO.")),
-                            ("_LESSOR_EMAIL_ADDRESS_", process_val("LESSOR E-MAIL ADDRESS")),
-                            ("_LESSOR_TYPE_OF_OWNERSHIP_", process_val("LESSOR TYPE OF OWNERSHIP")),
-                            ("_LESSOR_COMPANY_NAME_", process_val("LESSOR COMPANY NAME")),
-                            ("_LESSOR_DEVELOPER_ACCOUNT_NAME_", process_val("LESSOR DEVELOPER ACCOUNT NAME")),
-                            ("_LESSOR_BUSINESS_ADDRESS_", process_val("LESSOR BUSINESS ADDRESS")),
-                            
-                            # Lessor Authorized Representative
-                            ("_LESSOR_AUTHORIZED_REPRESENTATIVE_", process_val("LESSOR AUTHORIZED REPRESENTATIVE")),
-                            ("_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val("LESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
-                            ("_LESSOR_AUTHORIZED_REP_CONTACT_NO_", process_val("LESSOR AUTHORIZED REP CONTACT NO.")),
-                            ("_LESSOR_AUTHORIZED_REP_EMAIL_", process_val("LESSOR AUTHORIZED REP EMAIL")),
-                            
-                            # Lessee Details
-                            ("_NAME_OF_LESSEE_", process_val("NAME OF LESSEE")),
-                            ("_LESSEE_POSITION_", process_val("LESSEE POSITION")),
-                            ("_LESSEE_CONTACT_NO_", process_val("LESSEE CONTACT NO.")),
-                            ("_LESSEE_EMAIL_ADDRESS_", process_val("LESSEE E-MAIL ADDRESS")),
-                            ("_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val("LESSEE NAME OF AUTHORIZED REPRESENTATIVE")),
-                            ("_LESSEE_BUSINESS_ADDRESS_", process_val("LESSEE BUSINESS ADDRESS")),
-                            
-                            # Sub-Lessor Details
-                            ("_NAME_OF_SUBLESSOR_", process_val("NAME OF SUBLESSOR")),
-                            ("_SUBLESSOR_CONTACT_NO_", process_val("SUBLESSOR CONTACT NO.")),
-                            ("_SUBLESSOR_EMAIL_ADDRESS_", process_val("SUBLESSOR E-MAIL ADDRESS")),
-                            ("_SUBLESSOR_TYPE_OF_OWNERSHIP_", process_val("SUBLESSOR TYPE OF OWNERSHIP")),
-                            ("_SUBLESSOR_COMPANY_NAME_", process_val("SUBLESSOR COMPANY NAME")),
-                            ("_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_", process_val("SUBLESSOR DEVELOPER ACCOUNT NAME")),
-                            ("_SUBLESSOR_BUSINESS_ADDRESS_", process_val("SUBLESSOR BUSINESS ADDRESS")),
-                            ("_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val("SUBLESSOR NAME OF AUTHORIZED REPRESENTATIVE")),
-                            ("_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val("SUBLESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
-                            
-                            # Sub-Lessee Details
-                            ("_NAME_OF_SUB_LESSEE_", process_val("NAME OF SUB-LESSEE")),
-                            ("_SUB_LESSEE_POSITION_", process_val("SUB-LESSEE POSITION")),
-                            ("_SUB_LESSEE_CONTACT_NO_", process_val("SUB-LESSEE CONTACT NO.")),
-                            ("_SUB_LESSEE_EMAIL_ADDRESS_", process_val("SUB-LESSEE E-MAIL ADDRESS")),
-                            ("_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val("SUB-LESSEE NAME OF AUTHORIZED REPRESENTATIVE")),
-                            ("_SUB_LESSEE_BUSINESS_ADDRESS_", process_val("SUB-LESSEE BUSINESS ADDRESS")),
-                            
-                            # Regulatory
-                            ("_SETBACK_REQUIREMENT_", process_val("SETBACK REQUIREMENT")),
-                            ("_ROAD_WIDENING_", process_val("ROAD WIDENING")),
-                            ("_PEDESTRIAN_OVERPASS_", process_val("PEDESTRIAN OVERPASS")),
-                            ("_PERM_TRAFFIC_RE_ROUTING_", process_val("PERM TRAFFIC RE-ROUTING")),
-                            ("_PERM_ROAD_CLOSURE_", process_val("PERM ROAD CLOSURE")),
-                            ("_INFRASTRUCTURE_PROGRAMS_", process_val("INFRASTRUCTURE PROGRAMS")),
-                            ("_FUTURE_DEVELOPMENT_", process_val("FUTURE DEVELOPMENT")),
-                            ("_ZONING_CLEARANCE_", process_val("ZONING CLEARANCE")),
-                            ("_GAS_STATION_", process_val("GAS STATION")),
-                            
-                            # Site Acquirability
-                            ("_CONFIDENCE_LEVEL_", process_val("CONFIDENCE LEVEL")),
-                            ("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS")),
-                            ("_SITE_AVAILABILITY_REMARKS_", process_val("SITE AVAILABILITY REMARKS")),
-                            
-                            # Remarks
-                            ("_REMARKS_", process_val("REMARKS")),
-                        ]
+                        # Filter to only the main site and its subsites
+                        family_df = ta_df[ta_df["SITE NO"].apply(get_integer_part) == int(parent_site_no)]
                         
-                        # Sort replacements by placeholder length (descending) to prevent partial matches
-                        replacements.sort(key=lambda x: len(x[0]), reverse=True)
-                        
-                        # Apply all replacements
-                        for placeholder, value in replacements:
-                            rendered_view = rendered_view.replace(placeholder, value)
-                        
-                        # Clean up any remaining placeholders
-                        rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-                        
-                        components.html(rendered_view, height=1600, scrolling=False)
+                        # Sort them so Main Site (1) is first, followed by subsites (1.1, 1.2)
+                        family_df = family_df.sort_values(by="SITE NO", key=lambda col: col.astype(float))
+
+                        # Loop through the family and render each report vertically
+                        for i in range(len(family_df)):
+                            current_row = family_df.iloc[i]
+                            rendered_view = HTML_FRAMEWORK
+                            
+                            # Define all replacements as tuples (placeholder, value)
+                            replacements = [
+                                # General Information & Location
+                                ("_TRADE_AREA_", process_val(current_row, "TRADE AREA")),
+                                ("_SITE_NAME_", process_val(current_row, "SITE NAME")),
+                                ("_SITE_NO_", process_val(current_row, "SITE NO")),
+                                ("_TIMESTAMP_", process_val(current_row, "TIMESTAMP")),
+                                ("_DATE_OF_REPORT_", process_val(current_row, "DATE OF REPORT")),
+                                ("_UNIT_BLDG_ST_NAME_", process_val(current_row, "UNIT #, BLDG/ST # AND ST NAME")),
+                                ("_BARANGAY_DISTRICT_NAME_", process_val(current_row, "BARANGAY/DISTRICT NAME")),
+                                ("_CITY_MUNICIPALITY_", process_val(current_row, "CITY/MUNICIPALITY")),
+                                ("_REGION_", process_val(current_row, "REGION")),
+                                ("_POSTAL_CODE_", process_val(current_row, "POSTAL CODE")),
+                                
+                                # Terms
+                                ("_SITE_AVAILABILITY_DATE_", process_val(current_row, "SITE AVAILABILITY DATE")),
+                                ("_COL_START_DATE_", process_val(current_row, "COL START DATE")),
+                                ("_COL_END_DATE_", process_val(current_row, "COL END DATE")),
+                                ("_LEASE_TERMS_", process_val(current_row, "LEASE TERMS")),
+                                
+                                # Rates
+                                ("_MONTHLY_RENTAL_RATE_", process_val(current_row, "MONTHLY RENTAL RATE")),
+                                ("_PERCENTAGE_RENT_", process_val(current_row, "PERCENTAGE RENT")),
+                                ("_MINIMUM_GUARANTEED_RENT_", process_val(current_row, "MINIMUM GUARANTEED RENT")),
+                                ("_ESCALATION_", process_val(current_row, "ESCALATION")),
+                                ("_ADVANCE_RENTAL_", process_val(current_row, "ADVANCE RENTAL")),
+                                ("_SECURITY_DEPOSIT_", process_val(current_row, "SECURITY DEPOSIT")),
+                                ("_CUSA_", process_val(current_row, "CUSA")),
+                                ("_ESTIMATED_REVENUE_PER_MO_", process_val(current_row, "ESTIMATED REVENUE PER MO.")),
+                                
+                                # Technical Info
+                                ("_LOT_FLOOR_AREA_SQM_", process_val(current_row, "LOT/FLOOR AREA SQM")),
+                                ("_FRONTAGE_", process_val(current_row, "FRONTAGE")),
+                                ("_DEPTH_IN_M_", process_val(current_row, "DEPTH (IN M)")),
+                                ("_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_", process_val(current_row, "FLOOR TO SLAB HEIGHT (IN M) - IF BLDG")),
+                                ("_NO_OF_STOREYS_", process_val(current_row, "NO. OF STOREYS (IF BLDG LESSEE)")),
+                                ("_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_", process_val(current_row, "TYPE OF STRUCTURE (IF BLDG LESSEE)")),
+                                ("_SOIL_PROFILE_", process_val(current_row, "SOIL PROFILE")),
+                                
+                                # Provisions
+                                ("_TENANT_IS_THE_OWNER_", process_val(current_row, "TENANT IS THE OWNER")),
+                                ("_LEASE_TYPE_", process_val(current_row, "LEASE TYPE")),
+                                ("_PRINCIPAL_COL_", process_val(current_row, "PRINCIPAL COL")),
+                                ("_SUB_LEASE_PROVISION_", process_val(current_row, "SUB-LEASE PROVISION")),
+                                ("_PRE_TERM_PARTIAL_TERM_", process_val(current_row, "PRE-TERM/PARTIAL TERM")),
+                                ("_TRIPARTITE_AGREEMENT_", process_val(current_row, "TRIPARTITE AGREEMENT")),
+                                
+                                # Lessor Details (Main)
+                                ("_LESSOR_", process_val(current_row, "LESSOR")),
+                                ("_LESSOR_CONTACT_NO_", process_val(current_row, "LESSOR CONTACT NO.")),
+                                ("_LESSOR_EMAIL_ADDRESS_", process_val(current_row, "LESSOR E-MAIL ADDRESS")),
+                                ("_LESSOR_TYPE_OF_OWNERSHIP_", process_val(current_row, "LESSOR TYPE OF OWNERSHIP")),
+                                ("_LESSOR_COMPANY_NAME_", process_val(current_row, "LESSOR COMPANY NAME")),
+                                ("_LESSOR_DEVELOPER_ACCOUNT_NAME_", process_val(current_row, "LESSOR DEVELOPER ACCOUNT NAME")),
+                                ("_LESSOR_BUSINESS_ADDRESS_", process_val(current_row, "LESSOR BUSINESS ADDRESS")),
+                                
+                                # Lessor Authorized Representative
+                                ("_LESSOR_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "LESSOR AUTHORIZED REPRESENTATIVE")),
+                                ("_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "LESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
+                                ("_LESSOR_AUTHORIZED_REP_CONTACT_NO_", process_val(current_row, "LESSOR AUTHORIZED REP CONTACT NO.")),
+                                ("_LESSOR_AUTHORIZED_REP_EMAIL_", process_val(current_row, "LESSOR AUTHORIZED REP EMAIL")),
+                                
+                                # Lessee Details
+                                ("_NAME_OF_LESSEE_", process_val(current_row, "NAME OF LESSEE")),
+                                ("_LESSEE_POSITION_", process_val(current_row, "LESSEE POSITION")),
+                                ("_LESSEE_CONTACT_NO_", process_val(current_row, "LESSEE CONTACT NO.")),
+                                ("_LESSEE_EMAIL_ADDRESS_", process_val(current_row, "LESSEE E-MAIL ADDRESS")),
+                                ("_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "LESSEE NAME OF AUTHORIZED REPRESENTATIVE")),
+                                ("_LESSEE_BUSINESS_ADDRESS_", process_val(current_row, "LESSEE BUSINESS ADDRESS")),
+                                
+                                # Sub-Lessor Details
+                                ("_NAME_OF_SUBLESSOR_", process_val(current_row, "NAME OF SUBLESSOR")),
+                                ("_SUBLESSOR_CONTACT_NO_", process_val(current_row, "SUBLESSOR CONTACT NO.")),
+                                ("_SUBLESSOR_EMAIL_ADDRESS_", process_val(current_row, "SUBLESSOR E-MAIL ADDRESS")),
+                                ("_SUBLESSOR_TYPE_OF_OWNERSHIP_", process_val(current_row, "SUBLESSOR TYPE OF OWNERSHIP")),
+                                ("_SUBLESSOR_COMPANY_NAME_", process_val(current_row, "SUBLESSOR COMPANY NAME")),
+                                ("_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_", process_val(current_row, "SUBLESSOR DEVELOPER ACCOUNT NAME")),
+                                ("_SUBLESSOR_BUSINESS_ADDRESS_", process_val(current_row, "SUBLESSOR BUSINESS ADDRESS")),
+                                ("_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUBLESSOR NAME OF AUTHORIZED REPRESENTATIVE")),
+                                ("_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUBLESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
+                                
+                                # Sub-Lessee Details
+                                ("_NAME_OF_SUB_LESSEE_", process_val(current_row, "NAME OF SUB-LESSEE")),
+                                ("_SUB_LESSEE_POSITION_", process_val(current_row, "SUB-LESSEE POSITION")),
+                                ("_SUB_LESSEE_CONTACT_NO_", process_val(current_row, "SUB-LESSEE CONTACT NO.")),
+                                ("_SUB_LESSEE_EMAIL_ADDRESS_", process_val(current_row, "SUB-LESSEE E-MAIL ADDRESS")),
+                                ("_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUB-LESSEE NAME OF AUTHORIZED REPRESENTATIVE")),
+                                ("_SUB_LESSEE_BUSINESS_ADDRESS_", process_val(current_row, "SUB-LESSEE BUSINESS ADDRESS")),
+                                
+                                # Regulatory
+                                ("_SETBACK_REQUIREMENT_", process_val(current_row, "SETBACK REQUIREMENT")),
+                                ("_ROAD_WIDENING_", process_val(current_row, "ROAD WIDENING")),
+                                ("_PEDESTRIAN_OVERPASS_", process_val(current_row, "PEDESTRIAN OVERPASS")),
+                                ("_PERM_TRAFFIC_RE_ROUTING_", process_val(current_row, "PERM TRAFFIC RE-ROUTING")),
+                                ("_PERM_ROAD_CLOSURE_", process_val(current_row, "PERM ROAD CLOSURE")),
+                                ("_INFRASTRUCTURE_PROGRAMS_", process_val(current_row, "INFRASTRUCTURE PROGRAMS")),
+                                ("_FUTURE_DEVELOPMENT_", process_val(current_row, "FUTURE DEVELOPMENT")),
+                                ("_ZONING_CLEARANCE_", process_val(current_row, "ZONING CLEARANCE")),
+                                ("_GAS_STATION_", process_val(current_row, "GAS STATION")),
+                                
+                                # Site Acquirability
+                                ("_CONFIDENCE_LEVEL_", process_val(current_row, "CONFIDENCE LEVEL")),
+                                ("_SITE_AVAILABILITY_CLASS_", process_val(current_row, "SITE AVAILABILITY CLASS")),
+                                ("_SITE_AVAILABILITY_REMARKS_", process_val(current_row, "SITE AVAILABILITY REMARKS")),
+                                
+                                # Remarks
+                                ("_REMARKS_", process_val(current_row, "REMARKS")),
+                            ]
+                            
+                            # Sort replacements by placeholder length (descending) to prevent partial matches
+                            replacements.sort(key=lambda x: len(x[0]), reverse=True)
+                            
+                            # Apply all replacements
+                            for placeholder, value in replacements:
+                                rendered_view = rendered_view.replace(placeholder, value)
+                            
+                            # Clean up any remaining placeholders
+                            rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
+                            
+                            # Render the HTML block. Use a unique key per block to avoid Streamlit conflicts
+                            components.html(rendered_view, height=1600, scrolling=False)
+                            
+                            # Add a nice visual divider between the main site and the subsite
+                            if i < len(family_df) - 1:
+                                st.markdown("<hr style='border: 2px solid #003366; margin: 30px 0;'>", unsafe_allow_html=True)
+                                
                     except Exception as e:
                         st.error(f"Error compiling visual matrix framework: {str(e)}")
                 else:
