@@ -494,6 +494,11 @@ html, body { margin: 0; padding: 0; background-color: #ffffff; font-family: Aria
 .ritz .waffle .s28{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
 .ritz .waffle .s29{background-color:#b7b7b7;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
 .ritz .waffle .s30{background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
+.ritz .waffle .s31{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
+.ritz .waffle .s32{background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;font-weight:bold;}
+.ritz .waffle .s33{background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
+.ritz .waffle .s34{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
+.ritz .waffle .s35{background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;font-weight:bold;}
 .ritz .waffle { border-collapse: collapse; width: 100%; }
 .ritz .waffle tr { height: auto !important; }
 .ritz .waffle td[class*="s4"], .ritz .waffle td[class*="s9"] { height: auto !important; min-height: 20px; }
@@ -636,39 +641,40 @@ document.addEventListener('DOMContentLoaded', function() {
         <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_BUSINESS_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5">_SUB_LESSEE_BUSINESS_ADDRESS_</td> </tr>
         <tr style="height: 9px;"> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> </tr>
         
-        <!-- REGULATORY SECTION -->
-        <tr style="height: 19px;"> <td class="s26" colspan="15">Regulatory</td> </tr>
+        <!-- REGULATORY SECTION - 3 Column Layout -->
+        <tr style="height: 19px;"> <td class="s31" colspan="15">Regulatory</td> </tr>
         <tr style="height: auto;"> 
-            <td class="s27">Setback Requirement</td> 
-            <td class="s27" colspan="4">_SETBACK_REQUIREMENT_</td> 
-            <td class="s27">Perm Traffic Re-Routing</td> 
-            <td class="s27" colspan="2">_PERM_TRAFFIC_RE_ROUTING_</td> 
-            <td class="s27">Future Development</td> 
-            <td class="s27" colspan="6">_FUTURE_DEVELOPMENT_</td> 
+            <td class="s32">Setback Requirement</td> 
+            <td class="s33" colspan="4">_SETBACK_REQUIREMENT_</td> 
+            <td class="s32">Perm Traffic Re-Routing</td> 
+            <td class="s33" colspan="2">_PERM_TRAFFIC_RE_ROUTING_</td> 
+            <td class="s32">Future Development</td> 
+            <td class="s33" colspan="6">_FUTURE_DEVELOPMENT_</td> 
         </tr>
         <tr style="height: auto;"> 
-            <td class="s27">Road Widening</td> 
-            <td class="s27" colspan="4">_ROAD_WIDENING_</td> 
-            <td class="s27">Perm Road Closure</td> 
-            <td class="s27" colspan="2">_PERM_ROAD_CLOSURE_</td> 
-            <td class="s27">Zoning Clearance</td> 
-            <td class="s27" colspan="6">_ZONING_CLEARANCE_</td> 
+            <td class="s32">Road Widening</td> 
+            <td class="s33" colspan="4">_ROAD_WIDENING_</td> 
+            <td class="s32">Perm Road Closure</td> 
+            <td class="s33" colspan="2">_PERM_ROAD_CLOSURE_</td> 
+            <td class="s32">Zoning Clearance</td> 
+            <td class="s33" colspan="6">_ZONING_CLEARANCE_</td> 
         </tr>
         <tr style="height: auto;"> 
-            <td class="s27">Pedestrian Overpass</td> 
-            <td class="s27" colspan="4">_PEDESTRIAN_OVERPASS_</td> 
-            <td class="s27">Infrastructure Programs</td> 
-            <td class="s27" colspan="2">_INFRASTRUCTURE_PROGRAMS_</td> 
-            <td class="s27">Gas Station</td> 
-            <td class="s27" colspan="6">_GAS_STATION_</td> 
+            <td class="s32">Pedestrian Overpass</td> 
+            <td class="s33" colspan="4">_PEDESTRIAN_OVERPASS_</td> 
+            <td class="s32">Infrastructure Programs</td> 
+            <td class="s33" colspan="2">_INFRASTRUCTURE_PROGRAMS_</td> 
+            <td class="s32">Gas Station</td> 
+            <td class="s33" colspan="6">_GAS_STATION_</td> 
         </tr>
         <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
         
         <!-- SITE ACQUIRABILITY SECTION -->
-        <tr style="height: 19px;"> <td class="s28" colspan="15">Site Acquirability</td> </tr>
-        <tr style="height: auto;"> <td class="s29">Confidence Level</td> <td class="s30" colspan="14">_CONFIDENCE_LEVEL_</td> </tr>
-        <tr style="height: auto;"> <td class="s29">Site Availability Class</td> <td class="s30" colspan="14">_SITE_AVAILABILITY_CLASS_</td> </tr>
-        <tr style="height: auto;"> <td class="s29">Site Availability Remarks</td> <td class="s30" colspan="14">_SITE_AVAILABILITY_REMARKS_</td> </tr>
+        <tr style="height: 19px;"> <td class="s34" colspan="15">Site Acquirability</td> </tr>
+        <tr style="height: auto;"> <td class="s35" colspan="15">Confidence Level: _CONFIDENCE_LEVEL_</td> </tr>
+        <tr style="height: auto;"> <td class="s35" colspan="15">Site Availability</td> </tr>
+        <tr style="height: auto;"> <td class="s33" colspan="15" style="padding-left: 20px !important;">Site Availability Class: _SITE_AVAILABILITY_CLASS_</td> </tr>
+        <tr style="height: auto;"> <td class="s33" colspan="15" style="padding-left: 20px !important;">Site Availability Remarks: _SITE_AVAILABILITY_REMARKS_</td> </tr>
         <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
         
         <!-- OTHER REMARKS -->
