@@ -322,6 +322,48 @@ def format_value(value, format_type='text'):
         # Default: just return as string
         return str(value)
 
+#--- DEDICATED PHOTO/DOC HANDLER ---
+def extract_photo_url_from_cell(cell):
+    """
+    Extract photo URL from Excel cell, handling both:
+    1. =IMAGE("https://...") formulas
+    2. Direct URLs
+    3. Raw values
+    """
+    if cell is None:
+        return ""
+    
+    # Get the raw value
+    raw_val = cell.value if hasattr(cell, 'value') else cell
+    
+    if raw_val is None:
+        return ""
+    
+    # Convert to string
+    val_str = str(raw_val).strip()
+    
+    # Check for IMAGE formula: =IMAGE("https://...")
+    image_formula_match = re.search(r'IMAGE\s*\(\s*["\'](https?://[^"\']+)["\']', val_str, re.IGNORECASE)
+    if image_formula_match:
+        return image_formula_match.group(1)
+    
+    # Check for direct URL
+    url_match = re.search(r'(https?://[^\s"\']+)', val_str)
+    if url_match:
+        return url_match.group(1)
+    
+    # Return as is if nothing found
+    return val_str
+
+def get_photo_display_value(cell):
+    """
+    Get the display value for photos/docs, preserving the exact URL
+    """
+    if cell is None or cell.value is None:
+        return ""
+    
+    return extract_photo_url_from_cell(cell)
+
 #--- HELPER FUNCTIONS ---
 def download_file(url):
     try:
@@ -414,7 +456,7 @@ def load_main_data_optimized(source_bytes):
                     else:
                         formatted_val = ""
                     
-                    # Clean URL if needed
+                    # Clean URL if needed (for non-photo fields)
                     cleaned_val = clean_and_extract_url(formatted_val)
                     row_dict[headers[idx]] = cleaned_val
                     
@@ -449,10 +491,17 @@ def load_main_data_optimized(source_bytes):
         return None
 
 def load_media_data_optimized(source_bytes):
+    """
+    Load media data with dedicated photo/doc handling
+    This function is isolated from the main data formatting
+    """
     try:
-        wb = load_workbook(io.BytesIO(source_bytes), data_only=True)
+        # Use data_only=False to preserve formulas like =IMAGE()
+        wb = load_workbook(io.BytesIO(source_bytes), data_only=False)
         media_data_list = []
         media_ws = None
+        
+        # Find the media sheet
         for sheet_name in wb.sheetnames:
             if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
                 media_ws = wb[sheet_name]
@@ -460,38 +509,35 @@ def load_media_data_optimized(source_bytes):
         if not media_ws:
             media_ws = wb.active
         
+        # Process each row using cell objects to extract formulas
         for row in media_ws.iter_rows():
-            # Get raw values first
-            vals = [cell.value for cell in row]
-            
-            # Convert to string preserving original values
-            str_vals = []
-            for val in vals:
-                if val is None:
-                    str_vals.append("")
-                elif isinstance(val, datetime):
-                    str_vals.append(val.strftime('%B %d, %Y'))
-                elif isinstance(val, float) and val.is_integer():
-                    str_vals.append(str(int(val)))
+            # Extract values using the photo handler
+            vals = []
+            for cell in row:
+                if cell is None:
+                    vals.append("")
                 else:
-                    str_vals.append(str(val))
+                    # Use the dedicated photo handler
+                    photo_url = extract_photo_url_from_cell(cell)
+                    vals.append(photo_url)
             
-            t_area = str(str_vals[13] if len(str_vals) > 13 and str_vals[13] is not None else "").strip()
-            s_name = str(str_vals[15] if len(str_vals) > 15 and str_vals[15] is not None else "").strip()
+            # Get Trade Area and Site Name
+            t_area = str(vals[13] if len(vals) > 13 and vals[13] is not None else "").strip()
+            s_name = str(vals[15] if len(vals) > 15 and vals[15] is not None else "").strip()
             
             if t_area and s_name and t_area.upper() != "TRADE AREA":
                 media_data_list.append({
                     'TRADE AREA': t_area,
                     'SITE NAME': s_name,
-                    '__DIRECT_TCT': clean_and_extract_url(str_vals[2] if len(str_vals) > 2 else ""),
-                    '__DIRECT_LOT_PLAN': clean_and_extract_url(str_vals[3] if len(str_vals) > 3 else ""),
-                    '__DIRECT_BLDG_PLAN': clean_and_extract_url(str_vals[4] if len(str_vals) > 4 else ""),
-                    '__DIRECT_TAX_MAP': clean_and_extract_url(str_vals[5] if len(str_vals) > 5 else ""),
-                    '__DIRECT_PHOTO_1': clean_and_extract_url(str_vals[7] if len(str_vals) > 7 else ""),
-                    '__DIRECT_PHOTO_2': clean_and_extract_url(str_vals[8] if len(str_vals) > 8 else ""),
-                    '__DIRECT_PHOTO_3': clean_and_extract_url(str_vals[9] if len(str_vals) > 9 else ""),
-                    '__DIRECT_PHOTO_4': clean_and_extract_url(str_vals[10] if len(str_vals) > 10 else ""),
-                    '__DIRECT_PHOTO_5': clean_and_extract_url(str_vals[11] if len(str_vals) > 11 else ""),
+                    '__DIRECT_TCT': vals[2] if len(vals) > 2 else "",
+                    '__DIRECT_LOT_PLAN': vals[3] if len(vals) > 3 else "",
+                    '__DIRECT_BLDG_PLAN': vals[4] if len(vals) > 4 else "",
+                    '__DIRECT_TAX_MAP': vals[5] if len(vals) > 5 else "",
+                    '__DIRECT_PHOTO_1': vals[7] if len(vals) > 7 else "",
+                    '__DIRECT_PHOTO_2': vals[8] if len(vals) > 8 else "",
+                    '__DIRECT_PHOTO_3': vals[9] if len(vals) > 9 else "",
+                    '__DIRECT_PHOTO_4': vals[10] if len(vals) > 10 else "",
+                    '__DIRECT_PHOTO_5': vals[11] if len(vals) > 11 else "",
                 })
         wb.close()
         return media_data_list
