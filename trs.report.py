@@ -951,14 +951,14 @@ else:
                                 ("_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "LESSEE NAME OF AUTHORIZED REPRESENTATIVE")),
                                 ("_LESSEE_BUSINESS_ADDRESS_", process_val(current_row, "LESSEE BUSINESS ADDRESS")),
                                 ("_NAME_OF_SUBLESSOR_", process_val(current_row, "NAME OF SUBLESSOR")),
-                                ("_SUBLESSOR_CONTACT_NO_", process_val(current_row, "SUBLESSOR CONTACT NO.")),
-                                ("_SUBLESSOR_EMAIL_ADDRESS_", process_val(current_row, "SUBLESSOR E-MAIL ADDRESS")),
-                                ("_SUBLESSOR_TYPE_OF_OWNERSHIP_", process_val(current_row, "SUBLESSOR TYPE OF OWNERSHIP")),
-                                ("_SUBLESSOR_COMPANY_NAME_", process_val(current_row, "SUBLESSOR COMPANY NAME")),
-                                ("_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_", process_val(current_row, "SUBLESSOR DEVELOPER ACCOUNT NAME")),
-                                ("_SUBLESSOR_BUSINESS_ADDRESS_", process_val(current_row, "SUBLESSOR BUSINESS ADDRESS")),
-                                ("_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUBLESSOR NAME OF AUTHORIZED REPRESENTATIVE")),
-                                ("_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUBLESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
+                                ("_SUBLESSOR_CONTACT_NO_", process_val(current_row, "SUB-LESSOR CONTACT NO.")),
+                                ("_SUBLESSOR_EMAIL_ADDRESS_", process_val(current_row, "SUB-LESSOR E-MAIL ADDRESS")),
+                                ("_SUBLESSOR_TYPE_OF_OWNERSHIP_", process_val(current_row, "SUB-LESSOR TYPE OF OWNERSHIP")),
+                                ("_SUBLESSOR_COMPANY_NAME_", process_val(current_row, "SUB-LESSOR COMPANY NAME")),
+                                ("_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_", process_val(current_row, "SUB-LESSOR DEVELOPER ACCOUNT NAME")),
+                                ("_SUBLESSOR_BUSINESS_ADDRESS_", process_val(current_row, "SUB-LESSOR BUSINESS ADDRESS")),
+                                ("_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUB-LESSOR NAME OF AUTHORIZED REPRESENTATIVE")),
+                                ("_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUB-LESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
                                 ("_NAME_OF_SUB_LESSEE_", process_val(current_row, "NAME OF SUB-LESSEE")),
                                 ("_SUB_LESSEE_POSITION_", process_val(current_row, "SUB-LESSEE POSITION")),
                                 ("_SUB_LESSEE_CONTACT_NO_", process_val(current_row, "SUB-LESSEE CONTACT NO.")),
@@ -988,7 +988,7 @@ else:
                             components.html(rendered_view, height=1600, scrolling=False)
                             
                             if i < len(family_df) - 1:
-                                st.markdown("<hr style='border: 2px solid #003366; margin: 30px 0;'>", unsafe_allow_html=True)
+                                st.markdown("<hr style='border: 2px solid #003366; margin: 10px 0;'>", unsafe_allow_html=True)
                                 
                     except Exception as e:
                         st.error(f"Error compiling visual matrix framework: {str(e)}")
