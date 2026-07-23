@@ -302,22 +302,35 @@ def parse_site_number(site_display_str):
 
 def load_main_data_optimized(source_bytes):
     try:
+        # Load workbook with data_only=False to preserve formulas
         wb = load_workbook(io.BytesIO(source_bytes), data_only=False)
         ws = wb.active
+        
+        # Get headers
         header_row = list(ws.iter_rows(min_row=1, max_row=1, values_only=True))[0]
         headers = [str(h).strip().upper() if h else "" for h in header_row]
+        
         parsed_data_list = []
-        for row in ws.iter_rows(min_row=2, values_only=True):
+        # Process each row from row 2 onwards
+        for row in ws.iter_rows(min_row=2):
             row_dict = {}
             has_val = False
-            for idx, val in enumerate(row):
+            
+            for idx, cell in enumerate(row):
                 if idx < len(headers) and headers[idx]:
-                    cleaned_val = clean_and_extract_url(val)
+                    # Get raw value - this preserves original formatting
+                    raw_val = cell.value
+                    
+                    # Clean URL if needed
+                    cleaned_val = clean_and_extract_url(raw_val)
                     row_dict[headers[idx]] = cleaned_val
-                    if cleaned_val != "":
+                    
+                    if cleaned_val != "" and cleaned_val is not None:
                         has_val = True
+            
             if has_val:
                 parsed_data_list.append(row_dict)
+        
         wb.close()
         df = pd.DataFrame(parsed_data_list)
         df = df.loc[:, ~df.columns.str.contains('^$')]
@@ -353,22 +366,28 @@ def load_media_data_optimized(source_bytes):
                 break
         if not media_ws:
             media_ws = wb.active
-        for row in media_ws.iter_rows(values_only=True):
-            t_area = str(row[13] if len(row) > 13 and row[13] is not None else "").strip()
-            s_name = str(row[15] if len(row) > 15 and row[15] is not None else "").strip()
+        
+        # Process cells directly to preserve raw values
+        for row in media_ws.iter_rows():
+            # Get values from cells, preserving raw format
+            vals = [cell.value for cell in row]
+            
+            t_area = str(vals[13] if len(vals) > 13 and vals[13] is not None else "").strip()
+            s_name = str(vals[15] if len(vals) > 15 and vals[15] is not None else "").strip()
+            
             if t_area and s_name and t_area.upper() != "TRADE AREA":
                 media_data_list.append({
                     'TRADE AREA': t_area,
                     'SITE NAME': s_name,
-                    '__DIRECT_TCT': clean_and_extract_url(row[2] if len(row) > 2 else ""),
-                    '__DIRECT_LOT_PLAN': clean_and_extract_url(row[3] if len(row) > 3 else ""),
-                    '__DIRECT_BLDG_PLAN': clean_and_extract_url(row[4] if len(row) > 4 else ""),
-                    '__DIRECT_TAX_MAP': clean_and_extract_url(row[5] if len(row) > 5 else ""),
-                    '__DIRECT_PHOTO_1': clean_and_extract_url(row[7] if len(row) > 7 else ""),
-                    '__DIRECT_PHOTO_2': clean_and_extract_url(row[8] if len(row) > 8 else ""),
-                    '__DIRECT_PHOTO_3': clean_and_extract_url(row[9] if len(row) > 9 else ""),
-                    '__DIRECT_PHOTO_4': clean_and_extract_url(row[10] if len(row) > 10 else ""),
-                    '__DIRECT_PHOTO_5': clean_and_extract_url(row[11] if len(row) > 11 else ""),
+                    '__DIRECT_TCT': clean_and_extract_url(vals[2] if len(vals) > 2 else ""),
+                    '__DIRECT_LOT_PLAN': clean_and_extract_url(vals[3] if len(vals) > 3 else ""),
+                    '__DIRECT_BLDG_PLAN': clean_and_extract_url(vals[4] if len(vals) > 4 else ""),
+                    '__DIRECT_TAX_MAP': clean_and_extract_url(vals[5] if len(vals) > 5 else ""),
+                    '__DIRECT_PHOTO_1': clean_and_extract_url(vals[7] if len(vals) > 7 else ""),
+                    '__DIRECT_PHOTO_2': clean_and_extract_url(vals[8] if len(vals) > 8 else ""),
+                    '__DIRECT_PHOTO_3': clean_and_extract_url(vals[9] if len(vals) > 9 else ""),
+                    '__DIRECT_PHOTO_4': clean_and_extract_url(vals[10] if len(vals) > 10 else ""),
+                    '__DIRECT_PHOTO_5': clean_and_extract_url(vals[11] if len(vals) > 11 else ""),
                 })
         wb.close()
         return media_data_list
@@ -429,12 +448,8 @@ def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeh
                             raw_data_val = r_row.get(ph.upper(), "")
                             if pd.isna(raw_data_val) or raw_data_val is None:
                                 raw_data_val = ""
-                            if isinstance(raw_data_val, float) and raw_data_val.is_integer():
-                                val_str = str(int(raw_data_val))
-                            elif hasattr(raw_data_val, 'strftime'):
-                                val_str = r_row.get(ph.upper(), "").strftime('%B %d, %Y')
-                            else:
-                                val_str = str(raw_data_val)
+                            # Simply convert to string without any formatting
+                            val_str = str(raw_data_val)
                             new_val = re.sub(target_regex, val_str, new_val)
                     new_val = re.sub(r"\{\{.*?\}\}", "", new_val)
                     cell.value = new_val.strip() if new_val else ""
@@ -464,42 +479,42 @@ html, body { margin: 0; padding: 0; background-color: #ffffff; font-family: Aria
 .ritz.grid-container { height: auto; overflow: visible !important; padding: 10px; box-sizing: border-box; width: 100%; display: inline-block; text-align: left; }
 .ritz .waffle a { color: inherit; }
 .ritz .waffle td { padding: 2px 3px !important; vertical-align: middle; border: none !important; }
-.freezebar-origin-ltr { background-color: #f8f9fa; border: none !important; }
-.column-headers-background { background-color: #f8f9fa; text-align: center; font-size: 10pt; color: #444746; font-weight: normal; border: none !important; }
-.row-headers-background { background-color: #f8f9fa; text-align: center; font-size: 10pt; color: #444746; font-weight: normal; border: none !important; }
+.freezebar-origin-ltr { background-color: #cecece; border: none !important; }
+.column-headers-background { background-color: #cecece; text-align: center; font-size: 10pt; color: #444746; font-weight: normal; border: none !important; }
+.row-headers-background { background-color: #cecece; text-align: center; font-size: 10pt; color: #444746; font-weight: normal; border: none !important; }
 .ritz .waffle .s0 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#800000;text-align:center;font-weight:bold;color:#ffffff;font-size:10pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
 .ritz .waffle .s1 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
 .ritz .waffle .s2 {background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
 .ritz .waffle .s3 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s4 {border: none !important;background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
+.ritz .waffle .s4 {border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
 .ritz .waffle .s4.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
 .ritz .waffle .s5 {background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
 .ritz .waffle .s6 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
 .ritz .waffle .s7 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
 .ritz .waffle .s8 {border: none !important;background-color:#ffffff;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s9 {border: none !important;background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
+.ritz .waffle .s9 {border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
 .ritz .waffle .s9.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
-.ritz .waffle .s10{background-color:#bfbfbf;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s10{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
 .ritz .waffle .s11{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
 .ritz .waffle .s12{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s13{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s14{background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s15{border: none !important;background-color:#b7b7b7;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s16{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s17{background-color:#b7b7b7;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s18{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s19{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s20{border: none !important;background-color:#b7b7b7;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s21{border: none !important;background-color:#b7b7b7;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s13{background-color:#cecece;text-align:left;font-weight:bold;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s14{background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s15{border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s16{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s17{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s18{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s19{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s20{border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s21{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
 .ritz .waffle .s22{background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
 .ritz .waffle .s23{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
 .ritz .waffle .s24{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
 .ritz .waffle .s25{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s26{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s27{background-color:#b7b7b7;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s28{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s29{background-color:#b7b7b7;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s30{background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
+.ritz .waffle .s26{background-color:#cecece;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s27{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s28{background-color:#cecece;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s29{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s30{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
 .ritz .waffle { border-collapse: collapse; width: 100%; }
 .ritz .waffle tr { height: auto !important; }
 .ritz .waffle td[class*="s4"], .ritz .waffle td[class*="s9"] { height: auto !important; min-height: 20px; }
@@ -507,9 +522,9 @@ html, body { margin: 0; padding: 0; background-color: #ffffff; font-family: Aria
 .remarks-row td { height: auto !important; padding: 6px 3px !important; vertical-align: top !important; }
 .remarks-row td.s5 { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; line-height: 1.6 !important; padding: 8px 6px !important; }
 .remarks-label { white-space: nowrap !important; vertical-align: top !important; padding-top: 8px !important; }
-.regulatory-header { background-color: #b7b7b7 !important; font-weight: bold !important; color: #000000 !important; }
-.regulatory-label { background-color: #b7b7b7 !important; color: #ff0000 !important; }
-.regulatory-value { background-color: #b7b7b7 !important; color: #000000 !important; }
+.regulatory-header { background-color: #cecece !important; font-weight: bold !important; color: #000000 !important; }
+.regulatory-label { background-color: #cecece !important; color: #ff0000 !important; }
+.regulatory-value { background-color: #cecece !important; color: #000000 !important; }
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
