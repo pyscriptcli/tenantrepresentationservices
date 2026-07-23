@@ -296,8 +296,8 @@ def sanitize_tab_name(name, existing_names):
         counter += 1
 
 def parse_site_number(site_display_str):
-    # Modified to capture decimal site numbers (e.g. 1.2)
-    match = re.match(r"^(\d+(?:\.\d+)?)", site_display_str)
+    # Modified to capture decimal site numbers, even with "------ " prefix
+    match = re.search(r"^(?:-+\s*)?(\d+(?:\.\d+)?)", str(site_display_str).strip())
     return float(match.group(1)) if match else float('inf')
 
 def load_main_data_optimized(source_bytes):
@@ -331,9 +331,9 @@ def load_main_data_optimized(source_bytes):
                     # If it's a whole number (e.g., 1.0), display as '1'
                     if f_val.is_integer():
                         return f"{int(f_val)} - {site_name}"
-                    # If it's a decimal (e.g., 1.2), display as '1.2'
+                    # If it's a decimal (e.g., 1.2), display as '------ 1.2  SUBSITE NAME'
                     else:
-                        return f"{f_val} - {site_name}"
+                        return f"------ {f_val}  {site_name}"
                 except ValueError:
                     return f"{site_no} - {site_name}"
             return str(site_name)
@@ -812,9 +812,8 @@ else:
     with col2:
         if selected_ta:
             raw_sites = df[df["TRADE AREA"] == selected_ta]["SITE_DISPLAY"].dropna().unique().tolist()
-            # ONLY keep sites where the site number is a whole number (Main Sites)
-            parent_sites = [s for s in raw_sites if parse_site_number(s).is_integer()]
-            sites_in_ta = sorted(parent_sites, key=parse_site_number)
+            # Include ALL sites (Main + Subsites) and sort them properly
+            sites_in_ta = sorted(raw_sites, key=parse_site_number)
             
             if selected_ta == first_trade_area and first_site_display in sites_in_ta:
                 default_site_index = sites_in_ta.index(first_site_display)
@@ -851,14 +850,33 @@ else:
         site_row_data = site_data.iloc[0] if not site_data.empty else None
         target_ta = str(site_row_data["TRADE AREA"]) if site_row_data is not None else ""
         target_sn = str(site_row_data["SITE NAME"]) if site_row_data is not None else ""
+        
+        # --- FIND MAIN SITE FOR SHARED MEDIA AND STACKED REPORT ---
+        parent_site_no = parse_site_number(selected_site_display)
+        
+        def get_integer_part(val):
+            try: return int(float(str(val)))
+            except: return -1
+            
+        ta_df = df[df["TRADE AREA"] == target_ta]
+        # Filter to only the main site and its subsites
+        family_df = ta_df[ta_df["SITE NO"].apply(get_integer_part) == int(parent_site_no)]
+        # Sort them so Main Site (1) is first, followed by subsites (1.1, 1.2)
+        family_df = family_df.sort_values(by="SITE NO", key=lambda col: col.astype(float))
+        
+        # The main site is the first one in the family (the integer one)
+        main_site_row = family_df.iloc[0] if not family_df.empty else site_row_data
+        target_sn_for_media = str(main_site_row["SITE NAME"]) if main_site_row is not None else target_sn
+        
         media_row_data = {}
         if site_row_data is not None:
             for m in media_data_list:
-                if m['TRADE AREA'] == target_ta and m['SITE NAME'] == target_sn:
+                # Match against the MAIN site's name to share photos/docs
+                if m['TRADE AREA'] == target_ta and m['SITE NAME'] == target_sn_for_media:
                     media_row_data = m
                     break
             if not media_row_data:
-                media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
+                media_row_data = main_site_row.to_dict() if hasattr(main_site_row, 'to_dict') else {}
 
         # Check view permission
         user_perms = HARDCODED_USERS.get(st.session_state.username, {}).get("permissions", {})
@@ -908,22 +926,6 @@ else:
                             
                             return str(val)
             
-                        # Identify the parent site number (e.g., 1.0)
-                        parent_site_no = parse_site_number(selected_site_display)
-                        
-                        # Find all sites in this Trade Area that share this parent number (e.g., 1, 1.1, 1.2)
-                        ta_df = df[df["TRADE AREA"] == target_ta]
-                        
-                        def get_integer_part(val):
-                            try: return int(float(str(val)))
-                            except: return -1
-                            
-                        # Filter to only the main site and its subsites
-                        family_df = ta_df[ta_df["SITE NO"].apply(get_integer_part) == int(parent_site_no)]
-                        
-                        # Sort them so Main Site (1) is first, followed by subsites (1.1, 1.2)
-                        family_df = family_df.sort_values(by="SITE NO", key=lambda col: col.astype(float))
-
                         # Loop through the family and render each report vertically
                         for i in range(len(family_df)):
                             current_row = family_df.iloc[i]
