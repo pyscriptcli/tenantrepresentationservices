@@ -985,7 +985,7 @@ else:
                                 rendered_view = rendered_view.replace(placeholder, value)
                             
                             rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-                            components.html(rendered_view, height=1600, scrolling=False)
+                            components.html(rendered_view, height=1400, scrolling=False)
                             
                             if i < len(family_df) - 1:
                                 st.markdown("<hr style='border: 2px solid #003366; margin: 30px 0;'>", unsafe_allow_html=True)
