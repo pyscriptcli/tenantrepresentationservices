@@ -447,7 +447,7 @@ def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeh
     return wb_buffer.getvalue()
 
 #--- HTML FRAMEWORK (UPDATED WITH REGULATORY AND SITE ACQUIRABILITY) ---
-HTML_FRAMEWORK = """
+HTML FRAMEWORK = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -494,11 +494,6 @@ html, body { margin: 0; padding: 0; background-color: #ffffff; font-family: Aria
 .ritz .waffle .s28{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
 .ritz .waffle .s29{background-color:#b7b7b7;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
 .ritz .waffle .s30{background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
-.ritz .waffle .s31{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
-.ritz .waffle .s32{background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;font-weight:bold;}
-.ritz .waffle .s33{background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
-.ritz .waffle .s34{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
-.ritz .waffle .s35{background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;font-weight:bold;}
 .ritz .waffle { border-collapse: collapse; width: 100%; }
 .ritz .waffle tr { height: auto !important; }
 .ritz .waffle td[class*="s4"], .ritz .waffle td[class*="s9"] { height: auto !important; min-height: 20px; }
@@ -641,44 +636,53 @@ document.addEventListener('DOMContentLoaded', function() {
         <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_BUSINESS_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5">_SUB_LESSEE_BUSINESS_ADDRESS_</td> </tr>
         <tr style="height: 9px;"> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> </tr>
         
-        <!-- REGULATORY SECTION - 3 Column Layout -->
-        <tr style="height: 19px;"> <td class="s31" colspan="15">Regulatory</td> </tr>
+        <!-- REGULATORY SECTION -->
+        <tr style="height: 19px;"> <td class="s13" colspan="15" style="border: 1px solid #cccccc !important;">Regulatory</td> </tr>
         <tr style="height: auto;"> 
-            <td class="s32">Setback Requirement</td> 
-            <td class="s33" colspan="4">_SETBACK_REQUIREMENT_</td> 
-            <td class="s32">Perm Traffic Re-Routing</td> 
-            <td class="s33" colspan="2">_PERM_TRAFFIC_RE_ROUTING_</td> 
-            <td class="s32">Future Development</td> 
-            <td class="s33" colspan="6">_FUTURE_DEVELOPMENT_</td> 
+            <td class="s14" style="border: 1px solid #cccccc !important;">Setback Requirement</td> 
+            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_SETBACK_REQUIREMENT_</td> 
+            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Perm Traffic Re-Routing</td> 
+            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_PERM_TRAFFIC_RE_ROUTING_</td> 
+            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Future Development</td> 
+            <td class="s17" colspan="4" style="border: 1px solid #cccccc !important;">_FUTURE_DEVELOPMENT_</td> 
         </tr>
         <tr style="height: auto;"> 
-            <td class="s32">Road Widening</td> 
-            <td class="s33" colspan="4">_ROAD_WIDENING_</td> 
-            <td class="s32">Perm Road Closure</td> 
-            <td class="s33" colspan="2">_PERM_ROAD_CLOSURE_</td> 
-            <td class="s32">Zoning Clearance</td> 
-            <td class="s33" colspan="6">_ZONING_CLEARANCE_</td> 
+            <td class="s14" style="border: 1px solid #cccccc !important;">Road Widening</td> 
+            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_ROAD_WIDENING_</td> 
+            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Perm Road Closure</td> 
+            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_PERM_ROAD_CLOSURE_</td> 
+            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Zoning Clearance</td> 
+            <td class="s17" colspan="4" style="border: 1px solid #cccccc !important;">_ZONING_CLEARANCE_</td> 
         </tr>
         <tr style="height: auto;"> 
-            <td class="s32">Pedestrian Overpass</td> 
-            <td class="s33" colspan="4">_PEDESTRIAN_OVERPASS_</td> 
-            <td class="s32">Infrastructure Programs</td> 
-            <td class="s33" colspan="2">_INFRASTRUCTURE_PROGRAMS_</td> 
-            <td class="s32">Gas Station</td> 
-            <td class="s33" colspan="6">_GAS_STATION_</td> 
+            <td class="s14" style="border: 1px solid #cccccc !important;">Pedestrian Overpass</td> 
+            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_PEDESTRIAN_OVERPASS_</td> 
+            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Infrastructure Programs</td> 
+            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_INFRASTRUCTURE_PROGRAMS_</td> 
+            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Gas Station</td> 
+            <td class="s17" colspan="4" style="border: 1px solid #cccccc !important;">_GAS_STATION_</td> 
         </tr>
         <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
         
         <!-- SITE ACQUIRABILITY SECTION -->
-        <tr style="height: 19px;"> <td class="s34" colspan="15">Site Acquirability</td> </tr>
-        <tr style="height: auto;"> <td class="s35" colspan="15">Confidence Level: _CONFIDENCE_LEVEL_</td> </tr>
-        <tr style="height: auto;"> <td class="s35" colspan="15">Site Availability</td> </tr>
-        <tr style="height: auto;"> <td class="s33" colspan="15" style="padding-left: 20px !important;">Site Availability Class: _SITE_AVAILABILITY_CLASS_</td> </tr>
-        <tr style="height: auto;"> <td class="s33" colspan="15" style="padding-left: 20px !important;">Site Availability Remarks: _SITE_AVAILABILITY_REMARKS_</td> </tr>
-        <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
-        
-        <!-- OTHER REMARKS -->
-        <tr class="remarks-row" style="height: auto;"> <td class="s6 remarks-label" style="white-space: nowrap; vertical-align: top; padding-top: 8px;">Other Remarks:</td> <td class="s5" colspan="7" style="white-space: normal; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: auto; line-height: 1.6; padding: 8px 6px;">_REMARKS_</td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
+        <tr style="height: 19px;"> 
+            <td class="s22" colspan="3" style="border-bottom: 1px solid #000000 !important; padding-bottom: 4px !important;">Site Acquirability:</td>
+            <td class="s3" colspan="12"></td>
+        </tr>
+        <tr style="height: auto;"> 
+            <td class="s2" style="border: 1px solid #cccccc !important;">Confidence Level</td> 
+            <td class="s17" colspan="6" style="border: 1px solid #cccccc !important;">_CONFIDENCE_LEVEL_</td> 
+            <td class="s3"></td> 
+            <td class="s22" colspan="2" style="border: 1px solid #cccccc !important;">Site Availability</td> 
+            <td class="s17" colspan="5" style="border: 1px solid #cccccc !important;">_SITE_AVAILABILITY_CLASS_</td> 
+        </tr>
+        <tr class="remarks-row" style="height: auto;"> 
+            <td class="s6 remarks-label" style="white-space: nowrap; vertical-align: top; padding-top: 8px; border: 1px solid #cccccc !important;">Other Remarks:</td> 
+            <td class="s5" colspan="6" style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: 150px; line-height: 1.6; padding: 8px 6px; border: 1px solid #cccccc !important; vertical-align: top;">_REMARKS_</td> 
+            <td class="s3"></td> 
+            <td class="s6 remarks-label" style="white-space: normal; vertical-align: top; padding-top: 8px; border: 1px solid #cccccc !important;" colspan="2">Site Availability<br>Remarks:</td> 
+            <td class="s5" colspan="5" style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: 150px; line-height: 1.6; padding: 8px 6px; border: 1px solid #cccccc !important; vertical-align: top;">_SITE_AVAILABILITY_REMARKS_</td> 
+        </tr>
         </tbody>
         </table>
         </div>
