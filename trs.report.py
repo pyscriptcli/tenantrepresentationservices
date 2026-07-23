@@ -447,7 +447,7 @@ def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeh
     return wb_buffer.getvalue()
 
 #--- HTML FRAMEWORK (UPDATED WITH REGULATORY AND SITE ACQUIRABILITY) ---
-HTML FRAMEWORK = """
+HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
 <head>
@@ -896,7 +896,7 @@ else:
                             
                             return str(val)
             
-            # Rest of your code...
+                        # Rest of your code...
                         
                         rendered_view = HTML_FRAMEWORK
                         
