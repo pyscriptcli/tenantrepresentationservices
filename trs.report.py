@@ -234,75 +234,93 @@ def authenticate(username, password):
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
-#--- SINGLE FUNCTION TO MIRROR EXCEL DISPLAY EXACTLY ---
-def get_excel_display_value(cell):
-    """
-    Get the EXACT value as displayed in Excel
-    This mirrors whatever you see in the Excel cell including commas, currency symbols, etc.
-    """
-    if cell.value is None:
+#--- DATA FORMATTING CONFIGURATION ---
+# Easy to configure - just add/modify entries here
+FORMAT_CONFIG = {
+    # Format: 'column_name': 'format_type'
+    # format_type can be: 'date', 'number', 'currency', 'percent', 'text'
+    'TIMESTAMP': 'date',
+    'DATE OF REPORT': 'date',
+    'SITE AVAILABILITY DATE': 'date',
+    'COL START DATE': 'date',
+    'COL END DATE': 'date',
+    'MONTHLY RENTAL RATE': 'number',
+    'PERCENTAGE RENT': 'number',
+    'MINIMUM GUARANTEED RENT': 'number',
+    'ESCALATION': 'number',
+    'ADVANCE RENTAL': 'number',
+    'SECURITY DEPOSIT': 'number',
+    'CUSA': 'number',
+    'ESTIMATED REVENUE PER MO.': 'number',
+    'LOT/FLOOR AREA SQM': 'number',
+    'FRONTAGE': 'number',
+    'DEPTH (IN M)': 'number',
+}
+
+def format_value(value, format_type='text'):
+    """Format a value based on the specified format type"""
+    if pd.isna(value) or value is None:
         return ""
     
-    value = cell.value
+    if format_type == 'date':
+        # Try to convert to date
+        if isinstance(value, datetime):
+            return value.strftime('%B %d, %Y')
+        if isinstance(value, str):
+            try:
+                # Try common date formats
+                for fmt in ['%Y-%m-%d', '%Y/%m/%d', '%m/%d/%Y', '%d/%m/%Y']:
+                    try:
+                        date_obj = datetime.strptime(value.strip(), fmt)
+                        return date_obj.strftime('%B %d, %Y')
+                    except ValueError:
+                        continue
+            except:
+                pass
+            return value
+        if isinstance(value, (int, float)):
+            try:
+                from datetime import timedelta
+                excel_epoch = datetime(1899, 12, 30)
+                date_obj = excel_epoch + timedelta(days=float(value))
+                return date_obj.strftime('%B %d, %Y')
+            except:
+                pass
+        return str(value)
     
-    # Handle datetime
-    if isinstance(value, datetime):
-        return value.strftime('%B %d, %Y')
-    
-    # Handle numbers with formatting
-    if isinstance(value, (int, float)):
-        # Get the cell's number format
-        number_format = cell.number_format
-        
-        # If there's a number format, try to apply it
-        if number_format:
-            # Check for thousands separator (comma) in the format
-            if ',' in number_format:
-                # Format with commas
-                if isinstance(value, float) and value.is_integer():
-                    return f"{int(value):,}"
-                elif isinstance(value, float):
-                    # Check if it's a whole number
-                    if value == int(value):
-                        return f"{int(value):,}"
-                    else:
-                        # For decimals, check the format for decimal places
-                        if '.' in number_format:
-                            # Count decimal places in the format
-                            decimal_part = number_format.split('.')[1] if '.' in number_format else ''
-                            # Count the number of # or 0 after the decimal
-                            decimal_places = len(re.findall(r'[#0]', decimal_part)) if decimal_part else 0
-                            if decimal_places > 0:
-                                return f"{value:,.{decimal_places}f}"
-                        return f"{value:,}"
-                else:
-                    return f"{value:,}"
-            
-            # Check for currency format (₱)
-            if '₱' in number_format:
-                if isinstance(value, float) and value.is_integer():
-                    return f"₱{int(value):,}"
-                else:
-                    # Check for decimal places in currency format
-                    if '.' in number_format:
-                        decimal_part = number_format.split('.')[1] if '.' in number_format else ''
-                        decimal_places = len(re.findall(r'[#0]', decimal_part)) if decimal_part else 0
-                        if decimal_places > 0:
-                            return f"₱{value:,.{decimal_places}f}"
-                    return f"₱{value:,}"
-            
-            # Check for percentage format
-            if '%' in number_format:
-                return f"{value * 100}%"
-        
-        # Default number formatting - remove .0 for whole numbers
-        if isinstance(value, float) and value.is_integer():
-            return str(int(value))
-        else:
+    elif format_type == 'number':
+        # Format as number with commas
+        try:
+            num = float(str(value).replace(',', ''))
+            if num.is_integer():
+                return f"{int(num):,}"
+            else:
+                return f"{num:,.2f}"
+        except:
             return str(value)
     
-    # Everything else - just convert to string
-    return str(value)
+    elif format_type == 'currency':
+        # Format as currency with ₱
+        try:
+            num = float(str(value).replace(',', '').replace('₱', ''))
+            if num.is_integer():
+                return f"₱{int(num):,}"
+            else:
+                return f"₱{num:,.2f}"
+        except:
+            return str(value)
+    
+    elif format_type == 'percent':
+        # Format as percentage
+        try:
+            num = float(str(value).replace('%', ''))
+            return f"{num}%"
+        except:
+            return str(value)
+    
+    else:
+        # Default: just return as string
+        return str(value)
 
 #--- HELPER FUNCTIONS ---
 def download_file(url):
@@ -370,10 +388,8 @@ def parse_site_number(site_display_str):
     match = re.match(r"^(\d+(?:\.\d+)?)", str(site_display_str).strip())
     return float(match.group(1)) if match else float('inf')
 
-#--- UPDATED load_main_data_optimized ---
 def load_main_data_optimized(source_bytes):
     try:
-        # data_only=True gets the displayed value from Excel
         wb = load_workbook(io.BytesIO(source_bytes), data_only=True)
         ws = wb.active
         
@@ -382,15 +398,21 @@ def load_main_data_optimized(source_bytes):
         headers = [str(h).strip().upper() if h else "" for h in header_row]
         
         parsed_data_list = []
-        # Process each row from row 2 onwards
         for row in ws.iter_rows(min_row=2):
             row_dict = {}
             has_val = False
             
             for idx, cell in enumerate(row):
                 if idx < len(headers) and headers[idx]:
-                    # Get the displayed value from Excel using the mirror function
-                    formatted_val = get_excel_display_value(cell)
+                    raw_val = cell.value
+                    
+                    # Apply formatting based on configuration
+                    if raw_val is not None:
+                        header_key = headers[idx]
+                        format_type = FORMAT_CONFIG.get(header_key, 'text')
+                        formatted_val = format_value(raw_val, format_type)
+                    else:
+                        formatted_val = ""
                     
                     # Clean URL if needed
                     cleaned_val = clean_and_extract_url(formatted_val)
@@ -426,7 +448,6 @@ def load_main_data_optimized(source_bytes):
         st.error(f"Error loading main data: {e}")
         return None
 
-#--- UPDATED load_media_data_optimized ---
 def load_media_data_optimized(source_bytes):
     try:
         wb = load_workbook(io.BytesIO(source_bytes), data_only=True)
@@ -440,27 +461,37 @@ def load_media_data_optimized(source_bytes):
             media_ws = wb.active
         
         for row in media_ws.iter_rows():
-            # Get the values as they appear in Excel using the mirror function
-            vals = []
-            for cell in row:
-                vals.append(get_excel_display_value(cell))
+            # Get raw values first
+            vals = [cell.value for cell in row]
             
-            t_area = str(vals[13] if len(vals) > 13 and vals[13] is not None else "").strip()
-            s_name = str(vals[15] if len(vals) > 15 and vals[15] is not None else "").strip()
+            # Convert to string preserving original values
+            str_vals = []
+            for val in vals:
+                if val is None:
+                    str_vals.append("")
+                elif isinstance(val, datetime):
+                    str_vals.append(val.strftime('%B %d, %Y'))
+                elif isinstance(val, float) and val.is_integer():
+                    str_vals.append(str(int(val)))
+                else:
+                    str_vals.append(str(val))
+            
+            t_area = str(str_vals[13] if len(str_vals) > 13 and str_vals[13] is not None else "").strip()
+            s_name = str(str_vals[15] if len(str_vals) > 15 and str_vals[15] is not None else "").strip()
             
             if t_area and s_name and t_area.upper() != "TRADE AREA":
                 media_data_list.append({
                     'TRADE AREA': t_area,
                     'SITE NAME': s_name,
-                    '__DIRECT_TCT': clean_and_extract_url(vals[2] if len(vals) > 2 else ""),
-                    '__DIRECT_LOT_PLAN': clean_and_extract_url(vals[3] if len(vals) > 3 else ""),
-                    '__DIRECT_BLDG_PLAN': clean_and_extract_url(vals[4] if len(vals) > 4 else ""),
-                    '__DIRECT_TAX_MAP': clean_and_extract_url(vals[5] if len(vals) > 5 else ""),
-                    '__DIRECT_PHOTO_1': clean_and_extract_url(vals[7] if len(vals) > 7 else ""),
-                    '__DIRECT_PHOTO_2': clean_and_extract_url(vals[8] if len(vals) > 8 else ""),
-                    '__DIRECT_PHOTO_3': clean_and_extract_url(vals[9] if len(vals) > 9 else ""),
-                    '__DIRECT_PHOTO_4': clean_and_extract_url(vals[10] if len(vals) > 10 else ""),
-                    '__DIRECT_PHOTO_5': clean_and_extract_url(vals[11] if len(vals) > 11 else ""),
+                    '__DIRECT_TCT': clean_and_extract_url(str_vals[2] if len(str_vals) > 2 else ""),
+                    '__DIRECT_LOT_PLAN': clean_and_extract_url(str_vals[3] if len(str_vals) > 3 else ""),
+                    '__DIRECT_BLDG_PLAN': clean_and_extract_url(str_vals[4] if len(str_vals) > 4 else ""),
+                    '__DIRECT_TAX_MAP': clean_and_extract_url(str_vals[5] if len(str_vals) > 5 else ""),
+                    '__DIRECT_PHOTO_1': clean_and_extract_url(str_vals[7] if len(str_vals) > 7 else ""),
+                    '__DIRECT_PHOTO_2': clean_and_extract_url(str_vals[8] if len(str_vals) > 8 else ""),
+                    '__DIRECT_PHOTO_3': clean_and_extract_url(str_vals[9] if len(str_vals) > 9 else ""),
+                    '__DIRECT_PHOTO_4': clean_and_extract_url(str_vals[10] if len(str_vals) > 10 else ""),
+                    '__DIRECT_PHOTO_5': clean_and_extract_url(str_vals[11] if len(str_vals) > 11 else ""),
                 })
         wb.close()
         return media_data_list
@@ -521,7 +552,6 @@ def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeh
                             raw_data_val = r_row.get(ph.upper(), "")
                             if pd.isna(raw_data_val) or raw_data_val is None:
                                 raw_data_val = ""
-                            # Simply convert to string without any formatting
                             val_str = str(raw_data_val)
                             new_val = re.sub(target_regex, val_str, new_val)
                     new_val = re.sub(r"\{\{.*?\}\}", "", new_val)
@@ -883,7 +913,6 @@ else:
         if selected_ta:
             ta_df = df[df["TRADE AREA"] == selected_ta]
             
-            # Robust check: ONLY keep rows where the actual SITE NO is a whole number
             def is_whole_number_site(val):
                 if pd.isna(val) or str(val).strip() == '':
                     return False
@@ -949,7 +978,7 @@ else:
                             val = row_data.get(key_string.upper(), "")
                             if pd.isna(val) or val is None:
                                 return ""
-                            return str(val)  # Just return the raw value as string
+                            return str(val)
             
                         parent_site_no = parse_site_number(selected_site_display)
                         ta_df = df[df["TRADE AREA"] == target_ta]
