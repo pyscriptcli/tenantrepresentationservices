@@ -446,7 +446,7 @@ def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeh
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
-#--- HTML FRAMEWORK (UPDATED WITH CORRECT STRUCTURE) ---
+#--- HTML FRAMEWORK (UPDATED WITH REGULATORY AND SITE ACQUIRABILITY) ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
@@ -491,6 +491,9 @@ html, body { margin: 0; padding: 0; background-color: #ffffff; font-family: Aria
 .ritz .waffle .s25{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
 .ritz .waffle .s26{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
 .ritz .waffle .s27{background-color:#b7b7b7;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s28{background-color:#b7b7b7;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s29{background-color:#b7b7b7;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s30{background-color:#f8f9fa;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
 .ritz .waffle { border-collapse: collapse; width: 100%; }
 .ritz .waffle tr { height: auto !important; }
 .ritz .waffle td[class*="s4"], .ritz .waffle td[class*="s9"] { height: auto !important; min-height: 20px; }
@@ -498,6 +501,9 @@ html, body { margin: 0; padding: 0; background-color: #ffffff; font-family: Aria
 .remarks-row td { height: auto !important; padding: 6px 3px !important; vertical-align: top !important; }
 .remarks-row td.s5 { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; line-height: 1.6 !important; padding: 8px 6px !important; }
 .remarks-label { white-space: nowrap !important; vertical-align: top !important; padding-top: 8px !important; }
+.regulatory-header { background-color: #b7b7b7 !important; font-weight: bold !important; color: #000000 !important; }
+.regulatory-label { background-color: #b7b7b7 !important; color: #ff0000 !important; }
+.regulatory-value { background-color: #b7b7b7 !important; color: #000000 !important; }
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -629,18 +635,43 @@ document.addEventListener('DOMContentLoaded', function() {
         <tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5">_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
         <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_BUSINESS_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5">_SUB_LESSEE_BUSINESS_ADDRESS_</td> </tr>
         <tr style="height: 9px;"> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> </tr>
-        <tr style="height: 19px;"> <td class="s13" colspan="15">Regulatory</td> </tr>
-        <tr style="height: auto;"> <td class="s14">Setback Requirement</td> <td class="s15" colspan="4">_SETBACK_REQUIREMENT_</td> <td class="s16" colspan="2">Perm Traffic Re-Routing</td> <td class="s17"></td> <td class="s15" colspan="2">_PERM_TRAFFIC_RE_ROUTING_</td> <td class="s18" colspan="5">Future Development</td> </tr>
-        <tr style="height: auto;"> <td class="s14">Road Widening</td> <td class="s15" colspan="4">_ROAD_WIDENING_</td> <td class="s16" colspan="2">Perm Road Closure</td> <td class="s17"></td> <td class="s15" colspan="2">_PERM_ROAD_CLOSURE_</td> <td class="s18" colspan="5">Zoning Clearance</td> </tr>
-        <tr style="height: auto;"> <td class="s19">Pedestrian Overpass</td> <td class="s20" colspan="4">_PEDESTRIAN_OVERPASS_</td> <td class="s19" colspan="2">Infrastructure Programs</td> <td class="s20"></td> <td class="s20" colspan="2">_INFRASTRUCTURE_PROGRAMS_</td> <td class="s21" colspan="5">Gas Station</td> </tr>
-        <tr style="height: auto;"> <td class="s2" colspan="14"></td> <td class="s3"></td> </tr>
-        <tr style="height: 19px;"> <td class="s22">Site Acquirability:</td> <td class="s2" colspan="13"></td> <td class="s3"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Confidence Level</td> <td class="s4" colspan="14">_CONFIDENCE_LEVEL_</td> </tr>
+        
+        <!-- REGULATORY SECTION -->
+        <tr style="height: 19px;"> <td class="s26" colspan="15">Regulatory</td> </tr>
+        <tr style="height: auto;"> 
+            <td class="s27">Setback Requirement</td> 
+            <td class="s27" colspan="4">_SETBACK_REQUIREMENT_</td> 
+            <td class="s27">Perm Traffic Re-Routing</td> 
+            <td class="s27" colspan="2">_PERM_TRAFFIC_RE_ROUTING_</td> 
+            <td class="s27">Future Development</td> 
+            <td class="s27" colspan="6">_FUTURE_DEVELOPMENT_</td> 
+        </tr>
+        <tr style="height: auto;"> 
+            <td class="s27">Road Widening</td> 
+            <td class="s27" colspan="4">_ROAD_WIDENING_</td> 
+            <td class="s27">Perm Road Closure</td> 
+            <td class="s27" colspan="2">_PERM_ROAD_CLOSURE_</td> 
+            <td class="s27">Zoning Clearance</td> 
+            <td class="s27" colspan="6">_ZONING_CLEARANCE_</td> 
+        </tr>
+        <tr style="height: auto;"> 
+            <td class="s27">Pedestrian Overpass</td> 
+            <td class="s27" colspan="4">_PEDESTRIAN_OVERPASS_</td> 
+            <td class="s27">Infrastructure Programs</td> 
+            <td class="s27" colspan="2">_INFRASTRUCTURE_PROGRAMS_</td> 
+            <td class="s27">Gas Station</td> 
+            <td class="s27" colspan="6">_GAS_STATION_</td> 
+        </tr>
         <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
-        <tr style="height: 19px;"> <td class="s26" colspan="15">Site Availability</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Site Availability Class</td> <td class="s23" colspan="14">_SITE_AVAILABILITY_CLASS_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Site Availability Remarks</td> <td class="s23" colspan="14">_SITE_AVAILABILITY_REMARKS_</td> </tr>
+        
+        <!-- SITE ACQUIRABILITY SECTION -->
+        <tr style="height: 19px;"> <td class="s28" colspan="15">Site Acquirability</td> </tr>
+        <tr style="height: auto;"> <td class="s29">Confidence Level</td> <td class="s30" colspan="14">_CONFIDENCE_LEVEL_</td> </tr>
+        <tr style="height: auto;"> <td class="s29">Site Availability Class</td> <td class="s30" colspan="14">_SITE_AVAILABILITY_CLASS_</td> </tr>
+        <tr style="height: auto;"> <td class="s29">Site Availability Remarks</td> <td class="s30" colspan="14">_SITE_AVAILABILITY_REMARKS_</td> </tr>
         <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
+        
+        <!-- OTHER REMARKS -->
         <tr class="remarks-row" style="height: auto;"> <td class="s6 remarks-label" style="white-space: nowrap; vertical-align: top; padding-top: 8px;">Other Remarks:</td> <td class="s5" colspan="7" style="white-space: normal; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: auto; line-height: 1.6; padding: 8px 6px;">_REMARKS_</td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
         </tbody>
         </table>
@@ -650,7 +681,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </body>
 </html>
 """
-
 #--- MAIN APP ---
 
 # --- LOGIN ---
@@ -817,14 +847,46 @@ else:
                 "PROPERTY DOCS"
             ])
 
-            with tab_report:
-                if site_row_data is not None:
+with tab_report:
+    if site_row_data is not None:
+        try:
+            def process_val(key_string):
+                val = site_row_data.get(key_string.upper(), "")
+                if pd.isna(val) or val is None:
+                    return ""
+                
+                # Check if it's a datetime object
+                if hasattr(val, 'strftime'):
+                    return val.strftime('%B %d, %Y')  # Format: July 16, 2026
+                
+                # Check if it's a string that looks like a date (YYYY-MM-DD)
+                if isinstance(val, str):
+                    # Try to parse as date
                     try:
-                        def process_val(key_string):
-                            val = site_row_data.get(key_string.upper(), "")
-                            if pd.isna(val) or val is None: 
-                                return ""
-                            return str(val)
+                        # Try standard date formats
+                        for fmt in ['%Y-%m-%d', '%Y/%m/%d', '%m/%d/%Y', '%d/%m/%Y']:
+                            try:
+                                date_obj = datetime.strptime(val.strip(), fmt)
+                                return date_obj.strftime('%B %d, %Y')
+                            except ValueError:
+                                continue
+                    except:
+                        pass
+                
+                # Handle float/integer that might be Excel date
+                if isinstance(val, (int, float)):
+                    try:
+                        # Excel dates are stored as days since 1900-01-01
+                        from datetime import timedelta
+                        excel_epoch = datetime(1899, 12, 30)
+                        date_obj = excel_epoch + timedelta(days=float(val))
+                        return date_obj.strftime('%B %d, %Y')
+                    except:
+                        pass
+                
+                return str(val)
+            
+            # Rest of your code...
                         
                         rendered_view = HTML_FRAMEWORK
                         
@@ -924,11 +986,12 @@ else:
                             ("_PERM_TRAFFIC_RE_ROUTING_", process_val("PERM TRAFFIC RE-ROUTING")),
                             ("_PERM_ROAD_CLOSURE_", process_val("PERM ROAD CLOSURE")),
                             ("_INFRASTRUCTURE_PROGRAMS_", process_val("INFRASTRUCTURE PROGRAMS")),
+                            ("_FUTURE_DEVELOPMENT_", process_val("FUTURE DEVELOPMENT")),
+                            ("_ZONING_CLEARANCE_", process_val("ZONING CLEARANCE")),
+                            ("_GAS_STATION_", process_val("GAS STATION")),
                             
                             # Site Acquirability
                             ("_CONFIDENCE_LEVEL_", process_val("CONFIDENCE LEVEL")),
-                            
-                            # Site Availability
                             ("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS")),
                             ("_SITE_AVAILABILITY_REMARKS_", process_val("SITE AVAILABILITY REMARKS")),
                             
