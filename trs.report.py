@@ -399,6 +399,9 @@ def get_cached_data(cache_version):
 @st.cache_data(ttl=None, show_spinner=False)
 def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeholders_tuple, cache_version):
     placeholders = list(placeholders_tuple)
+    # Sort placeholders by length (descending) to prevent partial matches
+    placeholders.sort(key=len, reverse=True)
+    
     ta_data = df[df["TRADE AREA"] == trade_area]
     wb = load_workbook(io.BytesIO(template_bytes_raw))
     original_sheets = wb.sheetnames
@@ -443,7 +446,6 @@ def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeh
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
-#--- HTML FRAMEWORK (UPDATED WITH ALL PLACEHOLDERS) ---
 #--- HTML FRAMEWORK (UPDATED WITH CORRECT STRUCTURE) ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
@@ -826,110 +828,120 @@ else:
                         
                         rendered_view = HTML_FRAMEWORK
                         
-                        # General Information & Location
-                        rendered_view = rendered_view.replace("_TRADE_AREA_", process_val("TRADE AREA"))
-                        rendered_view = rendered_view.replace("_SITE_NAME_", process_val("SITE NAME"))
-                        rendered_view = rendered_view.replace("_SITE_NO_", process_val("SITE NO"))
-                        rendered_view = rendered_view.replace("_TIMESTAMP_", process_val("TIMESTAMP"))
-                        rendered_view = rendered_view.replace("_DATE_OF_REPORT_", process_val("DATE OF REPORT"))
-                        rendered_view = rendered_view.replace("_UNIT_BLDG_ST_NAME_", process_val("UNIT #, BLDG/ST # AND ST NAME"))
-                        rendered_view = rendered_view.replace("_BARANGAY_DISTRICT_NAME_", process_val("BARANGAY/DISTRICT NAME"))
-                        rendered_view = rendered_view.replace("_CITY_MUNICIPALITY_", process_val("CITY/MUNICIPALITY"))
-                        rendered_view = rendered_view.replace("_REGION_", process_val("REGION"))
-                        rendered_view = rendered_view.replace("_POSTAL_CODE_", process_val("POSTAL CODE"))
+                        # Define all replacements as tuples (placeholder, value)
+                        replacements = [
+                            # General Information & Location
+                            ("_TRADE_AREA_", process_val("TRADE AREA")),
+                            ("_SITE_NAME_", process_val("SITE NAME")),
+                            ("_SITE_NO_", process_val("SITE NO")),
+                            ("_TIMESTAMP_", process_val("TIMESTAMP")),
+                            ("_DATE_OF_REPORT_", process_val("DATE OF REPORT")),
+                            ("_UNIT_BLDG_ST_NAME_", process_val("UNIT #, BLDG/ST # AND ST NAME")),
+                            ("_BARANGAY_DISTRICT_NAME_", process_val("BARANGAY/DISTRICT NAME")),
+                            ("_CITY_MUNICIPALITY_", process_val("CITY/MUNICIPALITY")),
+                            ("_REGION_", process_val("REGION")),
+                            ("_POSTAL_CODE_", process_val("POSTAL CODE")),
+                            
+                            # Terms
+                            ("_SITE_AVAILABILITY_DATE_", process_val("SITE AVAILABILITY DATE")),
+                            ("_COL_START_DATE_", process_val("COL START DATE")),
+                            ("_COL_END_DATE_", process_val("COL END DATE")),
+                            ("_LEASE_TERMS_", process_val("LEASE TERMS")),
+                            
+                            # Rates
+                            ("_MONTHLY_RENTAL_RATE_", process_val("MONTHLY RENTAL RATE")),
+                            ("_PERCENTAGE_RENT_", process_val("PERCENTAGE RENT")),
+                            ("_MINIMUM_GUARANTEED_RENT_", process_val("MINIMUM GUARANTEED RENT")),
+                            ("_ESCALATION_", process_val("ESCALATION")),
+                            ("_ADVANCE_RENTAL_", process_val("ADVANCE RENTAL")),
+                            ("_SECURITY_DEPOSIT_", process_val("SECURITY DEPOSIT")),
+                            ("_CUSA_", process_val("CUSA")),
+                            ("_ESTIMATED_REVENUE_PER_MO_", process_val("ESTIMATED REVENUE PER MO.")),
+                            
+                            # Technical Info
+                            ("_LOT_FLOOR_AREA_SQM_", process_val("LOT/FLOOR AREA SQM")),
+                            ("_FRONTAGE_", process_val("FRONTAGE")),
+                            ("_DEPTH_IN_M_", process_val("DEPTH (IN M)")),
+                            ("_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_", process_val("FLOOR TO SLAB HEIGHT (IN M) - IF BLDG")),
+                            ("_NO_OF_STOREYS_", process_val("NO. OF STOREYS (IF BLDG LESSEE)")),
+                            ("_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_", process_val("TYPE OF STRUCTURE (IF BLDG LESSEE)")),
+                            ("_SOIL_PROFILE_", process_val("SOIL PROFILE")),
+                            
+                            # Provisions
+                            ("_TENANT_IS_THE_OWNER_", process_val("TENANT IS THE OWNER")),
+                            ("_LEASE_TYPE_", process_val("LEASE TYPE")),
+                            ("_PRINCIPAL_COL_", process_val("PRINCIPAL COL")),
+                            ("_SUB_LEASE_PROVISION_", process_val("SUB-LEASE PROVISION")),
+                            ("_PRE_TERM_PARTIAL_TERM_", process_val("PRE-TERM/PARTIAL TERM")),
+                            ("_TRIPARTITE_AGREEMENT_", process_val("TRIPARTITE AGREEMENT")),
+                            
+                            # Lessor Details (Main)
+                            ("_LESSOR_", process_val("LESSOR")),
+                            ("_LESSOR_CONTACT_NO_", process_val("LESSOR CONTACT NO.")),
+                            ("_LESSOR_EMAIL_ADDRESS_", process_val("LESSOR E-MAIL ADDRESS")),
+                            ("_LESSOR_TYPE_OF_OWNERSHIP_", process_val("LESSOR TYPE OF OWNERSHIP")),
+                            ("_LESSOR_COMPANY_NAME_", process_val("LESSOR COMPANY NAME")),
+                            ("_LESSOR_DEVELOPER_ACCOUNT_NAME_", process_val("LESSOR DEVELOPER ACCOUNT NAME")),
+                            ("_LESSOR_BUSINESS_ADDRESS_", process_val("LESSOR BUSINESS ADDRESS")),
+                            
+                            # Lessor Authorized Representative
+                            ("_LESSOR_AUTHORIZED_REPRESENTATIVE_", process_val("LESSOR AUTHORIZED REPRESENTATIVE")),
+                            ("_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val("LESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
+                            ("_LESSOR_AUTHORIZED_REP_CONTACT_NO_", process_val("LESSOR AUTHORIZED REP CONTACT NO.")),
+                            ("_LESSOR_AUTHORIZED_REP_EMAIL_", process_val("LESSOR AUTHORIZED REP EMAIL")),
+                            
+                            # Lessee Details
+                            ("_NAME_OF_LESSEE_", process_val("NAME OF LESSEE")),
+                            ("_LESSEE_POSITION_", process_val("LESSEE POSITION")),
+                            ("_LESSEE_CONTACT_NO_", process_val("LESSEE CONTACT NO.")),
+                            ("_LESSEE_EMAIL_ADDRESS_", process_val("LESSEE E-MAIL ADDRESS")),
+                            ("_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val("LESSEE NAME OF AUTHORIZED REPRESENTATIVE")),
+                            ("_LESSEE_BUSINESS_ADDRESS_", process_val("LESSEE BUSINESS ADDRESS")),
+                            
+                            # Sub-Lessor Details
+                            ("_NAME_OF_SUBLESSOR_", process_val("NAME OF SUBLESSOR")),
+                            ("_SUBLESSOR_CONTACT_NO_", process_val("SUBLESSOR CONTACT NO.")),
+                            ("_SUBLESSOR_EMAIL_ADDRESS_", process_val("SUBLESSOR E-MAIL ADDRESS")),
+                            ("_SUBLESSOR_TYPE_OF_OWNERSHIP_", process_val("SUBLESSOR TYPE OF OWNERSHIP")),
+                            ("_SUBLESSOR_COMPANY_NAME_", process_val("SUBLESSOR COMPANY NAME")),
+                            ("_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_", process_val("SUBLESSOR DEVELOPER ACCOUNT NAME")),
+                            ("_SUBLESSOR_BUSINESS_ADDRESS_", process_val("SUBLESSOR BUSINESS ADDRESS")),
+                            ("_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val("SUBLESSOR NAME OF AUTHORIZED REPRESENTATIVE")),
+                            ("_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val("SUBLESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
+                            
+                            # Sub-Lessee Details
+                            ("_NAME_OF_SUB_LESSEE_", process_val("NAME OF SUB-LESSEE")),
+                            ("_SUB_LESSEE_POSITION_", process_val("SUB-LESSEE POSITION")),
+                            ("_SUB_LESSEE_CONTACT_NO_", process_val("SUB-LESSEE CONTACT NO.")),
+                            ("_SUB_LESSEE_EMAIL_ADDRESS_", process_val("SUB-LESSEE E-MAIL ADDRESS")),
+                            ("_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val("SUB-LESSEE NAME OF AUTHORIZED REPRESENTATIVE")),
+                            ("_SUB_LESSEE_BUSINESS_ADDRESS_", process_val("SUB-LESSEE BUSINESS ADDRESS")),
+                            
+                            # Regulatory
+                            ("_SETBACK_REQUIREMENT_", process_val("SETBACK REQUIREMENT")),
+                            ("_ROAD_WIDENING_", process_val("ROAD WIDENING")),
+                            ("_PEDESTRIAN_OVERPASS_", process_val("PEDESTRIAN OVERPASS")),
+                            ("_PERM_TRAFFIC_RE_ROUTING_", process_val("PERM TRAFFIC RE-ROUTING")),
+                            ("_PERM_ROAD_CLOSURE_", process_val("PERM ROAD CLOSURE")),
+                            ("_INFRASTRUCTURE_PROGRAMS_", process_val("INFRASTRUCTURE PROGRAMS")),
+                            
+                            # Site Acquirability
+                            ("_CONFIDENCE_LEVEL_", process_val("CONFIDENCE LEVEL")),
+                            
+                            # Site Availability
+                            ("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS")),
+                            ("_SITE_AVAILABILITY_REMARKS_", process_val("SITE AVAILABILITY REMARKS")),
+                            
+                            # Remarks
+                            ("_REMARKS_", process_val("REMARKS")),
+                        ]
                         
-                        # Terms
-                        rendered_view = rendered_view.replace("_SITE_AVAILABILITY_DATE_", process_val("SITE AVAILABILITY DATE"))
-                        rendered_view = rendered_view.replace("_COL_START_DATE_", process_val("COL START DATE"))
-                        rendered_view = rendered_view.replace("_COL_END_DATE_", process_val("COL END DATE"))
-                        rendered_view = rendered_view.replace("_LEASE_TERMS_", process_val("LEASE TERMS"))
+                        # Sort replacements by placeholder length (descending) to prevent partial matches
+                        replacements.sort(key=lambda x: len(x[0]), reverse=True)
                         
-                        # Rates
-                        rendered_view = rendered_view.replace("_MONTHLY_RENTAL_RATE_", process_val("MONTHLY RENTAL RATE"))
-                        rendered_view = rendered_view.replace("_PERCENTAGE_RENT_", process_val("PERCENTAGE RENT"))
-                        rendered_view = rendered_view.replace("_MINIMUM_GUARANTEED_RENT_", process_val("MINIMUM GUARANTEED RENT"))
-                        rendered_view = rendered_view.replace("_ESCALATION_", process_val("ESCALATION"))
-                        rendered_view = rendered_view.replace("_ADVANCE_RENTAL_", process_val("ADVANCE RENTAL"))
-                        rendered_view = rendered_view.replace("_SECURITY_DEPOSIT_", process_val("SECURITY DEPOSIT"))
-                        rendered_view = rendered_view.replace("_CUSA_", process_val("CUSA"))
-                        rendered_view = rendered_view.replace("_ESTIMATED_REVENUE_PER_MO_", process_val("ESTIMATED REVENUE PER MO."))
-                        
-                        # Technical Info
-                        rendered_view = rendered_view.replace("_LOT_FLOOR_AREA_SQM_", process_val("LOT/FLOOR AREA SQM"))
-                        rendered_view = rendered_view.replace("_FRONTAGE_", process_val("FRONTAGE"))
-                        rendered_view = rendered_view.replace("_DEPTH_IN_M_", process_val("DEPTH (IN M)"))
-                        rendered_view = rendered_view.replace("_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_", process_val("FLOOR TO SLAB HEIGHT (IN M) - IF BLDG"))
-                        rendered_view = rendered_view.replace("_NO_OF_STOREYS_", process_val("NO. OF STOREYS (IF BLDG LESSEE)"))
-                        rendered_view = rendered_view.replace("_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_", process_val("TYPE OF STRUCTURE (IF BLDG LESSEE)"))
-                        rendered_view = rendered_view.replace("_SOIL_PROFILE_", process_val("SOIL PROFILE"))
-                        
-                        # Provisions
-                        rendered_view = rendered_view.replace("_TENANT_IS_THE_OWNER_", process_val("TENANT IS THE OWNER"))
-                        rendered_view = rendered_view.replace("_LEASE_TYPE_", process_val("LEASE TYPE"))
-                        rendered_view = rendered_view.replace("_PRINCIPAL_COL_", process_val("PRINCIPAL COL"))
-                        rendered_view = rendered_view.replace("_SUB_LEASE_PROVISION_", process_val("SUB-LEASE PROVISION"))
-                        rendered_view = rendered_view.replace("_PRE_TERM_PARTIAL_TERM_", process_val("PRE-TERM/PARTIAL TERM"))
-                        rendered_view = rendered_view.replace("_TRIPARTITE_AGREEMENT_", process_val("TRIPARTITE AGREEMENT"))
-                        
-                        # Lessor Details (Main)
-                        rendered_view = rendered_view.replace("_LESSOR_", process_val("LESSOR"))
-                        rendered_view = rendered_view.replace("_LESSOR_CONTACT_NO_", process_val("LESSOR CONTACT NO."))
-                        rendered_view = rendered_view.replace("_LESSOR_EMAIL_ADDRESS_", process_val("LESSOR E-MAIL ADDRESS"))
-                        rendered_view = rendered_view.replace("_LESSOR_TYPE_OF_OWNERSHIP_", process_val("LESSOR TYPE OF OWNERSHIP"))
-                        rendered_view = rendered_view.replace("_LESSOR_COMPANY_NAME_", process_val("LESSOR COMPANY NAME"))
-                        rendered_view = rendered_view.replace("_LESSOR_DEVELOPER_ACCOUNT_NAME_", process_val("LESSOR DEVELOPER ACCOUNT NAME"))
-                        rendered_view = rendered_view.replace("_LESSOR_BUSINESS_ADDRESS_", process_val("LESSOR BUSINESS ADDRESS"))
-                        
-                        # Lessor Authorized Representative
-                        rendered_view = rendered_view.replace("_LESSOR_AUTHORIZED_REPRESENTATIVE_", process_val("LESSOR AUTHORIZED REPRESENTATIVE"))
-                        rendered_view = rendered_view.replace("_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val("LESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE"))
-                        rendered_view = rendered_view.replace("_LESSOR_AUTHORIZED_REP_CONTACT_NO_", process_val("LESSOR AUTHORIZED REP CONTACT NO."))
-                        rendered_view = rendered_view.replace("_LESSOR_AUTHORIZED_REP_EMAIL_", process_val("LESSOR AUTHORIZED REP EMAIL"))
-                        
-                        # Lessee Details
-                        rendered_view = rendered_view.replace("_NAME_OF_LESSEE_", process_val("NAME OF LESSEE"))
-                        rendered_view = rendered_view.replace("_LESSEE_POSITION_", process_val("LESSEE POSITION"))
-                        rendered_view = rendered_view.replace("_LESSEE_CONTACT_NO_", process_val("LESSEE CONTACT NO."))
-                        rendered_view = rendered_view.replace("_LESSEE_EMAIL_ADDRESS_", process_val("LESSEE E-MAIL ADDRESS"))
-                        rendered_view = rendered_view.replace("_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val("LESSEE NAME OF AUTHORIZED REPRESENTATIVE"))
-                        rendered_view = rendered_view.replace("_LESSEE_BUSINESS_ADDRESS_", process_val("LESSEE BUSINESS ADDRESS"))
-                        
-                        # Sub-Lessor Details
-                        rendered_view = rendered_view.replace("_NAME_OF_SUBLESSOR_", process_val("NAME OF SUBLESSOR"))
-                        rendered_view = rendered_view.replace("_SUBLESSOR_CONTACT_NO_", process_val("SUBLESSOR CONTACT NO."))
-                        rendered_view = rendered_view.replace("_SUBLESSOR_EMAIL_ADDRESS_", process_val("SUBLESSOR E-MAIL ADDRESS"))
-                        rendered_view = rendered_view.replace("_SUBLESSOR_TYPE_OF_OWNERSHIP_", process_val("SUBLESSOR TYPE OF OWNERSHIP"))
-                        rendered_view = rendered_view.replace("_SUBLESSOR_COMPANY_NAME_", process_val("SUBLESSOR COMPANY NAME"))
-                        rendered_view = rendered_view.replace("_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_", process_val("SUBLESSOR DEVELOPER ACCOUNT NAME"))
-                        rendered_view = rendered_view.replace("_SUBLESSOR_BUSINESS_ADDRESS_", process_val("SUBLESSOR BUSINESS ADDRESS"))
-                        rendered_view = rendered_view.replace("_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val("SUBLESSOR NAME OF AUTHORIZED REPRESENTATIVE"))
-                        rendered_view = rendered_view.replace("_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val("SUBLESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE"))
-                        
-                        # Sub-Lessee Details
-                        rendered_view = rendered_view.replace("_NAME_OF_SUB_LESSEE_", process_val("NAME OF SUB-LESSEE"))
-                        rendered_view = rendered_view.replace("_SUB_LESSEE_POSITION_", process_val("SUB-LESSEE POSITION"))
-                        rendered_view = rendered_view.replace("_SUB_LESSEE_CONTACT_NO_", process_val("SUB-LESSEE CONTACT NO."))
-                        rendered_view = rendered_view.replace("_SUB_LESSEE_EMAIL_ADDRESS_", process_val("SUB-LESSEE E-MAIL ADDRESS"))
-                        rendered_view = rendered_view.replace("_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val("SUB-LESSEE NAME OF AUTHORIZED REPRESENTATIVE"))
-                        rendered_view = rendered_view.replace("_SUB_LESSEE_BUSINESS_ADDRESS_", process_val("SUB-LESSEE BUSINESS ADDRESS"))
-                        
-                        # Regulatory
-                        rendered_view = rendered_view.replace("_SETBACK_REQUIREMENT_", process_val("SETBACK REQUIREMENT"))
-                        rendered_view = rendered_view.replace("_ROAD_WIDENING_", process_val("ROAD WIDENING"))
-                        rendered_view = rendered_view.replace("_PEDESTRIAN_OVERPASS_", process_val("PEDESTRIAN OVERPASS"))
-                        rendered_view = rendered_view.replace("_PERM_TRAFFIC_RE_ROUTING_", process_val("PERM TRAFFIC RE-ROUTING"))
-                        rendered_view = rendered_view.replace("_PERM_ROAD_CLOSURE_", process_val("PERM ROAD CLOSURE"))
-                        rendered_view = rendered_view.replace("_INFRASTRUCTURE_PROGRAMS_", process_val("INFRASTRUCTURE PROGRAMS"))
-                        
-                        # Site Acquirability
-                        rendered_view = rendered_view.replace("_CONFIDENCE_LEVEL_", process_val("CONFIDENCE LEVEL"))
-                        
-                        # Site Availability
-                        rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS"))
-                        rendered_view = rendered_view.replace("_SITE_AVAILABILITY_REMARKS_", process_val("SITE AVAILABILITY REMARKS"))
-                        
-                        # Remarks
-                        rendered_view = rendered_view.replace("_REMARKS_", process_val("REMARKS"))
+                        # Apply all replacements
+                        for placeholder, value in replacements:
+                            rendered_view = rendered_view.replace(placeholder, value)
                         
                         # Clean up any remaining placeholders
                         rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
@@ -939,7 +951,7 @@ else:
                         st.error(f"Error compiling visual matrix framework: {str(e)}")
                 else:
                     st.info("No data available for the selected site.")
-
+                    
             with tab_photos:
                 if site_row_data is not None and media_row_data:
                     direct_photo_mapping = {
