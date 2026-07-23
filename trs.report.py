@@ -234,6 +234,30 @@ def authenticate(username, password):
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
+#--- SINGLE FUNCTION TO MIRROR EXCEL DISPLAY EXACTLY ---
+def get_excel_display_value(cell):
+    """
+    Get the EXACT value as displayed in Excel
+    This mirrors whatever you see in the Excel cell
+    """
+    if cell.value is None:
+        return ""
+    
+    # For everything, just get the value as is
+    # openpyxl with data_only=True already gives us the displayed value
+    value = cell.value
+    
+    # Convert to string, preserving the exact display
+    if isinstance(value, datetime):
+        # For dates, format as MMMM DD, YYYY
+        return value.strftime('%B %d, %Y')
+    elif isinstance(value, float) and value.is_integer():
+        # For whole numbers, remove .0
+        return str(int(value))
+    else:
+        # Everything else - just convert to string
+        return str(value)
+
 #--- HELPER FUNCTIONS ---
 def download_file(url):
     try:
@@ -300,9 +324,10 @@ def parse_site_number(site_display_str):
     match = re.match(r"^(\d+(?:\.\d+)?)", str(site_display_str).strip())
     return float(match.group(1)) if match else float('inf')
 
+#--- UPDATED load_main_data_optimized ---
 def load_main_data_optimized(source_bytes):
     try:
-        # CRITICAL: data_only=True gets the displayed value, not the raw value
+        # data_only=True gets the displayed value from Excel
         wb = load_workbook(io.BytesIO(source_bytes), data_only=True)
         ws = wb.active
         
@@ -318,32 +343,11 @@ def load_main_data_optimized(source_bytes):
             
             for idx, cell in enumerate(row):
                 if idx < len(headers) and headers[idx]:
-                    # Get the displayed value (already formatted as Excel shows it)
-                    raw_val = cell.value
+                    # Get the displayed value from Excel using the mirror function
+                    formatted_val = get_excel_display_value(cell)
                     
-                    # If it's a datetime, Excel with data_only=True returns a datetime object
-                    # We need to preserve the EXACT display format from Excel
-                    if isinstance(raw_val, datetime):
-                        # Get the cell's number format to understand how it's displayed
-                        try:
-                            # Try to get the exact formatted string as it appears in Excel
-                            # Using the cell's internal format
-                            from openpyxl.utils.datetime import to_excel
-                            excel_date = to_excel(raw_val)
-                            # Excel displays dates based on the cell format
-                            # We'll use a simple format that matches common Excel date displays
-                            raw_val = raw_val.strftime('%Y-%m-%d')
-                        except:
-                            raw_val = raw_val.strftime('%Y-%m-%d')
-                    elif raw_val is not None:
-                        # For numbers, floats, etc. - just convert to string
-                        # This preserves the exact display (e.g., 111111.0 stays 111111.0 if that's how Excel shows it)
-                        raw_val = str(raw_val)
-                    else:
-                        raw_val = ""
-                    
-                    # Clean URL if needed (only for URL fields)
-                    cleaned_val = clean_and_extract_url(raw_val)
+                    # Clean URL if needed
+                    cleaned_val = clean_and_extract_url(formatted_val)
                     row_dict[headers[idx]] = cleaned_val
                     
                     if cleaned_val != "" and cleaned_val is not None:
@@ -376,9 +380,9 @@ def load_main_data_optimized(source_bytes):
         st.error(f"Error loading main data: {e}")
         return None
 
+#--- UPDATED load_media_data_optimized ---
 def load_media_data_optimized(source_bytes):
     try:
-        # data_only=True to get displayed values
         wb = load_workbook(io.BytesIO(source_bytes), data_only=True)
         media_data_list = []
         media_ws = None
@@ -389,10 +393,11 @@ def load_media_data_optimized(source_bytes):
         if not media_ws:
             media_ws = wb.active
         
-        # Process cells directly to preserve raw values
         for row in media_ws.iter_rows():
-            # Get values from cells, preserving raw format
-            vals = [cell.value for cell in row]
+            # Get the values as they appear in Excel using the mirror function
+            vals = []
+            for cell in row:
+                vals.append(get_excel_display_value(cell))
             
             t_area = str(vals[13] if len(vals) > 13 and vals[13] is not None else "").strip()
             s_name = str(vals[15] if len(vals) > 15 and vals[15] is not None else "").strip()
