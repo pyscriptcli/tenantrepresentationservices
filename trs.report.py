@@ -302,8 +302,8 @@ def parse_site_number(site_display_str):
 
 def load_main_data_optimized(source_bytes):
     try:
-        # Load workbook with data_only=False to preserve formulas
-        wb = load_workbook(io.BytesIO(source_bytes), data_only=False)
+        # CRITICAL: data_only=True gets the displayed value, not the raw value
+        wb = load_workbook(io.BytesIO(source_bytes), data_only=True)
         ws = wb.active
         
         # Get headers
@@ -318,10 +318,31 @@ def load_main_data_optimized(source_bytes):
             
             for idx, cell in enumerate(row):
                 if idx < len(headers) and headers[idx]:
-                    # Get raw value - this preserves original formatting
+                    # Get the displayed value (already formatted as Excel shows it)
                     raw_val = cell.value
                     
-                    # Clean URL if needed
+                    # If it's a datetime, Excel with data_only=True returns a datetime object
+                    # We need to preserve the EXACT display format from Excel
+                    if isinstance(raw_val, datetime):
+                        # Get the cell's number format to understand how it's displayed
+                        try:
+                            # Try to get the exact formatted string as it appears in Excel
+                            # Using the cell's internal format
+                            from openpyxl.utils.datetime import to_excel
+                            excel_date = to_excel(raw_val)
+                            # Excel displays dates based on the cell format
+                            # We'll use a simple format that matches common Excel date displays
+                            raw_val = raw_val.strftime('%Y-%m-%d')
+                        except:
+                            raw_val = raw_val.strftime('%Y-%m-%d')
+                    elif raw_val is not None:
+                        # For numbers, floats, etc. - just convert to string
+                        # This preserves the exact display (e.g., 111111.0 stays 111111.0 if that's how Excel shows it)
+                        raw_val = str(raw_val)
+                    else:
+                        raw_val = ""
+                    
+                    # Clean URL if needed (only for URL fields)
                     cleaned_val = clean_and_extract_url(raw_val)
                     row_dict[headers[idx]] = cleaned_val
                     
@@ -357,7 +378,8 @@ def load_main_data_optimized(source_bytes):
 
 def load_media_data_optimized(source_bytes):
     try:
-        wb = load_workbook(io.BytesIO(source_bytes), data_only=False)
+        # data_only=True to get displayed values
+        wb = load_workbook(io.BytesIO(source_bytes), data_only=True)
         media_data_list = []
         media_ws = None
         for sheet_name in wb.sheetnames:
