@@ -443,7 +443,7 @@ def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeh
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
-#--- HTML FRAMEWORK (unchanged) ---
+#--- HTML FRAMEWORK (UPDATED WITH ALL PLACEHOLDERS) ---
 HTML_FRAMEWORK = """
 <!DOCTYPE html>
 <html>
@@ -586,52 +586,53 @@ document.addEventListener('DOMContentLoaded', function() {
         <tr style="height: 19px"> <td class="s1" colspan="7">Terms</td> <td class="s3"></td> <td class="s1" colspan="7">Rates</td> </tr>
         <tr style="height: 19px"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
         <tr style="height: auto;"> <td class="s2">Site Availability Date</td> <td class="s2"></td> <td class="s4" colspan="5">_SITE_AVAILABILITY_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Monthly Rental Rate (Php)</td> <td class="s4" colspan="5">_MONTHLY_RENTAL_RATE_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">COL Start Date</td> <td class="s2"></td> <td class="s4" colspan="5">_COL_START_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Percentage Rent</td> <td class="s4" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">COL End Date</td> <td class="s2"></td> <td class="s4" colspan="5">_COL_END_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Minimum Guaranteed Rent</td> <td class="s4" colspan="5"></td> </tr>
+        <tr style="height: auto;"> <td class="s2">COL Start Date</td> <td class="s2"></td> <td class="s4" colspan="5">_COL_START_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Percentage Rent</td> <td class="s4" colspan="5">_PERCENTAGE_RENT_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">COL End Date</td> <td class="s2"></td> <td class="s4" colspan="5">_COL_END_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Minimum Guaranteed Rent</td> <td class="s4" colspan="5">_MINIMUM_GUARANTEED_RENT_</td> </tr>
         <tr style="height: auto;"> <td class="s2">Lease Terms</td> <td class="s2"></td> <td class="s4" colspan="5">_LEASE_TERMS_</td> <td class="s3"></td> <td class="s8" colspan="2">Annual Escalation Rate (%)</td> <td class="s4" colspan="5">_ESCALATION_</td> </tr>
         <tr style="height: 19px"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s8" colspan="2">Advance Rental (Php)</td> <td class="s4" colspan="5">_ADVANCE_RENTAL_</td> </tr>
         <tr style="height: 19px"> <td class="s1" colspan="7">Technical Info</td> <td class="s3"></td> <td class="s8" colspan="2">Security Deposit Amount (Php)</td> <td class="s4" colspan="5">_SECURITY_DEPOSIT_</td> </tr>
         <tr style="height: 19px"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s8" colspan="2">CUSA Dues</td> <td class="s4" colspan="5">_CUSA_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Lot /Floor Area (in sqm)</td> <td class="s4" colspan="5">_LOT_FLOOR_AREA_SQM_</td> <td class="s3"></td> <td class="s8" colspan="2">Estimated Revenue Per Mo.</td> <td class="s4" colspan="5"></td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Lot/Floor Area (in sqm)</td> <td class="s4" colspan="5">_LOT_FLOOR_AREA_SQM_</td> <td class="s3"></td> <td class="s8" colspan="2">Estimated Revenue Per Mo.</td> <td class="s4" colspan="5">_ESTIMATED_REVENUE_PER_MO_</td> </tr>
         <tr style="height: auto;"> <td class="s2">Frontage (in m)</td> <td class="s2"></td> <td class="s4" colspan="5">_FRONTAGE_</td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Depth (in m)</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s1" colspan="7">Provisions</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Floor to Slab Height (in m) - if Bldg</td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s2" colspan="7"></td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">No. of Storeys (If Bldg Lessee)</td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Tenant is the Owner</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Type of Structure(if Bldg Lessee)</td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Lease Type</td> <td class="s9" colspan="5">_LEASE_TYPE_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Soil Profile</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Principal COL</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Supply Access:</td> <td class="s2"></td> <td class="s2" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Sub-Lease Provision</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Power</td> <td class="s10"></td> <td class="s2">Aircon</td> <td class="s10"></td> <td class="s5" colspan="2">LPG Fire Pro</td> <td class="s10"></td> <td class="s3"></td> <td class="s5" colspan="2">Pre-Term/Partial Term</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Water</td> <td class="s10"></td> <td class="s2">Exhaust</td> <td class="s10"></td> <td class="s5" colspan="2">Drainage TP</td> <td class="s10"></td> <td class="s3"></td> <td class="s5" colspan="2">Tripartite Agreement</td> <td class="s9" colspan="5"></td> </tr>
+        <tr style="height: auto;"> <td class="s2">Depth (in m)</td> <td class="s2"></td> <td class="s4" colspan="5">_DEPTH_IN_M_</td> <td class="s3"></td> <td class="s1" colspan="7">Provisions</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Floor to Slab Height (in m) - if Bldg</td> <td class="s4" colspan="5">_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_</td> <td class="s3"></td> <td class="s2" colspan="7"></td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">No. of Storeys (If Bldg Lessee)</td> <td class="s4" colspan="5">_NO_OF_STOREYS_</td> <td class="s3"></td> <td class="s5" colspan="2">Tenant is the Owner</td> <td class="s9" colspan="5">_TENANT_IS_THE_OWNER_</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Type of Structure (if Bldg Lessee)</td> <td class="s4" colspan="5">_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_</td> <td class="s3"></td> <td class="s5" colspan="2">Lease Type</td> <td class="s9" colspan="5">_LEASE_TYPE_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Soil Profile</td> <td class="s2"></td> <td class="s4" colspan="5">_SOIL_PROFILE_</td> <td class="s3"></td> <td class="s5" colspan="2">Principal COL</td> <td class="s9" colspan="5">_PRINCIPAL_COL_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Supply Access:</td> <td class="s2"></td> <td class="s2" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Sub-Lease Provision</td> <td class="s9" colspan="5">_SUB_LEASE_PROVISION_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Power</td> <td class="s10"></td> <td class="s2">Aircon</td> <td class="s10"></td> <td class="s5" colspan="2">LPG Fire Pro</td> <td class="s10"></td> <td class="s3"></td> <td class="s5" colspan="2">Pre-Term/Partial Term</td> <td class="s9" colspan="5">_PRE_TERM_PARTIAL_TERM_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Water</td> <td class="s10"></td> <td class="s2">Exhaust</td> <td class="s10"></td> <td class="s5" colspan="2">Drainage TP</td> <td class="s10"></td> <td class="s3"></td> <td class="s5" colspan="2">Tripartite Agreement</td> <td class="s9" colspan="5">_TRIPARTITE_AGREEMENT_</td> </tr>
         <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
         <tr style="height: 19px;"> <td class="s1" colspan="7">Lessor and Tenant Details</td> <td class="s3"></td> <td class="s1" colspan="7">If with Sub-Lessor/ Sub-Lessee</td> </tr>
         <tr style="height: 9px;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Name of Lessor</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Sub-Lessor</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Type of Ownership</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Type of Ownership</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Company Name</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Company Name</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Developer Account Name</td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Developer Account Name</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_CONTACT_NUMBER_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_EMAIL_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5"></td> </tr>
+        <tr style="height: auto;"> <td class="s2">Name of Lessor</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Sub-Lessor</td> <td class="s9" colspan="5">_NAME_OF_SUBLESSOR_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_CONTACT_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUBLESSOR_CONTACT_NO_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_EMAIL_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUBLESSOR_EMAIL_ADDRESS_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Type of Ownership</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_TYPE_OF_OWNERSHIP_</td> <td class="s3"></td> <td class="s5" colspan="2">Type of Ownership</td> <td class="s9" colspan="5">_SUBLESSOR_TYPE_OF_OWNERSHIP_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Company Name</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_COMPANY_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Company Name</td> <td class="s9" colspan="5">_SUBLESSOR_COMPANY_NAME_</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Developer Account Name</td> <td class="s4" colspan="5">_LESSOR_DEVELOPER_ACCOUNT_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Developer Account Name</td> <td class="s9" colspan="5">_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_BUSINESS_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5">_SUBLESSOR_BUSINESS_ADDRESS_</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_CONTACT_PERSON_SOURCE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5">_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s4" colspan="5">_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s9" colspan="5">_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_CONTACT_NUMBER_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUBLESSOR_CONTACT_NO_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_EMAIL_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUBLESSOR_EMAIL_ADDRESS_</td> </tr>
         <tr style="height: auto;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Name of Lessee</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Name of Sub-Lessee</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Position</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Position</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5"></td> </tr>
+        <tr style="height: auto;"> <td class="s2">Name of Lessee</td> <td class="s2"></td> <td class="s4" colspan="5">_NAME_OF_LESSEE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Sub-Lessee</td> <td class="s9" colspan="5">_NAME_OF_SUB_LESSEE_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Position</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_POSITION_</td> <td class="s3"></td> <td class="s5" colspan="2">Position</td> <td class="s9" colspan="5">_SUB_LESSEE_POSITION_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_CONTACT_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUB_LESSEE_CONTACT_NO_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_EMAIL_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUB_LESSEE_EMAIL_ADDRESS_</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5">_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_BUSINESS_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5">_SUB_LESSEE_BUSINESS_ADDRESS_</td> </tr>
         <tr style="height: 9px;"> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> </tr>
         <tr style="height: 19px;"> <td class="s13" colspan="15">Regulatory</td> </tr>
-        <tr style="height: auto;"> <td class="s14">Setback Requirement</td> <td class="s15" colspan="4"></td> <td class="s16" colspan="2">Perm Traffic Re-Routing</td> <td class="s17"></td> <td class="s15" colspan="2"></td> <td class="s18" colspan="5">Future Development</td> </tr>
-        <tr style="height: auto;"> <td class="s14">Road Widening</td> <td class="s15" colspan="4"></td> <td class="s16" colspan="2">Perm Road Closure</td> <td class="s17"></td> <td class="s15" colspan="2"></td> <td class="s18" colspan="5">Zoning Clearance</td> </tr>
-        <tr style="height: auto;"> <td class="s19">Pedestrian Overpass</td> <td class="s20" colspan="4"></td> <td class="s19" colspan="2">Infrastructure Programs</td> <td class="s20"></td> <td class="s20" colspan="2"></td> <td class="s21" colspan="5">Gas Station</td> </tr>
+        <tr style="height: auto;"> <td class="s14">Setback Requirement</td> <td class="s15" colspan="4">_SETBACK_REQUIREMENT_</td> <td class="s16" colspan="2">Perm Traffic Re-Routing</td> <td class="s17"></td> <td class="s15" colspan="2">_PERM_TRAFFIC_RE_ROUTING_</td> <td class="s18" colspan="5">Future Development</td> </tr>
+        <tr style="height: auto;"> <td class="s14">Road Widening</td> <td class="s15" colspan="4">_ROAD_WIDENING_</td> <td class="s16" colspan="2">Perm Road Closure</td> <td class="s17"></td> <td class="s15" colspan="2">_PERM_ROAD_CLOSURE_</td> <td class="s18" colspan="5">Zoning Clearance</td> </tr>
+        <tr style="height: auto;"> <td class="s19">Pedestrian Overpass</td> <td class="s20" colspan="4">_PEDESTRIAN_OVERPASS_</td> <td class="s19" colspan="2">Infrastructure Programs</td> <td class="s20"></td> <td class="s20" colspan="2">_INFRASTRUCTURE_PROGRAMS_</td> <td class="s21" colspan="5">Gas Station</td> </tr>
         <tr style="height: auto;"> <td class="s2" colspan="14"></td> <td class="s3"></td> </tr>
         <tr style="height: 19px;"> <td class="s22">Site Acquirability:</td> <td class="s2" colspan="13"></td> <td class="s3"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Confidence Level</td> <td class="s4" colspan="2"></td> <td class="s2" colspan="11"></td> <td class="s3"></td> </tr>
+        <tr style="height: auto;"> <td class="s2">Confidence Level</td> <td class="s4" colspan="2">_CONFIDENCE_LEVEL_</td> <td class="s2" colspan="11"></td> <td class="s3"></td> </tr>
         <tr style="height: auto;"> <td class="s2">Site Availability</td> <td class="s23" colspan="2"><div style="width:184px;left:-1px">_SITE_AVAILABILITY_CLASS_</div></td> <td class="s24"></td> <td class="s25"></td> <td class="s2" colspan="10"></td> <td class="s3"></td> </tr>
+        <tr style="height: auto;"> <td class="s2">Site Availability Remarks</td> <td class="s23" colspan="2"><div style="width:184px;left:-1px">_SITE_AVAILABILITY_REMARKS_</div></td> <td class="s24"></td> <td class="s25"></td> <td class="s2" colspan="10"></td> <td class="s3"></td> </tr>
         <tr class="remarks-row" style="height: auto;"> <td class="s6 remarks-label" style="white-space: nowrap; vertical-align: top; padding-top: 8px;">Other Remarks:</td> <td class="s5" colspan="7" style="white-space: normal; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: auto; line-height: 1.6; padding: 8px 6px;">_REMARKS_</td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
         </tbody>
         </table>
@@ -739,7 +740,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     else:
         st.write("No audit records yet.")
 
-# --- VIEWER (unchanged) ---
+# --- VIEWER ---
 else:
     # Determine default selections
     trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
@@ -815,37 +816,116 @@ else:
                             val = site_row_data.get(key_string.upper(), "")
                             if pd.isna(val) or val is None: 
                                 return ""
-                            return val
+                            return str(val)
+                        
                         rendered_view = HTML_FRAMEWORK
-                        rendered_view = rendered_view.replace("_TRADE_AREA_", str(process_val("TRADE AREA")))
-                        rendered_view = rendered_view.replace("_SITE_NAME_", str(process_val("SITE NAME")))
-                        rendered_view = rendered_view.replace("_SITE_NO_", str(process_val("SITE NO")))
-                        rendered_view = rendered_view.replace("_TIMESTAMP_", str(process_val("TIMESTAMP")))
-                        rendered_view = rendered_view.replace("_DATE_OF_REPORT_", str(process_val("DATE OF REPORT")))
-                        rendered_view = rendered_view.replace("_UNIT_BLDG_ST_NAME_", str(process_val("UNIT #, BLDG/ST # AND ST NAME")))
-                        rendered_view = rendered_view.replace("_BARANGAY_DISTRICT_NAME_", str(process_val("BARANGAY/DISTRICT NAME")))
-                        rendered_view = rendered_view.replace("_CITY_MUNICIPALITY_", str(process_val("CITY/MUNICIPALITY")))
-                        rendered_view = rendered_view.replace("_REGION_", str(process_val("REGION")))
-                        rendered_view = rendered_view.replace("_POSTAL_CODE_", str(process_val("POSTAL CODE")))
-                        rendered_view = rendered_view.replace("_SITE_AVAILABILITY_DATE_", str(process_val("SITE AVAILABILITY DATE")))
-                        rendered_view = rendered_view.replace("_MONTHLY_RENTAL_RATE_", str(process_val("MONTHLY RENTAL RATE")))
-                        rendered_view = rendered_view.replace("_COL_START_DATE_", str(process_val("COL START DATE")))
-                        rendered_view = rendered_view.replace("_COL_END_DATE_", str(process_val("COL END DATE")))
-                        rendered_view = rendered_view.replace("_LEASE_TERMS_", str(process_val("LEASE TERMS")))
-                        rendered_view = rendered_view.replace("_ESCALATION_", str(process_val("ESCALATION")))
-                        rendered_view = rendered_view.replace("_ADVANCE_RENTAL_", str(process_val("ADVANCE RENTAL")))
-                        rendered_view = rendered_view.replace("_SECURITY_DEPOSIT_", str(process_val("SECURITY DEPOSIT")))
-                        rendered_view = rendered_view.replace("_CUSA_", str(process_val("CUSA")))
-                        rendered_view = rendered_view.replace("_LOT_FLOOR_AREA_SQM_", str(process_val("LOT/FLOOR AREA SQM")))
-                        rendered_view = rendered_view.replace("_FRONTAGE_", str(process_val("FRONTAGE")))
-                        rendered_view = rendered_view.replace("_LEASE_TYPE_", str(process_val("LEASE TYPE")))
-                        rendered_view = rendered_view.replace("_LESSOR_", str(process_val("LESSOR")))
-                        rendered_view = rendered_view.replace("_CONTACT_PERSON_SOURCE_", str(process_val("CONTACT PERSON/SOURCE")))
-                        rendered_view = rendered_view.replace("_CONTACT_NUMBER_", str(process_val("CONTACT NUMBER")))
-                        rendered_view = rendered_view.replace("_EMAIL_ADDRESS_", str(process_val("EMAIL ADDRESS")))
-                        rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", str(process_val("SITE AVAILABILITY CLASS")))
-                        rendered_view = rendered_view.replace("_REMARKS_", str(process_val("REMARKS")))
+                        
+                        # General Information & Location
+                        rendered_view = rendered_view.replace("_TRADE_AREA_", process_val("TRADE AREA"))
+                        rendered_view = rendered_view.replace("_SITE_NAME_", process_val("SITE NAME"))
+                        rendered_view = rendered_view.replace("_SITE_NO_", process_val("SITE NO"))
+                        rendered_view = rendered_view.replace("_TIMESTAMP_", process_val("TIMESTAMP"))
+                        rendered_view = rendered_view.replace("_DATE_OF_REPORT_", process_val("DATE OF REPORT"))
+                        rendered_view = rendered_view.replace("_UNIT_BLDG_ST_NAME_", process_val("UNIT #, BLDG/ST # AND ST NAME"))
+                        rendered_view = rendered_view.replace("_BARANGAY_DISTRICT_NAME_", process_val("BARANGAY/DISTRICT NAME"))
+                        rendered_view = rendered_view.replace("_CITY_MUNICIPALITY_", process_val("CITY/MUNICIPALITY"))
+                        rendered_view = rendered_view.replace("_REGION_", process_val("REGION"))
+                        rendered_view = rendered_view.replace("_POSTAL_CODE_", process_val("POSTAL CODE"))
+                        
+                        # Terms
+                        rendered_view = rendered_view.replace("_SITE_AVAILABILITY_DATE_", process_val("SITE AVAILABILITY DATE"))
+                        rendered_view = rendered_view.replace("_COL_START_DATE_", process_val("COL START DATE"))
+                        rendered_view = rendered_view.replace("_COL_END_DATE_", process_val("COL END DATE"))
+                        rendered_view = rendered_view.replace("_LEASE_TERMS_", process_val("LEASE TERMS"))
+                        
+                        # Rates
+                        rendered_view = rendered_view.replace("_MONTHLY_RENTAL_RATE_", process_val("MONTHLY RENTAL RATE"))
+                        rendered_view = rendered_view.replace("_PERCENTAGE_RENT_", process_val("PERCENTAGE RENT"))
+                        rendered_view = rendered_view.replace("_MINIMUM_GUARANTEED_RENT_", process_val("MINIMUM GUARANTEED RENT"))
+                        rendered_view = rendered_view.replace("_ESCALATION_", process_val("ESCALATION"))
+                        rendered_view = rendered_view.replace("_ADVANCE_RENTAL_", process_val("ADVANCE RENTAL"))
+                        rendered_view = rendered_view.replace("_SECURITY_DEPOSIT_", process_val("SECURITY DEPOSIT"))
+                        rendered_view = rendered_view.replace("_CUSA_", process_val("CUSA"))
+                        rendered_view = rendered_view.replace("_ESTIMATED_REVENUE_PER_MO_", process_val("ESTIMATED REVENUE PER MO."))
+                        
+                        # Technical Info
+                        rendered_view = rendered_view.replace("_LOT_FLOOR_AREA_SQM_", process_val("LOT/FLOOR AREA SQM"))
+                        rendered_view = rendered_view.replace("_FRONTAGE_", process_val("FRONTAGE"))
+                        rendered_view = rendered_view.replace("_DEPTH_IN_M_", process_val("DEPTH (IN M)"))
+                        rendered_view = rendered_view.replace("_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_", process_val("FLOOR TO SLAB HEIGHT (IN M) - IF BLDG"))
+                        rendered_view = rendered_view.replace("_NO_OF_STOREYS_", process_val("NO. OF STOREYS (IF BLDG LESSEE)"))
+                        rendered_view = rendered_view.replace("_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_", process_val("TYPE OF STRUCTURE (IF BLDG LESSEE)"))
+                        rendered_view = rendered_view.replace("_SOIL_PROFILE_", process_val("SOIL PROFILE"))
+                        
+                        # Provisions
+                        rendered_view = rendered_view.replace("_TENANT_IS_THE_OWNER_", process_val("TENANT IS THE OWNER"))
+                        rendered_view = rendered_view.replace("_LEASE_TYPE_", process_val("LEASE TYPE"))
+                        rendered_view = rendered_view.replace("_PRINCIPAL_COL_", process_val("PRINCIPAL COL"))
+                        rendered_view = rendered_view.replace("_SUB_LEASE_PROVISION_", process_val("SUB-LEASE PROVISION"))
+                        rendered_view = rendered_view.replace("_PRE_TERM_PARTIAL_TERM_", process_val("PRE-TERM/PARTIAL TERM"))
+                        rendered_view = rendered_view.replace("_TRIPARTITE_AGREEMENT_", process_val("TRIPARTITE AGREEMENT"))
+                        
+                        # Lessor Details
+                        rendered_view = rendered_view.replace("_LESSOR_", process_val("LESSOR"))
+                        rendered_view = rendered_view.replace("_LESSOR_CONTACT_NO_", process_val("LESSOR CONTACT NO."))
+                        rendered_view = rendered_view.replace("_LESSOR_EMAIL_ADDRESS_", process_val("LESSOR E-MAIL ADDRESS"))
+                        rendered_view = rendered_view.replace("_LESSOR_TYPE_OF_OWNERSHIP_", process_val("LESSOR TYPE OF OWNERSHIP"))
+                        rendered_view = rendered_view.replace("_LESSOR_COMPANY_NAME_", process_val("LESSOR COMPANY NAME"))
+                        rendered_view = rendered_view.replace("_LESSOR_DEVELOPER_ACCOUNT_NAME_", process_val("LESSOR DEVELOPER ACCOUNT NAME"))
+                        rendered_view = rendered_view.replace("_LESSOR_BUSINESS_ADDRESS_", process_val("LESSOR BUSINESS ADDRESS"))
+                        rendered_view = rendered_view.replace("_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val("LESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE"))
+                        
+                        # Lessee Details
+                        rendered_view = rendered_view.replace("_NAME_OF_LESSEE_", process_val("NAME OF LESSEE"))
+                        rendered_view = rendered_view.replace("_LESSEE_POSITION_", process_val("LESSEE POSITION"))
+                        rendered_view = rendered_view.replace("_LESSEE_CONTACT_NO_", process_val("LESSEE CONTACT NO."))
+                        rendered_view = rendered_view.replace("_LESSEE_EMAIL_ADDRESS_", process_val("LESSEE E-MAIL ADDRESS"))
+                        rendered_view = rendered_view.replace("_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val("LESSEE NAME OF AUTHORIZED REPRESENTATIVE"))
+                        rendered_view = rendered_view.replace("_LESSEE_BUSINESS_ADDRESS_", process_val("LESSEE BUSINESS ADDRESS"))
+                        
+                        # Sub-Lessor Details
+                        rendered_view = rendered_view.replace("_NAME_OF_SUBLESSOR_", process_val("NAME OF SUBLESSOR"))
+                        rendered_view = rendered_view.replace("_SUBLESSOR_CONTACT_NO_", process_val("SUBLESSOR CONTACT NO."))
+                        rendered_view = rendered_view.replace("_SUBLESSOR_EMAIL_ADDRESS_", process_val("SUBLESSOR E-MAIL ADDRESS"))
+                        rendered_view = rendered_view.replace("_SUBLESSOR_TYPE_OF_OWNERSHIP_", process_val("SUBLESSOR TYPE OF OWNERSHIP"))
+                        rendered_view = rendered_view.replace("_SUBLESSOR_COMPANY_NAME_", process_val("SUBLESSOR COMPANY NAME"))
+                        rendered_view = rendered_view.replace("_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_", process_val("SUBLESSOR DEVELOPER ACCOUNT NAME"))
+                        rendered_view = rendered_view.replace("_SUBLESSOR_BUSINESS_ADDRESS_", process_val("SUBLESSOR BUSINESS ADDRESS"))
+                        rendered_view = rendered_view.replace("_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val("SUBLESSOR NAME OF AUTHORIZED REPRESENTATIVE"))
+                        rendered_view = rendered_view.replace("_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val("SUBLESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE"))
+                        
+                        # Sub-Lessee Details
+                        rendered_view = rendered_view.replace("_NAME_OF_SUB_LESSEE_", process_val("NAME OF SUB-LESSEE"))
+                        rendered_view = rendered_view.replace("_SUB_LESSEE_POSITION_", process_val("SUB-LESSEE POSITION"))
+                        rendered_view = rendered_view.replace("_SUB_LESSEE_CONTACT_NO_", process_val("SUB-LESSEE CONTACT NO."))
+                        rendered_view = rendered_view.replace("_SUB_LESSEE_EMAIL_ADDRESS_", process_val("SUB-LESSEE E-MAIL ADDRESS"))
+                        rendered_view = rendered_view.replace("_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val("SUB-LESSEE NAME OF AUTHORIZED REPRESENTATIVE"))
+                        rendered_view = rendered_view.replace("_SUB_LESSEE_BUSINESS_ADDRESS_", process_val("SUB-LESSEE BUSINESS ADDRESS"))
+                        
+                        # Contact Person (already in code)
+                        rendered_view = rendered_view.replace("_CONTACT_PERSON_SOURCE_", process_val("CONTACT PERSON/SOURCE"))
+                        rendered_view = rendered_view.replace("_CONTACT_NUMBER_", process_val("CONTACT NUMBER"))
+                        rendered_view = rendered_view.replace("_EMAIL_ADDRESS_", process_val("EMAIL ADDRESS"))
+                        
+                        # Regulatory
+                        rendered_view = rendered_view.replace("_SETBACK_REQUIREMENT_", process_val("SETBACK REQUIREMENT"))
+                        rendered_view = rendered_view.replace("_ROAD_WIDENING_", process_val("ROAD WIDENING"))
+                        rendered_view = rendered_view.replace("_PEDESTRIAN_OVERPASS_", process_val("PEDESTRIAN OVERPASS"))
+                        rendered_view = rendered_view.replace("_PERM_TRAFFIC_RE_ROUTING_", process_val("PERM TRAFFIC RE-ROUTING"))
+                        rendered_view = rendered_view.replace("_PERM_ROAD_CLOSURE_", process_val("PERM ROAD CLOSURE"))
+                        rendered_view = rendered_view.replace("_INFRASTRUCTURE_PROGRAMS_", process_val("INFRASTRUCTURE PROGRAMS"))
+                        
+                        # Site Acquirability
+                        rendered_view = rendered_view.replace("_CONFIDENCE_LEVEL_", process_val("CONFIDENCE LEVEL"))
+                        rendered_view = rendered_view.replace("_SITE_AVAILABILITY_CLASS_", process_val("SITE AVAILABILITY CLASS"))
+                        rendered_view = rendered_view.replace("_SITE_AVAILABILITY_REMARKS_", process_val("SITE AVAILABILITY REMARKS"))
+                        
+                        # Remarks
+                        rendered_view = rendered_view.replace("_REMARKS_", process_val("REMARKS"))
+                        
+                        # Clean up any remaining placeholders
                         rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
+                        
                         components.html(rendered_view, height=1600, scrolling=False)
                     except Exception as e:
                         st.error(f"Error compiling visual matrix framework: {str(e)}")
