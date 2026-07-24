@@ -1063,4 +1063,3 @@ else:
                     st.info("No data available for the selected site.")
         else:
             st.warning("You do not have permission to view site information reports.")
-```
