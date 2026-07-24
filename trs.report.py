@@ -31,6 +31,252 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+#--- HTML FRAMEWORK ---
+HTML_FRAMEWORK = """
+<!DOCTYPE html>
+<html>
+<head>
+<style type="text/css">
+html, body { margin: 0; padding: 0; background-color: #ffffff; font-family: Arial, sans-serif; height: 100%; overflow-y: auto !important; overflow-x: hidden !important; }
+.report-wrapper { width: 100%; overflow-y: visible !important; overflow-x: hidden !important; display: flex; justify-content: center; align-items: flex-start; padding: 0; margin: 0; min-height: 100%; }
+.report-scaler { transform-origin: center top; width: 100%; display: inline-block; overflow: visible; text-align: center; }
+.ritz.grid-container { height: auto; overflow: visible !important; padding: 10px; box-sizing: border-box; width: 100%; display: inline-block; text-align: left; }
+.ritz .waffle a { color: inherit; }
+.ritz .waffle td { padding: 2px 3px !important; vertical-align: middle; border: none !important; }
+.freezebar-origin-ltr { background-color: #cecece; border: none !important; }
+.column-headers-background { background-color: #cecece; text-align: center; font-size: 10pt; color: #444746; font-weight: normal; border: none !important; }
+.row-headers-background { background-color: #cecece; text-align: center; font-size: 10pt; color: #444746; font-weight: normal; border: none !important; }
+.ritz .waffle .s0 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#800000;text-align:center;font-weight:bold;color:#ffffff;font-size:10pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
+.ritz .waffle .s1 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
+.ritz .waffle .s2 {background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s3 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s4 {border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
+.ritz .waffle .s4.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
+.ritz .waffle .s5 {background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s6 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s7 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s8 {border: none !important;background-color:#ffffff;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s9 {border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
+.ritz .waffle .s9.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
+.ritz .waffle .s10{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s11{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s12{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s13{background-color:#cecece;text-align:left;font-weight:bold;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s14{background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s15{border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s16{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s17{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s18{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s19{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s20{border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s21{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s22{background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s23{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s24{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s25{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
+.ritz .waffle .s26{background-color:#cecece;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s27{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s28{background-color:#cecece;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s29{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
+.ritz .waffle .s30{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
+.ritz .waffle { border-collapse: collapse; width: 100%; }
+.ritz .waffle tr { height: auto !important; }
+.ritz .waffle td[class*="s4"], .ritz .waffle td[class*="s9"] { height: auto !important; min-height: 20px; }
+.remarks-row { height: auto !important; }
+.remarks-row td { height: auto !important; padding: 6px 3px !important; vertical-align: top !important; }
+.remarks-row td.s5 { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; line-height: 1.6 !important; padding: 8px 6px !important; }
+.remarks-label { white-space: nowrap !important; vertical-align: top !important; padding-top: 8px !important; }
+.regulatory-header { background-color: #cecece !important; font-weight: bold !important; color: #000000 !important; }
+.regulatory-label { background-color: #cecece !important; color: #ff0000 !important; }
+.regulatory-value { background-color: #cecece !important; color: #000000 !important; }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function scaleReportToFit() {
+        const wrapper = document.querySelector('.report-wrapper');
+        const scaler = document.querySelector('.report-scaler');
+        const container = document.querySelector('.ritz.grid-container');
+        if (!wrapper || !scaler || !container) return;
+        const table = document.querySelector('.waffle');
+        if (!table) return;
+        const containerWidth = wrapper.parentElement ? wrapper.parentElement.clientWidth : window.innerWidth;
+        const availableWidth = containerWidth - 40;
+        table.style.width = 'auto';
+        const naturalWidth = table.scrollWidth;
+        table.style.width = '100%';
+        let scale = 1;
+        if (naturalWidth > availableWidth) {
+            scale = (availableWidth / naturalWidth) * 0.95;
+            if (scale < 0.4) scale = 0.4;
+        }
+        if (scale < 1) {
+            scaler.style.transform = 'scale(' + scale + ')';
+            scaler.style.transformOrigin = 'center top';
+            scaler.style.width = (100 / scale) + '%';
+            scaler.style.marginBottom = '0px';
+            scaler.style.display = 'inline-block';
+            scaler.style.textAlign = 'center';
+        } else {
+            scaler.style.transform = 'none';
+            scaler.style.width = '100%';
+            scaler.style.marginBottom = '0px';
+            scaler.style.display = 'inline-block';
+            scaler.style.textAlign = 'center';
+        }
+        container.style.display = 'inline-block';
+        container.style.textAlign = 'left';
+        container.style.margin = '0 auto';
+        wrapper.style.overflowY = 'visible';
+        wrapper.style.overflowX = 'hidden';
+        wrapper.style.width = '100%';
+        wrapper.style.display = 'flex';
+        wrapper.style.justifyContent = 'center';
+        wrapper.style.alignItems = 'flex-start';
+        wrapper.style.minHeight = '100%';
+        container.style.overflowX = 'visible';
+        container.style.overflowY = 'visible';
+        container.style.width = '100%';
+        document.body.style.overflowY = 'auto';
+        document.body.style.overflowX = 'hidden';
+        document.documentElement.style.overflowY = 'auto';
+        document.documentElement.style.overflowX = 'hidden';
+        const tableHeight = table.scrollHeight;
+        if (scale < 1) {
+            scaler.style.height = (tableHeight * scale + 50) + 'px';
+        } else {
+            scaler.style.height = 'auto';
+        }
+    }
+    setTimeout(scaleReportToFit, 100);
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(scaleReportToFit, 100);
+    });
+    const observer = new MutationObserver(function() { setTimeout(scaleReportToFit, 100); });
+    const tableBody = document.querySelector('.waffle tbody');
+    if (tableBody) { observer.observe(tableBody, { childList: true, subtree: true, characterData: true }); }
+    window.addEventListener('load', function() { setTimeout(scaleReportToFit, 200); });
+});
+</script>
+</head>
+<body>
+<div class="report-wrapper">
+    <div class="report-scaler">
+        <div class="ritz grid-container" dir="ltr">
+        <table class="waffle" cellspacing="0" cellpadding="0" style="table-layout: fixed; width: 100%; border-collapse: collapse;">
+        <colgroup>
+        <col style="width:223px;"> <col style="width:100px;"> <col style="width:86px;"> <col style="width:100px;"> <col style="width:94px;"> <col style="width:100px;"> <col style="width:81px;"> <col style="width:15px;"> <col style="width:148px;"> <col style="width:176px;"> <col style="width:100px;"> <col style="width:100px;"> <col style="width:100px;"> <col style="width:125px;"> <col style="width:29px;">
+        </colgroup>
+        <tbody>
+        <tr style="height: auto;"> <td class="s0" colspan="15">SITE INFORMATION REPORT</td> </tr>
+        <tr style="height: auto"> <td class="s1" colspan="7">General Information</td> <td class="s1"></td> <td class="s1" colspan="7">Location</td> </tr>
+        <tr style="height: auto"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
+        <tr style="height: auto;"> <td class="s2">Trade Area Name</td> <td class="s2"></td> <td class="s4" colspan="5">_TRADE_AREA_</td> <td class="s3"></td> <td class="s5" colspan="2">Site Name</td> <td class="s4" colspan="5">_SITE_NAME_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Site Name:</td> <td class="s2"></td> <td class="s4" colspan="5">_SITE_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Unit #, Bldg/St # and St Name</td> <td class="s4" colspan="5">_UNIT_BLDG_ST_NAME_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Site Number:</td> <td class="s2"></td> <td class="s4" colspan="5">_SITE_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Barangay/District Name</td> <td class="s4" colspan="5">_BARANGAY_DISTRICT_NAME_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Date Started</td> <td class="s2"></td> <td class="s4" colspan="5">_TIMESTAMP_</td> <td class="s3"></td> <td class="s5" colspan="2">City/Municipality</td> <td class="s4" colspan="5">_CITY_MUNICIPALITY_</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Date Report Submitted</td> <td class="s4" colspan="5">_DATE_OF_REPORT_</td> <td class="s3"></td> <td class="s5" colspan="2">Region</td> <td class="s4" colspan="5">_REGION_</td> </tr>
+        <tr style="height: auto;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s5" colspan="2">Postal Code</td> <td class="s4" colspan="5">_POSTAL_CODE_</td> </tr>
+        <tr style="height: 9px"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
+        <tr style="height: 19px"> <td class="s1" colspan="7">Terms</td> <td class="s3"></td> <td class="s1" colspan="7">Rates</td> </tr>
+        <tr style="height: 19px"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
+        <tr style="height: auto;"> <td class="s2">Site Availability Date</td> <td class="s2"></td> <td class="s4" colspan="5">_SITE_AVAILABILITY_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Monthly Rental Rate (Php)</td> <td class="s4" colspan="5">_MONTHLY_RENTAL_RATE_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">COL Start Date</td> <td class="s2"></td> <td class="s4" colspan="5">_COL_START_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Percentage Rent</td> <td class="s4" colspan="5">_PERCENTAGE_RENT_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">COL End Date</td> <td class="s2"></td> <td class="s4" colspan="5">_COL_END_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Minimum Guaranteed Rent</td> <td class="s4" colspan="5">_MINIMUM_GUARANTEED_RENT_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Lease Terms</td> <td class="s2"></td> <td class="s4" colspan="5">_LEASE_TERMS_</td> <td class="s3"></td> <td class="s8" colspan="2">Annual Escalation Rate (%)</td> <td class="s4" colspan="5">_ESCALATION_</td> </tr>
+        <tr style="height: 19px"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s8" colspan="2">Advance Rental (Php)</td> <td class="s4" colspan="5">_ADVANCE_RENTAL_</td> </tr>
+        <tr style="height: 19px"> <td class="s1" colspan="7">Technical Info</td> <td class="s3"></td> <td class="s8" colspan="2">Security Deposit Amount (Php)</td> <td class="s4" colspan="5">_SECURITY_DEPOSIT_</td> </tr>
+        <tr style="height: 19px"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s8" colspan="2">CUSA Dues</td> <td class="s4" colspan="5">_CUSA_</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Lot/Floor Area (in sqm)</td> <td class="s4" colspan="5">_LOT_FLOOR_AREA_SQM_</td> <td class="s3"></td> <td class="s8" colspan="2">Estimated Revenue Per Mo.</td> <td class="s4" colspan="5">_ESTIMATED_REVENUE_PER_MO_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Frontage (in m)</td> <td class="s2"></td> <td class="s4" colspan="5">_FRONTAGE_</td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
+        <tr style="height: auto;"> <td class="s2">Depth (in m)</td> <td class="s2"></td> <td class="s4" colspan="5">_DEPTH_IN_M_</td> <td class="s3"></td> <td class="s1" colspan="7">Provisions</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Floor to Slab Height (in m) - if Bldg</td> <td class="s4" colspan="5">_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_</td> <td class="s3"></td> <td class="s2" colspan="7"></td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">No. of Storeys (If Bldg Lessee)</td> <td class="s4" colspan="5">_NO_OF_STOREYS_</td> <td class="s3"></td> <td class="s5" colspan="2">Tenant is the Owner</td> <td class="s9" colspan="5">_TENANT_IS_THE_OWNER_</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Type of Structure (if Bldg Lessee)</td> <td class="s4" colspan="5">_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_</td> <td class="s3"></td> <td class="s5" colspan="2">Lease Type</td> <td class="s9" colspan="5">_LEASE_TYPE_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Soil Profile</td> <td class="s2"></td> <td class="s4" colspan="5">_SOIL_PROFILE_</td> <td class="s3"></td> <td class="s5" colspan="2">Principal COL</td> <td class="s9" colspan="5">_PRINCIPAL_COL_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Supply Access:</td> <td class="s2"></td> <td class="s2" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Sub-Lease Provision</td> <td class="s9" colspan="5">_SUB_LEASE_PROVISION_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Power</td> <td class="s10"></td> <td class="s2">Aircon</td> <td class="s10"></td> <td class="s5" colspan="2">LPG Fire Pro</td> <td class="s10"></td> <td class="s3"></td> <td class="s5" colspan="2">Pre-Term/Partial Term</td> <td class="s9" colspan="5">_PRE_TERM_PARTIAL_TERM_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Water</td> <td class="s10"></td> <td class="s2">Exhaust</td> <td class="s10"></td> <td class="s5" colspan="2">Drainage TP</td> <td class="s10"></td> <td class="s3"></td> <td class="s5" colspan="2">Tripartite Agreement</td> <td class="s9" colspan="5">_TRIPARTITE_AGREEMENT_</td> </tr>
+        <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
+        <tr style="height: 19px;"> <td class="s1" colspan="7">Lessor and Tenant Details</td> <td class="s3"></td> <td class="s1" colspan="7">If with Sub-Lessor/ Sub-Lessee</td> </tr>
+        <tr style="height: 9px;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
+        <tr style="height: auto;"> <td class="s2">Name of Lessor</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Sub-Lessor</td> <td class="s9" colspan="5">_NAME_OF_SUBLESSOR_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_CONTACT_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUBLESSOR_CONTACT_NO_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_EMAIL_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUBLESSOR_EMAIL_ADDRESS_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Type of Ownership</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_TYPE_OF_OWNERSHIP_</td> <td class="s3"></td> <td class="s5" colspan="2">Type of Ownership</td> <td class="s9" colspan="5">_SUBLESSOR_TYPE_OF_OWNERSHIP_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Company Name</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_COMPANY_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Company Name</td> <td class="s9" colspan="5">_SUBLESSOR_COMPANY_NAME_</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Developer Account Name</td> <td class="s4" colspan="5">_LESSOR_DEVELOPER_ACCOUNT_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Developer Account Name</td> <td class="s9" colspan="5">_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_BUSINESS_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5">_SUBLESSOR_BUSINESS_ADDRESS_</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_LESSOR_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5">_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s4" colspan="5">_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s9" colspan="5">_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_AUTHORIZED_REP_CONTACT_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUBLESSOR_CONTACT_NO_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_AUTHORIZED_REP_EMAIL_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUBLESSOR_EMAIL_ADDRESS_</td> </tr>
+        <tr style="height: auto;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3" colspan="5"></td> </tr>
+        <tr style="height: auto;"> <td class="s2">Name of Lessee</td> <td class="s2"></td> <td class="s4" colspan="5">_NAME_OF_LESSEE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Sub-Lessee</td> <td class="s9" colspan="5">_NAME_OF_SUB_LESSEE_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Position</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_POSITION_</td> <td class="s3"></td> <td class="s5" colspan="2">Position</td> <td class="s9" colspan="5">_SUB_LESSEE_POSITION_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_CONTACT_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUB_LESSEE_CONTACT_NO_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_EMAIL_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUB_LESSEE_EMAIL_ADDRESS_</td> </tr>
+        <tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5">_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
+        <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_BUSINESS_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5">_SUB_LESSEE_BUSINESS_ADDRESS_</td> </tr>
+        <tr style="height: 9px;"> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> </tr>
+        
+        <!-- REGULATORY SECTION -->
+        <tr style="height: 19px;"> <td class="s13" colspan="15" style="border: 1px solid #cccccc !important;">Regulatory</td> </tr>
+        <tr style="height: auto;"> 
+            <td class="s14" style="border: 1px solid #cccccc !important;">Setback Requirement</td> 
+            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_SETBACK_REQUIREMENT_</td> 
+            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Perm Traffic Re-Routing</td> 
+            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_PERM_TRAFFIC_RE_ROUTING_</td> 
+            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Future Development</td> 
+            <td class="s17" colspan="4" style="border: 1px solid #cccccc !important;">_FUTURE_DEVELOPMENT_</td> 
+        </tr>
+        <tr style="height: auto;"> 
+            <td class="s14" style="border: 1px solid #cccccc !important;">Road Widening</td> 
+            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_ROAD_WIDENING_</td> 
+            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Perm Road Closure</td> 
+            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_PERM_ROAD_CLOSURE_</td> 
+            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Zoning Clearance</td> 
+            <td class="s17" colspan="4" style="border: 1px solid #cccccc !important;">_ZONING_CLEARANCE_</td> 
+        </tr>
+        <tr style="height: auto;"> 
+            <td class="s14" style="border: 1px solid #cccccc !important;">Pedestrian Overpass</td> 
+            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_PEDESTRIAN_OVERPASS_</td> 
+            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Infrastructure Programs</td> 
+            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_INFRASTRUCTURE_PROGRAMS_</td> 
+            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Gas Station</td> 
+            <td class="s17" colspan="4" style="border: 1px solid #cccccc !important;">_GAS_STATION_</td> 
+        </tr>
+        <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
+        
+        <!-- SITE ACQUIRABILITY SECTION -->
+        <tr style="height: 19px;"> 
+            <td class="s22" colspan="3" style="border-bottom: 1px solid #000000 !important; padding-bottom: 4px !important;">Site Acquirability:</td>
+            <td class="s3" colspan="12"></td>
+        </tr>
+        <tr style="height: auto;"> 
+            <td class="s2" style="border: 1px solid #cccccc !important;">Confidence Level</td> 
+            <td class="s17" colspan="6" style="border: 1px solid #cccccc !important;">_CONFIDENCE_LEVEL_</td> 
+            <td class="s3"></td> 
+            <td class="s22" colspan="2" style="border: 1px solid #cccccc !important;">Site Availability</td> 
+            <td class="s17" colspan="5" style="border: 1px solid #cccccc !important;">_SITE_AVAILABILITY_CLASS_</td> 
+        </tr>
+        <tr class="remarks-row" style="height: 300px !important;"> 
+            <td class="s6 remarks-label" style="white-space: nowrap; vertical-align: top; padding-top: 8px; border: 1px solid #cccccc !important;">Other Remarks:</td> 
+            <td class="s5" colspan="6" style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: 300px !important; line-height: 1.6; padding: 8px 6px; border: 1px solid #cccccc !important; vertical-align: top;">_REMARKS_</td> 
+            <td class="s3"></td> 
+            <td class="s6 remarks-label" style="white-space: normal; vertical-align: top; padding-top: 8px; border: 1px solid #cccccc !important;" colspan="2">Site Availability<br>Remarks:</td> 
+            <td class="s5" colspan="5" style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: 300px !important; line-height: 1.6; padding: 8px 6px; border: 1px solid #cccccc !important; vertical-align: top;">_SITE_AVAILABILITY_REMARKS_</td> 
+        </tr>
+        </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+"""
+
 #--- FULL SCREEN LOADING OVERLAY ---
 def get_loading_overlay_html(message="Loading data..."):
     return f"""
