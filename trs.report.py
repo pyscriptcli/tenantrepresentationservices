@@ -31,321 +31,843 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-#--- HTML FRAMEWORK (UNTOUCHED) ---
+#--- HTML FRAMEWORK ---
 HTML_FRAMEWORK = """
-<!DOCTYPE html>
-<html>
-<head>
-<style type="text/css">
-html, body { margin: 0; padding: 0; background-color: #ffffff; font-family: Arial, sans-serif; height: 100%; overflow-y: auto !important; overflow-x: hidden !important; }
-.report-wrapper { width: 100%; overflow-y: visible !important; overflow-x: hidden !important; display: flex; justify-content: center; align-items: flex-start; padding: 0; margin: 0; min-height: 100%; }
-.report-scaler { transform-origin: center top; width: 100%; display: inline-block; overflow: visible; text-align: center; }
-.ritz.grid-container { height: auto; overflow: visible !important; padding: 10px; box-sizing: border-box; width: 100%; display: inline-block; text-align: left; }
-.ritz .waffle a { color: inherit; }
-.ritz .waffle td { padding: 2px 3px !important; vertical-align: middle; border: none !important; }
-.freezebar-origin-ltr { background-color: #cecece; border: none !important; }
-.column-headers-background { background-color: #cecece; text-align: center; font-size: 10pt; color: #444746; font-weight: normal; border: none !important; }
-.row-headers-background { background-color: #cecece; text-align: center; font-size: 10pt; color: #444746; font-weight: normal; border: none !important; }
-.ritz .waffle .s0 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#800000;text-align:center;font-weight:bold;color:#ffffff;font-size:10pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
-.ritz .waffle .s1 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
-.ritz .waffle .s2 {background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s3 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s4 {border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
-.ritz .waffle .s4.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
-.ritz .waffle .s5 {background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s6 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s7 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s8 {border: none !important;background-color:#ffffff;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s9 {border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
-.ritz .waffle .s9.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
-.ritz .waffle .s10{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s11{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s12{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s13{background-color:#cecece;text-align:left;font-weight:bold;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s14{background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s15{border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s16{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s17{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s18{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s19{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s20{border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s21{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s22{background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s23{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s24{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s25{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s26{background-color:#cecece;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s27{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s28{background-color:#cecece;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s29{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s30{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
-.ritz .waffle { border-collapse: collapse; width: 100%; }
-.ritz .waffle tr { height: auto !important; }
-.ritz .waffle td[class*="s4"], .ritz .waffle td[class*="s9"] { height: auto !important; min-height: 20px; }
-.remarks-row { height: auto !important; }
-.remarks-row td { height: auto !important; padding: 6px 3px !important; vertical-align: top !important; }
-.remarks-row td.s5 { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; line-height: 1.6 !important; padding: 8px 6px !important; }
-.remarks-label { white-space: nowrap !important; vertical-align: top !important; padding-top: 8px !important; }
-.regulatory-header { background-color: #cecece !important; font-weight: bold !important; color: #000000 !important; }
-.regulatory-label { background-color: #cecece !important; color: #ff0000 !important; }
-.regulatory-value { background-color: #cecece !important; color: #000000 !important; }
-</style>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    function scaleReportToFit() {
-        const wrapper = document.querySelector('.report-wrapper');
-        const scaler = document.querySelector('.report-scaler');
-        const container = document.querySelector('.ritz.grid-container');
-        if (!wrapper || !scaler || !container) return;
-        const table = document.querySelector('.waffle');
-        if (!table) return;
-        const containerWidth = wrapper.parentElement ? wrapper.parentElement.clientWidth : window.innerWidth;
-        const availableWidth = containerWidth - 40;
-        table.style.width = 'auto';
-        const naturalWidth = table.scrollWidth;
-        table.style.width = '100%';
-        let scale = 1;
-        if (naturalWidth > availableWidth) {
-            scale = (availableWidth / naturalWidth) * 0.95;
-            if (scale < 0.4) scale = 0.4;
-        }
-        if (scale < 1) {
-            scaler.style.transform = 'scale(' + scale + ')';
-            scaler.style.transformOrigin = 'center top';
-            scaler.style.width = (100 / scale) + '%';
-            scaler.style.marginBottom = '0px';
-            scaler.style.display = 'inline-block';
-            scaler.style.textAlign = 'center';
-        } else {
-            scaler.style.transform = 'none';
-            scaler.style.width = '100%';
-            scaler.style.marginBottom = '0px';
-            scaler.style.display = 'inline-block';
-            scaler.style.textAlign = 'center';
-        }
-        container.style.display = 'inline-block';
-        container.style.textAlign = 'left';
-        container.style.margin = '0 auto';
-        wrapper.style.overflowY = 'visible';
-        wrapper.style.overflowX = 'hidden';
-        wrapper.style.width = '100%';
-        wrapper.style.display = 'flex';
-        wrapper.style.justifyContent = 'center';
-        wrapper.style.alignItems = 'flex-start';
-        wrapper.style.minHeight = '100%';
-        container.style.overflowX = 'visible';
-        container.style.overflowY = 'visible';
-        container.style.width = '100%';
-        document.body.style.overflowY = 'auto';
-        document.body.style.overflowX = 'hidden';
-        document.documentElement.style.overflowY = 'auto';
-        document.documentElement.style.overflowX = 'hidden';
-        const tableHeight = table.scrollHeight;
-        if (scale < 1) {
-            scaler.style.height = (tableHeight * scale + 50) + 'px';
-        } else {
-            scaler.style.height = 'auto';
-        }
-    }
-    setTimeout(scaleReportToFit, 100);
-    let resizeTimer;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(scaleReportToFit, 100);
-    });
-    const observer = new MutationObserver(function() { setTimeout(scaleReportToFit, 100); });
-    const tableBody = document.querySelector('.waffle tbody');
-    if (tableBody) { observer.observe(tableBody, { childList: true, subtree: true, characterData: true }); }
-    window.addEventListener('load', function() { setTimeout(scaleReportToFit, 200); });
-});
-</script>
-</head>
-<body>
-<div class="report-wrapper">
-    <div class="report-scaler">
-        <div class="ritz grid-container" dir="ltr">
-        <table class="waffle" cellspacing="0" cellpadding="0" style="table-layout: fixed; width: 100%; border-collapse: collapse;">
-        <colgroup>
-        <col style="width:223px;"> <col style="width:100px;"> <col style="width:86px;"> <col style="width:100px;"> <col style="width:94px;"> <col style="width:100px;"> <col style="width:81px;"> <col style="width:15px;"> <col style="width:148px;"> <col style="width:176px;"> <col style="width:100px;"> <col style="width:100px;"> <col style="width:100px;"> <col style="width:125px;"> <col style="width:29px;">
-        </colgroup>
-        <tbody>
-        <tr style="height: auto;"> <td class="s0" colspan="15">SITE INFORMATION REPORT</td> </tr>
-        <tr style="height: auto"> <td class="s1" colspan="7">General Information</td> <td class="s1"></td> <td class="s1" colspan="7">Location</td> </tr>
-        <tr style="height: auto"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Trade Area Name</td> <td class="s2"></td> <td class="s4" colspan="5">_TRADE_AREA_</td> <td class="s3"></td> <td class="s5" colspan="2">Site Name</td> <td class="s4" colspan="5">_SITE_NAME_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Site Name:</td> <td class="s2"></td> <td class="s4" colspan="5">_SITE_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Unit #, Bldg/St # and St Name</td> <td class="s4" colspan="5">_UNIT_BLDG_ST_NAME_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Site Number:</td> <td class="s2"></td> <td class="s4" colspan="5">_SITE_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Barangay/District Name</td> <td class="s4" colspan="5">_BARANGAY_DISTRICT_NAME_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Date Started</td> <td class="s2"></td> <td class="s4" colspan="5">_TIMESTAMP_</td> <td class="s3"></td> <td class="s5" colspan="2">City/Municipality</td> <td class="s4" colspan="5">_CITY_MUNICIPALITY_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Date Report Submitted</td> <td class="s4" colspan="5">_DATE_OF_REPORT_</td> <td class="s3"></td> <td class="s5" colspan="2">Region</td> <td class="s4" colspan="5">_REGION_</td> </tr>
-        <tr style="height: auto;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s5" colspan="2">Postal Code</td> <td class="s4" colspan="5">_POSTAL_CODE_</td> </tr>
-        <tr style="height: 9px"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
-        <tr style="height: 19px"> <td class="s1" colspan="7">Terms</td> <td class="s3"></td> <td class="s1" colspan="7">Rates</td> </tr>
-        <tr style="height: 19px"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Site Availability Date</td> <td class="s2"></td> <td class="s4" colspan="5">_SITE_AVAILABILITY_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Monthly Rental Rate (Php)</td> <td class="s4" colspan="5">_MONTHLY_RENTAL_RATE_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">COL Start Date</td> <td class="s2"></td> <td class="s4" colspan="5">_COL_START_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Percentage Rent</td> <td class="s4" colspan="5">_PERCENTAGE_RENT_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">COL End Date</td> <td class="s2"></td> <td class="s4" colspan="5">_COL_END_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Minimum Guaranteed Rent</td> <td class="s4" colspan="5">_MINIMUM_GUARANTEED_RENT_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Lease Terms</td> <td class="s2"></td> <td class="s4" colspan="5">_LEASE_TERMS_</td> <td class="s3"></td> <td class="s8" colspan="2">Annual Escalation Rate (%)</td> <td class="s4" colspan="5">_ESCALATION_</td> </tr>
-        <tr style="height: 19px"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s8" colspan="2">Advance Rental (Php)</td> <td class="s4" colspan="5">_ADVANCE_RENTAL_</td> </tr>
-        <tr style="height: 19px"> <td class="s1" colspan="7">Technical Info</td> <td class="s3"></td> <td class="s8" colspan="2">Security Deposit Amount (Php)</td> <td class="s4" colspan="5">_SECURITY_DEPOSIT_</td> </tr>
-        <tr style="height: 19px"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s8" colspan="2">CUSA Dues</td> <td class="s4" colspan="5">_CUSA_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Lot/Floor Area (in sqm)</td> <td class="s4" colspan="5">_LOT_FLOOR_AREA_SQM_</td> <td class="s3"></td> <td class="s8" colspan="2">Estimated Revenue Per Mo.</td> <td class="s4" colspan="5">_ESTIMATED_REVENUE_PER_MO_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Frontage (in m)</td> <td class="s2"></td> <td class="s4" colspan="5">_FRONTAGE_</td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Depth (in m)</td> <td class="s2"></td> <td class="s4" colspan="5">_DEPTH_IN_M_</td> <td class="s3"></td> <td class="s1" colspan="7">Provisions</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Floor to Slab Height (in m) - if Bldg</td> <td class="s4" colspan="5">_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_</td> <td class="s3"></td> <td class="s2" colspan="7"></td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">No. of Storeys (If Bldg Lessee)</td> <td class="s4" colspan="5">_NO_OF_STOREYS_</td> <td class="s3"></td> <td class="s5" colspan="2">Tenant is the Owner</td> <td class="s9" colspan="5">_TENANT_IS_THE_OWNER_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Type of Structure (if Bldg Lessee)</td> <td class="s4" colspan="5">_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_</td> <td class="s3"></td> <td class="s5" colspan="2">Lease Type</td> <td class="s9" colspan="5">_LEASE_TYPE_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Soil Profile</td> <td class="s2"></td> <td class="s4" colspan="5">_SOIL_PROFILE_</td> <td class="s3"></td> <td class="s5" colspan="2">Principal COL</td> <td class="s9" colspan="5">_PRINCIPAL_COL_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Supply Access:</td> <td class="s2"></td> <td class="s2" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Sub-Lease Provision</td> <td class="s9" colspan="5">_SUB_LEASE_PROVISION_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Power</td> <td class="s10"></td> <td class="s2">Aircon</td> <td class="s10"></td> <td class="s5" colspan="2">LPG Fire Pro</td> <td class="s10"></td> <td class="s3"></td> <td class="s5" colspan="2">Pre-Term/Partial Term</td> <td class="s9" colspan="5">_PRE_TERM_PARTIAL_TERM_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Water</td> <td class="s10"></td> <td class="s2">Exhaust</td> <td class="s10"></td> <td class="s5" colspan="2">Drainage TP</td> <td class="s10"></td> <td class="s3"></td> <td class="s5" colspan="2">Tripartite Agreement</td> <td class="s9" colspan="5">_TRIPARTITE_AGREEMENT_</td> </tr>
-        <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
-        <tr style="height: 19px;"> <td class="s1" colspan="7">Lessor and Tenant Details</td> <td class="s3"></td> <td class="s1" colspan="7">If with Sub-Lessor/ Sub-Lessee</td> </tr>
-        <tr style="height: 9px;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Name of Lessor</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Sub-Lessor</td> <td class="s9" colspan="5">_NAME_OF_SUBLESSOR_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_CONTACT_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUBLESSOR_CONTACT_NO_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_EMAIL_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUBLESSOR_EMAIL_ADDRESS_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Type of Ownership</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_TYPE_OF_OWNERSHIP_</td> <td class="s3"></td> <td class="s5" colspan="2">Type of Ownership</td> <td class="s9" colspan="5">_SUBLESSOR_TYPE_OF_OWNERSHIP_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Company Name</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_COMPANY_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Company Name</td> <td class="s9" colspan="5">_SUBLESSOR_COMPANY_NAME_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Developer Account Name</td> <td class="s4" colspan="5">_LESSOR_DEVELOPER_ACCOUNT_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Developer Account Name</td> <td class="s9" colspan="5">_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_BUSINESS_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5">_SUBLESSOR_BUSINESS_ADDRESS_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_LESSOR_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5">_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s4" colspan="5">_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s9" colspan="5">_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_AUTHORIZED_REP_CONTACT_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUBLESSOR_CONTACT_NO_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_AUTHORIZED_REP_EMAIL_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUBLESSOR_EMAIL_ADDRESS_</td> </tr>
-        <tr style="height: auto;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Name of Lessee</td> <td class="s2"></td> <td class="s4" colspan="5">_NAME_OF_LESSEE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Sub-Lessee</td> <td class="s9" colspan="5">_NAME_OF_SUB_LESSEE_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Position</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_POSITION_</td> <td class="s3"></td> <td class="s5" colspan="2">Position</td> <td class="s9" colspan="5">_SUB_LESSEE_POSITION_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_CONTACT_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUB_LESSEE_CONTACT_NO_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_EMAIL_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUB_LESSEE_EMAIL_ADDRESS_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5">_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_BUSINESS_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5">_SUB_LESSEE_BUSINESS_ADDRESS_</td> </tr>
-        <tr style="height: 9px;"> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> </tr>
-        
-        <!-- REGULATORY SECTION -->
-        <tr style="height: 19px;"> <td class="s13" colspan="15" style="border: 1px solid #cccccc !important;">Regulatory</td> </tr>
-        <tr style="height: auto;"> 
-            <td class="s14" style="border: 1px solid #cccccc !important;">Setback Requirement</td> 
-            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_SETBACK_REQUIREMENT_</td> 
-            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Perm Traffic Re-Routing</td> 
-            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_PERM_TRAFFIC_RE_ROUTING_</td> 
-            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Future Development</td> 
-            <td class="s17" colspan="4" style="border: 1px solid #cccccc !important;">_FUTURE_DEVELOPMENT_</td> 
-        </tr>
-        <tr style="height: auto;"> 
-            <td class="s14" style="border: 1px solid #cccccc !important;">Road Widening</td> 
-            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_ROAD_WIDENING_</td> 
-            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Perm Road Closure</td> 
-            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_PERM_ROAD_CLOSURE_</td> 
-            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Zoning Clearance</td> 
-            <td class="s17" colspan="4" style="border: 1px solid #cccccc !important;">_ZONING_CLEARANCE_</td> 
-        </tr>
-        <tr style="height: auto;"> 
-            <td class="s14" style="border: 1px solid #cccccc !important;">Pedestrian Overpass</td> 
-            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_PEDESTRIAN_OVERPASS_</td> 
-            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Infrastructure Programs</td> 
-            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_INFRASTRUCTURE_PROGRAMS_</td> 
-            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Gas Station</td> 
-            <td class="s17" colspan="4" style="border: 1px solid #cccccc !important;">_GAS_STATION_</td> 
-        </tr>
-        <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
-        
-        <!-- SITE ACQUIRABILITY SECTION -->
-        <tr style="height: 19px;"> 
-            <td class="s22" colspan="3" style="border-bottom: 1px solid #000000 !important; padding-bottom: 4px !important;">Site Acquirability:</td>
-            <td class="s3" colspan="12"></td>
-        </tr>
-        <tr style="height: auto;"> 
-            <td class="s2" style="border: 1px solid #cccccc !important;">Confidence Level</td> 
-            <td class="s17" colspan="6" style="border: 1px solid #cccccc !important;">_CONFIDENCE_LEVEL_</td> 
-            <td class="s3"></td> 
-            <td class="s22" colspan="2" style="border: 1px solid #cccccc !important;">Site Availability</td> 
-            <td class="s17" colspan="5" style="border: 1px solid #cccccc !important;">_SITE_AVAILABILITY_CLASS_</td> 
-        </tr>
-        <tr class="remarks-row" style="height: 300px !important;"> 
-            <td class="s6 remarks-label" style="white-space: nowrap; vertical-align: top; padding-top: 8px; border: 1px solid #cccccc !important;">Other Remarks:</td> 
-            <td class="s5" colspan="6" style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: 300px !important; line-height: 1.6; padding: 8px 6px; border: 1px solid #cccccc !important; vertical-align: top;">_REMARKS_</td> 
-            <td class="s3"></td> 
-            <td class="s6 remarks-label" style="white-space: normal; vertical-align: top; padding-top: 8px; border: 1px solid #cccccc !important;" colspan="2">Site Availability<br>Remarks:</td> 
-            <td class="s5" colspan="5" style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: 300px !important; line-height: 1.6; padding: 8px 6px; border: 1px solid #cccccc !important; vertical-align: top;">_SITE_AVAILABILITY_REMARKS_</td> 
-        </tr>
-        </tbody>
-        </table>
-        </div>
-    </div>
-</div>
-</body>
-</html>
+| SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+|SITE INFORMATION REPORT
+| |
+| ---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| General Information
+|General Information
+|General Information
+|General Information
+|General Information
+|General Information
+|General Information
+||Location
+|Location
+|Location
+|Location
+|Location
+|Location
+|Location
+| |
+| ||||||||||||||| |
+| Trade Area Name
+||_TRADE_AREA_
+|_TRADE_AREA_
+|_TRADE_AREA_
+|_TRADE_AREA_
+|_TRADE_AREA_
+||Site Name
+|Site Name
+|_SITE_NAME_
+|_SITE_NAME_
+|_SITE_NAME_
+|_SITE_NAME_
+|_SITE_NAME_
+| |
+| Site Name:
+||_SITE_NAME_
+|_SITE_NAME_
+|_SITE_NAME_
+|_SITE_NAME_
+|_SITE_NAME_
+||Unit #, Bldg/St # and St Name
+|Unit #, Bldg/St # and St Name
+|_UNIT_BLDG_ST_NAME_
+|_UNIT_BLDG_ST_NAME_
+|_UNIT_BLDG_ST_NAME_
+|_UNIT_BLDG_ST_NAME_
+|_UNIT_BLDG_ST_NAME_
+| |
+| Site Number:
+||_SITE_NO_
+|_SITE_NO_
+|_SITE_NO_
+|_SITE_NO_
+|_SITE_NO_
+||Barangay/District Name
+|Barangay/District Name
+|_BARANGAY_DISTRICT_NAME_
+|_BARANGAY_DISTRICT_NAME_
+|_BARANGAY_DISTRICT_NAME_
+|_BARANGAY_DISTRICT_NAME_
+|_BARANGAY_DISTRICT_NAME_
+| |
+| Date Started
+||_TIMESTAMP_
+|_TIMESTAMP_
+|_TIMESTAMP_
+|_TIMESTAMP_
+|_TIMESTAMP_
+||City/Municipality
+|City/Municipality
+|_CITY_MUNICIPALITY_
+|_CITY_MUNICIPALITY_
+|_CITY_MUNICIPALITY_
+|_CITY_MUNICIPALITY_
+|_CITY_MUNICIPALITY_
+| |
+| Date Report Submitted
+|Date Report Submitted
+|_DATE_OF_REPORT_
+|_DATE_OF_REPORT_
+|_DATE_OF_REPORT_
+|_DATE_OF_REPORT_
+|_DATE_OF_REPORT_
+||Region
+|Region
+|_REGION_
+|_REGION_
+|_REGION_
+|_REGION_
+|_REGION_
+| |
+| ||||||||Postal Code
+|Postal Code
+|_POSTAL_CODE_
+|_POSTAL_CODE_
+|_POSTAL_CODE_
+|_POSTAL_CODE_
+|_POSTAL_CODE_
+| |
+| ||||||||||||||| |
+| Terms
+|Terms
+|Terms
+|Terms
+|Terms
+|Terms
+|Terms
+||Rates
+|Rates
+|Rates
+|Rates
+|Rates
+|Rates
+|Rates
+| |
+| ||||||||||||||| |
+| Site Availability Date
+||_SITE_AVAILABILITY_DATE_
+|_SITE_AVAILABILITY_DATE_
+|_SITE_AVAILABILITY_DATE_
+|_SITE_AVAILABILITY_DATE_
+|_SITE_AVAILABILITY_DATE_
+||Monthly Rental Rate (Php)
+|Monthly Rental Rate (Php)
+|_MONTHLY_RENTAL_RATE_
+|_MONTHLY_RENTAL_RATE_
+|_MONTHLY_RENTAL_RATE_
+|_MONTHLY_RENTAL_RATE_
+|_MONTHLY_RENTAL_RATE_
+| |
+| COL Start Date
+||_COL_START_DATE_
+|_COL_START_DATE_
+|_COL_START_DATE_
+|_COL_START_DATE_
+|_COL_START_DATE_
+||Percentage Rent
+|Percentage Rent
+|_PERCENTAGE_RENT_
+|_PERCENTAGE_RENT_
+|_PERCENTAGE_RENT_
+|_PERCENTAGE_RENT_
+|_PERCENTAGE_RENT_
+| |
+| COL End Date
+||_COL_END_DATE_
+|_COL_END_DATE_
+|_COL_END_DATE_
+|_COL_END_DATE_
+|_COL_END_DATE_
+||Minimum Guaranteed Rent
+|Minimum Guaranteed Rent
+|_MINIMUM_GUARANTEED_RENT_
+|_MINIMUM_GUARANTEED_RENT_
+|_MINIMUM_GUARANTEED_RENT_
+|_MINIMUM_GUARANTEED_RENT_
+|_MINIMUM_GUARANTEED_RENT_
+| |
+| Lease Terms
+||_LEASE_TERMS_
+|_LEASE_TERMS_
+|_LEASE_TERMS_
+|_LEASE_TERMS_
+|_LEASE_TERMS_
+||Annual Escalation Rate (%)
+|Annual Escalation Rate (%)
+|_ESCALATION_
+|_ESCALATION_
+|_ESCALATION_
+|_ESCALATION_
+|_ESCALATION_
+| |
+| ||||||||Advance Rental (Php)
+|Advance Rental (Php)
+|_ADVANCE_RENTAL_
+|_ADVANCE_RENTAL_
+|_ADVANCE_RENTAL_
+|_ADVANCE_RENTAL_
+|_ADVANCE_RENTAL_
+| |
+| Technical Info
+|Technical Info
+|Technical Info
+|Technical Info
+|Technical Info
+|Technical Info
+|Technical Info
+||Security Deposit Amount (Php)
+|Security Deposit Amount (Php)
+|_SECURITY_DEPOSIT_
+|_SECURITY_DEPOSIT_
+|_SECURITY_DEPOSIT_
+|_SECURITY_DEPOSIT_
+|_SECURITY_DEPOSIT_
+| |
+| ||||||||CUSA Dues
+|CUSA Dues
+|_CUSA_
+|_CUSA_
+|_CUSA_
+|_CUSA_
+|_CUSA_
+| |
+| Lot/Floor Area (in sqm)
+|Lot/Floor Area (in sqm)
+|_LOT_FLOOR_AREA_SQM_
+|_LOT_FLOOR_AREA_SQM_
+|_LOT_FLOOR_AREA_SQM_
+|_LOT_FLOOR_AREA_SQM_
+|_LOT_FLOOR_AREA_SQM_
+||Estimated Revenue Per Mo.
+|Estimated Revenue Per Mo.
+|_ESTIMATED_REVENUE_PER_MO_
+|_ESTIMATED_REVENUE_PER_MO_
+|_ESTIMATED_REVENUE_PER_MO_
+|_ESTIMATED_REVENUE_PER_MO_
+|_ESTIMATED_REVENUE_PER_MO_
+| |
+| Frontage (in m)
+||_FRONTAGE_
+|_FRONTAGE_
+|_FRONTAGE_
+|_FRONTAGE_
+|_FRONTAGE_
+||||||||| |
+| Depth (in m)
+||_DEPTH_IN_M_
+|_DEPTH_IN_M_
+|_DEPTH_IN_M_
+|_DEPTH_IN_M_
+|_DEPTH_IN_M_
+||Provisions
+|Provisions
+|Provisions
+|Provisions
+|Provisions
+|Provisions
+|Provisions
+| |
+| Floor to Slab Height (in m) - if Bldg
+|Floor to Slab Height (in m) - if Bldg
+|_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_
+|_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_
+|_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_
+|_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_
+|_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_
+||||||||| |
+| No. of Storeys (If Bldg Lessee)
+|No. of Storeys (If Bldg Lessee)
+|_NO_OF_STOREYS_
+|_NO_OF_STOREYS_
+|_NO_OF_STOREYS_
+|_NO_OF_STOREYS_
+|_NO_OF_STOREYS_
+||Tenant is the Owner
+|Tenant is the Owner
+|_TENANT_IS_THE_OWNER_
+|_TENANT_IS_THE_OWNER_
+|_TENANT_IS_THE_OWNER_
+|_TENANT_IS_THE_OWNER_
+|_TENANT_IS_THE_OWNER_
+| |
+| Type of Structure (if Bldg Lessee)
+|Type of Structure (if Bldg Lessee)
+|_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_
+|_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_
+|_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_
+|_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_
+|_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_
+||Lease Type
+|Lease Type
+|_LEASE_TYPE_
+|_LEASE_TYPE_
+|_LEASE_TYPE_
+|_LEASE_TYPE_
+|_LEASE_TYPE_
+| |
+| Soil Profile
+||_SOIL_PROFILE_
+|_SOIL_PROFILE_
+|_SOIL_PROFILE_
+|_SOIL_PROFILE_
+|_SOIL_PROFILE_
+||Principal COL
+|Principal COL
+|_PRINCIPAL_COL_
+|_PRINCIPAL_COL_
+|_PRINCIPAL_COL_
+|_PRINCIPAL_COL_
+|_PRINCIPAL_COL_
+| |
+| Supply Access:
+||||||||Sub-Lease Provision
+|Sub-Lease Provision
+|_SUB_LEASE_PROVISION_
+|_SUB_LEASE_PROVISION_
+|_SUB_LEASE_PROVISION_
+|_SUB_LEASE_PROVISION_
+|_SUB_LEASE_PROVISION_
+| |
+| Power
+||Aircon
+||LPG Fire Pro
+|LPG Fire Pro
+|||Pre-Term/Partial Term
+|Pre-Term/Partial Term
+|_PRE_TERM_PARTIAL_TERM_
+|_PRE_TERM_PARTIAL_TERM_
+|_PRE_TERM_PARTIAL_TERM_
+|_PRE_TERM_PARTIAL_TERM_
+|_PRE_TERM_PARTIAL_TERM_
+| |
+| Water
+||Exhaust
+||Drainage TP
+|Drainage TP
+|||Tripartite Agreement
+|Tripartite Agreement
+|_TRIPARTITE_AGREEMENT_
+|_TRIPARTITE_AGREEMENT_
+|_TRIPARTITE_AGREEMENT_
+|_TRIPARTITE_AGREEMENT_
+|_TRIPARTITE_AGREEMENT_
+| |
+| ||||||||||||||| |
+| Lessor and Tenant Details
+|Lessor and Tenant Details
+|Lessor and Tenant Details
+|Lessor and Tenant Details
+|Lessor and Tenant Details
+|Lessor and Tenant Details
+|Lessor and Tenant Details
+||If with Sub-Lessor/ Sub-Lessee
+|If with Sub-Lessor/ Sub-Lessee
+|If with Sub-Lessor/ Sub-Lessee
+|If with Sub-Lessor/ Sub-Lessee
+|If with Sub-Lessor/ Sub-Lessee
+|If with Sub-Lessor/ Sub-Lessee
+|If with Sub-Lessor/ Sub-Lessee
+| |
+| ||||||||||||||| |
+| Name of Lessor
+||_LESSOR_
+|_LESSOR_
+|_LESSOR_
+|_LESSOR_
+|_LESSOR_
+||Name of Sub-Lessor
+|Name of Sub-Lessor
+|_NAME_OF_SUBLESSOR_
+|_NAME_OF_SUBLESSOR_
+|_NAME_OF_SUBLESSOR_
+|_NAME_OF_SUBLESSOR_
+|_NAME_OF_SUBLESSOR_
+| |
+| Contact No.
+||_LESSOR_CONTACT_NO_
+|_LESSOR_CONTACT_NO_
+|_LESSOR_CONTACT_NO_
+|_LESSOR_CONTACT_NO_
+|_LESSOR_CONTACT_NO_
+||Contact No.
+|Contact No.
+|_SUBLESSOR_CONTACT_NO_
+|_SUBLESSOR_CONTACT_NO_
+|_SUBLESSOR_CONTACT_NO_
+|_SUBLESSOR_CONTACT_NO_
+|_SUBLESSOR_CONTACT_NO_
+| |
+| E-mail Address
+||_LESSOR_EMAIL_ADDRESS_
+|_LESSOR_EMAIL_ADDRESS_
+|_LESSOR_EMAIL_ADDRESS_
+|_LESSOR_EMAIL_ADDRESS_
+|_LESSOR_EMAIL_ADDRESS_
+||E-mail Address
+|E-mail Address
+|_SUBLESSOR_EMAIL_ADDRESS_
+|_SUBLESSOR_EMAIL_ADDRESS_
+|_SUBLESSOR_EMAIL_ADDRESS_
+|_SUBLESSOR_EMAIL_ADDRESS_
+|_SUBLESSOR_EMAIL_ADDRESS_
+| |
+| Type of Ownership
+||_LESSOR_TYPE_OF_OWNERSHIP_
+|_LESSOR_TYPE_OF_OWNERSHIP_
+|_LESSOR_TYPE_OF_OWNERSHIP_
+|_LESSOR_TYPE_OF_OWNERSHIP_
+|_LESSOR_TYPE_OF_OWNERSHIP_
+||Type of Ownership
+|Type of Ownership
+|_SUBLESSOR_TYPE_OF_OWNERSHIP_
+|_SUBLESSOR_TYPE_OF_OWNERSHIP_
+|_SUBLESSOR_TYPE_OF_OWNERSHIP_
+|_SUBLESSOR_TYPE_OF_OWNERSHIP_
+|_SUBLESSOR_TYPE_OF_OWNERSHIP_
+| |
+| Company Name
+||_LESSOR_COMPANY_NAME_
+|_LESSOR_COMPANY_NAME_
+|_LESSOR_COMPANY_NAME_
+|_LESSOR_COMPANY_NAME_
+|_LESSOR_COMPANY_NAME_
+||Company Name
+|Company Name
+|_SUBLESSOR_COMPANY_NAME_
+|_SUBLESSOR_COMPANY_NAME_
+|_SUBLESSOR_COMPANY_NAME_
+|_SUBLESSOR_COMPANY_NAME_
+|_SUBLESSOR_COMPANY_NAME_
+| |
+| Developer Account Name
+|Developer Account Name
+|_LESSOR_DEVELOPER_ACCOUNT_NAME_
+|_LESSOR_DEVELOPER_ACCOUNT_NAME_
+|_LESSOR_DEVELOPER_ACCOUNT_NAME_
+|_LESSOR_DEVELOPER_ACCOUNT_NAME_
+|_LESSOR_DEVELOPER_ACCOUNT_NAME_
+||Developer Account Name
+|Developer Account Name
+|_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_
+|_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_
+|_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_
+|_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_
+|_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_
+| |
+| Business Address
+||_LESSOR_BUSINESS_ADDRESS_
+|_LESSOR_BUSINESS_ADDRESS_
+|_LESSOR_BUSINESS_ADDRESS_
+|_LESSOR_BUSINESS_ADDRESS_
+|_LESSOR_BUSINESS_ADDRESS_
+||Business Address
+|Business Address
+|_SUBLESSOR_BUSINESS_ADDRESS_
+|_SUBLESSOR_BUSINESS_ADDRESS_
+|_SUBLESSOR_BUSINESS_ADDRESS_
+|_SUBLESSOR_BUSINESS_ADDRESS_
+|_SUBLESSOR_BUSINESS_ADDRESS_
+| |
+| Name of Authorized Representative
+|Name of Authorized Representative
+|_LESSOR_AUTHORIZED_REPRESENTATIVE_
+|_LESSOR_AUTHORIZED_REPRESENTATIVE_
+|_LESSOR_AUTHORIZED_REPRESENTATIVE_
+|_LESSOR_AUTHORIZED_REPRESENTATIVE_
+|_LESSOR_AUTHORIZED_REPRESENTATIVE_
+||Name of Authorized Representative
+|Name of Authorized Representative
+|_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+|_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+|_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+|_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+|_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+| |
+| Residence Address of Authorized Representative
+|Residence Address of Authorized Representative
+|_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_
+|_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_
+|_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_
+|_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_
+|_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_
+||Residence Address of Authorized Representative
+|Residence Address of Authorized Representative
+|_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_
+|_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_
+|_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_
+|_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_
+|_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_
+| |
+| Contact No.
+||_LESSOR_AUTHORIZED_REP_CONTACT_NO_
+|_LESSOR_AUTHORIZED_REP_CONTACT_NO_
+|_LESSOR_AUTHORIZED_REP_CONTACT_NO_
+|_LESSOR_AUTHORIZED_REP_CONTACT_NO_
+|_LESSOR_AUTHORIZED_REP_CONTACT_NO_
+||Contact No.
+|Contact No.
+|_SUBLESSOR_CONTACT_NO_
+|_SUBLESSOR_CONTACT_NO_
+|_SUBLESSOR_CONTACT_NO_
+|_SUBLESSOR_CONTACT_NO_
+|_SUBLESSOR_CONTACT_NO_
+| |
+| E-mail Address
+||_LESSOR_AUTHORIZED_REP_EMAIL_
+|_LESSOR_AUTHORIZED_REP_EMAIL_
+|_LESSOR_AUTHORIZED_REP_EMAIL_
+|_LESSOR_AUTHORIZED_REP_EMAIL_
+|_LESSOR_AUTHORIZED_REP_EMAIL_
+||E-mail Address
+|E-mail Address
+|_SUBLESSOR_EMAIL_ADDRESS_
+|_SUBLESSOR_EMAIL_ADDRESS_
+|_SUBLESSOR_EMAIL_ADDRESS_
+|_SUBLESSOR_EMAIL_ADDRESS_
+|_SUBLESSOR_EMAIL_ADDRESS_
+| |
+| ||||||||||||||||
+| Name of Lessee
+||_NAME_OF_LESSEE_
+|_NAME_OF_LESSEE_
+|_NAME_OF_LESSEE_
+|_NAME_OF_LESSEE_
+|_NAME_OF_LESSEE_
+||Name of Sub-Lessee
+|Name of Sub-Lessee
+|_NAME_OF_SUB_LESSEE_
+|_NAME_OF_SUB_LESSEE_
+|_NAME_OF_SUB_LESSEE_
+|_NAME_OF_SUB_LESSEE_
+|_NAME_OF_SUB_LESSEE_
+| |
+| Position
+||_LESSEE_POSITION_
+|_LESSEE_POSITION_
+|_LESSEE_POSITION_
+|_LESSEE_POSITION_
+|_LESSEE_POSITION_
+||Position
+|Position
+|_SUB_LESSEE_POSITION_
+|_SUB_LESSEE_POSITION_
+|_SUB_LESSEE_POSITION_
+|_SUB_LESSEE_POSITION_
+|_SUB_LESSEE_POSITION_
+| |
+| Contact No.
+||_LESSEE_CONTACT_NO_
+|_LESSEE_CONTACT_NO_
+|_LESSEE_CONTACT_NO_
+|_LESSEE_CONTACT_NO_
+|_LESSEE_CONTACT_NO_
+||Contact No.
+|Contact No.
+|_SUB_LESSEE_CONTACT_NO_
+|_SUB_LESSEE_CONTACT_NO_
+|_SUB_LESSEE_CONTACT_NO_
+|_SUB_LESSEE_CONTACT_NO_
+|_SUB_LESSEE_CONTACT_NO_
+| |
+| E-mail Address
+||_LESSEE_EMAIL_ADDRESS_
+|_LESSEE_EMAIL_ADDRESS_
+|_LESSEE_EMAIL_ADDRESS_
+|_LESSEE_EMAIL_ADDRESS_
+|_LESSEE_EMAIL_ADDRESS_
+||E-mail Address
+|E-mail Address
+|_SUB_LESSEE_EMAIL_ADDRESS_
+|_SUB_LESSEE_EMAIL_ADDRESS_
+|_SUB_LESSEE_EMAIL_ADDRESS_
+|_SUB_LESSEE_EMAIL_ADDRESS_
+|_SUB_LESSEE_EMAIL_ADDRESS_
+| |
+| Name of Authorized Representative
+|Name of Authorized Representative
+|_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+|_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+|_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+|_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+|_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+||Name of Authorized Representative
+|Name of Authorized Representative
+|_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+|_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+|_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+|_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+|_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_
+| |
+| Business Address
+||_LESSEE_BUSINESS_ADDRESS_
+|_LESSEE_BUSINESS_ADDRESS_
+|_LESSEE_BUSINESS_ADDRESS_
+|_LESSEE_BUSINESS_ADDRESS_
+|_LESSEE_BUSINESS_ADDRESS_
+||Business Address
+|Business Address
+|_SUB_LESSEE_BUSINESS_ADDRESS_
+|_SUB_LESSEE_BUSINESS_ADDRESS_
+|_SUB_LESSEE_BUSINESS_ADDRESS_
+|_SUB_LESSEE_BUSINESS_ADDRESS_
+|_SUB_LESSEE_BUSINESS_ADDRESS_
+| |
+| ||||||||||||||| |
+| Regulatory
+|Regulatory
+|Regulatory
+|Regulatory
+|Regulatory
+|Regulatory
+|Regulatory
+|Regulatory
+|Regulatory
+|Regulatory
+|Regulatory
+|Regulatory
+|Regulatory
+|Regulatory
+|Regulatory
+| |
+| Setback Requirement
+|_SETBACK_REQUIREMENT_
+|_SETBACK_REQUIREMENT_
+|_SETBACK_REQUIREMENT_
+|Perm Traffic Re-Routing
+|Perm Traffic Re-Routing
+|_PERM_TRAFFIC_RE_ROUTING_
+|_PERM_TRAFFIC_RE_ROUTING_
+|_PERM_TRAFFIC_RE_ROUTING_
+|Future Development
+|Future Development
+|_FUTURE_DEVELOPMENT_
+|_FUTURE_DEVELOPMENT_
+|_FUTURE_DEVELOPMENT_
+|_FUTURE_DEVELOPMENT_
+| |
+| Road Widening
+|_ROAD_WIDENING_
+|_ROAD_WIDENING_
+|_ROAD_WIDENING_
+|Perm Road Closure
+|Perm Road Closure
+|_PERM_ROAD_CLOSURE_
+|_PERM_ROAD_CLOSURE_
+|_PERM_ROAD_CLOSURE_
+|Zoning Clearance
+|Zoning Clearance
+|_ZONING_CLEARANCE_
+|_ZONING_CLEARANCE_
+|_ZONING_CLEARANCE_
+|_ZONING_CLEARANCE_
+| |
+| Pedestrian Overpass
+|_PEDESTRIAN_OVERPASS_
+|_PEDESTRIAN_OVERPASS_
+|_PEDESTRIAN_OVERPASS_
+|Infrastructure Programs
+|Infrastructure Programs
+|_INFRASTRUCTURE_PROGRAMS_
+|_INFRASTRUCTURE_PROGRAMS_
+|_INFRASTRUCTURE_PROGRAMS_
+|Gas Station
+|Gas Station
+|_GAS_STATION_
+|_GAS_STATION_
+|_GAS_STATION_
+|_GAS_STATION_
+| |
+| ||||||||||||||| |
+| Site Acquirability:
+|Site Acquirability:
+|Site Acquirability:
+||||||||||||| |
+| Confidence Level
+|_CONFIDENCE_LEVEL_
+|_CONFIDENCE_LEVEL_
+|_CONFIDENCE_LEVEL_
+|_CONFIDENCE_LEVEL_
+|_CONFIDENCE_LEVEL_
+|_CONFIDENCE_LEVEL_
+||Site Availability
+|Site Availability
+|_SITE_AVAILABILITY_CLASS_
+|_SITE_AVAILABILITY_CLASS_
+|_SITE_AVAILABILITY_CLASS_
+|_SITE_AVAILABILITY_CLASS_
+|_SITE_AVAILABILITY_CLASS_
+| |
+| Other Remarks:
+|_REMARKS_
+|_REMARKS_
+|_REMARKS_
+|_REMARKS_
+|_REMARKS_
+|_REMARKS_
+||Site Availability Remarks:
+|Site Availability Remarks:
+|_SITE_AVAILABILITY_REMARKS_
+|_SITE_AVAILABILITY_REMARKS_
+|_SITE_AVAILABILITY_REMARKS_
+|_SITE_AVAILABILITY_REMARKS_
+|_SITE_AVAILABILITY_REMARKS_
+| |
 """
 
-#--- FULL SCREEN LOADING OVERLAY (REBRANDED) ---
+#--- FULL SCREEN LOADING OVERLAY ---
 def get_loading_overlay_html(message="Loading data..."):
     return f"""
-    <div id="loading-overlay" style="
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(248, 247, 245, 0.98); /* Off-White */
-        z-index: 999999; 
-        display: flex; flex-direction: column;
-        justify-content: center; align-items: center;
-        font-family: 'Montserrat', 'Roboto', 'Segoe UI', sans-serif;
-    ">
-        <div style="
-            width: 45px; height: 45px;
-            border: 4px solid #0f1f38; /* Navy */
-            border-top: 4px solid #c8a658; /* Gold */
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        "></div>
-        <div style="font-size: 1.1rem; color: #0f1f38; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;">
-            {message}
-        </div>
+    <div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,31,56,0.85); z-index:9999; display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Inter',sans-serif; font-size:1.2rem; letter-spacing:1px;">
+        {message}
     </div>
-    <style>
-        @keyframes spin {{ 
-            0% {{ transform: rotate(0deg); }} 
-            100% {{ transform: rotate(360deg); }} 
-        }}
-    </style>
     """
 
-#--- GLOBAL STYLES (REBRANDED) ---
+#--- GLOBAL STYLES ---
 st.markdown("""
-<style >
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap');
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
 
-* { font-family: 'Montserrat', 'Roboto', 'Segoe UI', sans-serif !important; }
-h1, h2, h3, h4, h5, h6 { font-family: 'Playfair Display', serif !important; color: #0f1f38 !important; }
+:root {
+    --navy-dark: #0f1f38;
+    --navy-light: #162845;
+    --gold: #c8a658;
+    --cream: #f8f7f5;
+    --white: #ffffff;
+}
 
-div[data-testid="stTextInput"] label { display: none !important; }
-div[data-testid="stTextInput"] button { display: none !important; }
+/* Global & Body */
+.stApp {
+    background-color: var(--cream) !important;
+    color: var(--navy-dark) !important;
+    font-family: 'Inter', sans-serif !important;
+}
 
-html, body { overflow-y: auto !important; overflow-x: hidden !important; height: 100% !important; margin: 0px !important; padding: 0px !important; background-color: #f8f7f5 !important; }
-.stApp, .appview-container, .main, [data-testid="stAppViewContainer"], [data-testid="stMain"], .block-container, [data-testid="stMainBlockContainer"] { background-color: #f8f7f5 !important; padding-top: 0.2rem !important; margin-top: 0px !important; padding-bottom: 0px !important; padding-left: 0.4rem !important; padding-right: 0.4rem !important; overflow: visible !important; height: auto !important; max-height: none !important; min-height: calc(100vh + 100px) !important; color: #0f1f38 !important; }
+/* Typography */
+h1, h2, h3, h4, h5, h6, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+    font-family: 'Playfair Display', serif !important;
+    color: var(--navy-dark) !important;
+    font-weight: 700 !important;
+}
 
-header[data-testid="stHeader"], [data-testid="stHeader"], .stApp > header, div[data-testid="stDecoration"] { display: none !important; height: 0px !important; min-height: 0px !important; padding: 0px !important; margin: 0px !important; opacity: 0 !important; }
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: var(--navy-dark) !important;
+    color: var(--white) !important;
+}
+section[data-testid="stSidebar"] h1, 
+section[data-testid="stSidebar"] h2, 
+section[data-testid="stSidebar"] h3, 
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] .stRadio label,
+section[data-testid="stSidebar"] .stSelectbox label {
+    color: var(--white) !important;
+    font-family: 'Inter', sans-serif !important;
+}
+section[data-testid="stSidebar"] .stRadio label:hover {
+    color: var(--gold) !important;
+}
 
-div[data-testid="stVerticalBlock"] > div:has(style), div[data-testid="stVerticalBlock"] > div:empty { display: none !important; height: 0px !important; margin: 0px !important; padding: 0px !important; }
-iframe[title="streamlit_components.components.html"] { height: 1200px !important; max-height: none !important; border: none !important; margin-bottom: 10px !important; width: 100% !important; overflow: hidden !important; }
+/* Buttons */
+button[kind="primary"], div[data-testid="stForm"] button[kind="primary"] {
+    background-color: var(--gold) !important;
+    color: var(--navy-dark) !important;
+    border: none !important;
+    border-radius: 0px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1.5px !important;
+    transition: all 0.3s ease !important;
+}
+button[kind="primary"]:hover {
+    background-color: #b5954f !important;
+    color: var(--navy-dark) !important;
+}
+
+button[kind="secondary"], div[data-testid="stForm"] button[kind="secondary"] {
+    background-color: transparent !important;
+    color: var(--navy-dark) !important;
+    border: 1px solid var(--gold) !important;
+    border-radius: 0px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1.5px !important;
+}
+button[kind="secondary"]:hover {
+    background-color: var(--gold) !important;
+    color: var(--navy-dark) !important;
+}
+
+/* Cards & Containers */
+div[data-testid="stMetric"], 
+div[data-testid="stMetricContainer"],
+div[data-testid="stDataFrameContainer"],
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background-color: var(--white) !important;
+    border-radius: 0px !important;
+    border: none !important;
+    box-shadow: 0 4px 20px rgba(15, 31, 56, 0.05) !important;
+    padding: 20px !important;
+}
+
+/* Inputs */
+input, textarea, div[data-baseweb="select"] > div {
+    border-radius: 0px !important;
+    border: 1px solid var(--navy-dark) !important;
+    background-color: var(--white) !important;
+    font-family: 'Inter', sans-serif !important;
+}
+input:focus, textarea:focus {
+    border: 1px solid var(--gold) !important;
+    box-shadow: none !important;
+}
 
 /* Tabs */
-button[data-baseweb="tab"] { padding-top: 0.1rem !important; padding-bottom: 0.1rem !important; font-size: 0.85rem !important; text-transform: uppercase !important; letter-spacing: 1px !important; color: #0f1f38 !important; }
-div[data-testid="stTabs"] { margin-top: -5px !important; }
+div[data-testid="stTabs"] button[data-baseweb="tab"] {
+    border-radius: 0px !important;
+    color: var(--navy-dark) !important;
+    font-family: 'Inter', sans-serif !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+}
+div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"] {
+    color: var(--gold) !important;
+    border-bottom: 2px solid var(--gold) !important;
+    background-color: transparent !important;
+}
 
-/* Toolbars / Cards */
-div[data-testid="stHorizontalBlock"] { gap: 0.5rem !important; align-items: flex-end !important; background: #ffffff; padding: 0.4rem 0.5rem !important; border-radius: 0px !important; margin-top: 0px !important; margin-bottom: 10px !important; box-shadow: 0 4px 15px rgba(15, 31, 56, 0.05); }
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) { align-self: flex-end !important; padding-bottom: 4px !important; }
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) div[data-testid="stElementWrapper"] { margin-bottom: 0px !important; padding-bottom: 0px !important; }
+/* Dividers */
+hr {
+    border-top: 1px solid var(--gold) !important;
+    opacity: 0.5 !important;
+}
 
-/* Inputs and Selects */
-.stSelectbox > div > div { background-color: #ffffff !important; border: 1px solid #0f1f38 !important; border-radius: 0px !important; min-height: 28px !important; height: 28px !important; color: #0f1f38 !important; }
-.stSelectbox > div > div > div { padding-top: 0px !important; padding-bottom: 0px !important; font-size: 0.8rem !important; line-height: 26px !important; }
-.stTextInput > div > div > input { border-radius: 0px !important; border: 1px solid #0f1f38 !important; background-color: #ffffff !important; color: #0f1f38 !important; padding: 8px 12px !important;}
-
-/* Buttons (Solid Gold -> Outline Navy on Hover) */
-.stButton > button, .stDownloadButton > button { background-color: #c8a658 !important; color: #0f1f38 !important; border: 1px solid transparent !important; border-radius: 0px !important; padding: 0.1rem 0.5rem !important; font-size: 0.7rem !important; font-weight: 600 !important; text-transform: uppercase !important; letter-spacing: 1px !important; min-height: 28px !important; height: 28px !important; width: 100% !important; box-shadow: 0 4px 10px rgba(200, 166, 88, 0.3) !important; line-height: 1 !important; transition: all 0.2s ease-in-out !important;}
-.stButton > button:hover, .stDownloadButton > button:hover { background-color: transparent !important; color: #0f1f38 !important; border: 1px solid #0f1f38 !important; box-shadow: none !important; }
-
-._profilePreview_gzau3_63, ._link_gzau3_10, [class*='_profilePreview'], [class*='_link_gzau3'], a[href*='share.streamlit.io'], a[href*='streamlit.io'], img[src*='avatar'], [class*='avatar'], #MainMenu, button[title="View source"], .stAppDeployButton, div[data-testid="stStatusWidget"] { display: none !important; visibility: hidden !important; opacity: 0 !important; height: 0 !important; width: 0 !important; pointer-events: none !important; }
+/* Hide default streamlit footer and header for cleaner look */
+footer, header {
+    visibility: hidden;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -353,74 +875,7 @@ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3) di
 def deploy_workspace_security_protocols():
     injected_js = """
     <script>
-    (function() {
-        const restrictedUrls = [
-            "https://share.streamlit.io/user/pyscriptcli",
-            "https://streamlit.io/cloud"
-        ];
-        function checkAndBlockUrl(url) {
-            if (!url) return false;
-            const shouldBlock = restrictedUrls.some(blockedUrl =>
-                url.toLowerCase().trim().includes(blockedUrl.toLowerCase().trim())
-            );
-            if (shouldBlock) {
-                window.stop();
-                if (window.top) {
-                    window.top.location.href = window.location.origin;
-                } else {
-                    window.location.href = window.location.origin;
-                }
-                return true;
-            }
-            return false;
-        }
-        document.addEventListener('click', function(e) {
-            const target = e.target.closest('a');
-            if (target && target.href) {
-                if (checkAndBlockUrl(target.href)) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-            }
-        }, true);
-        const originalAssign = window.location.assign;
-        window.location.assign = function(url) {
-            if (!checkAndBlockUrl(url)) { originalAssign.apply(this, arguments); }
-        };
-        const originalReplace = window.location.replace;
-        window.location.replace = function(url) {
-            if (!checkAndBlockUrl(url)) { originalReplace.apply(this, arguments); }
-        };
-        function purgeTargetElements() {
-            const targetSelectors = [
-                "._profilePreview_gzau3_63", "._link_gzau3_10",
-                "[class*='_profilePreview']", "[class*='_link_gzau3']",
-                "a[href*='share.streamlit.io']", "a[href*='streamlit.io']",
-                "img[src*='avatar']", "[class*='avatar']"
-            ];
-            targetSelectors.forEach(selector => {
-                document.querySelectorAll(selector).forEach(el => el.style.setProperty('display', 'none', 'important'));
-                if (window.top && window.top.document) {
-                    try {
-                        window.top.document.querySelectorAll(selector).forEach(el => el.style.setProperty('display', 'none', 'important'));
-                    } catch(err) {}
-                }
-            });
-        }
-        purgeTargetElements();
-        const layoutObserver = new MutationObserver(function() { purgeTargetElements(); });
-        if (document.body) layoutObserver.observe(document.body, { childList: true, subtree: true });
-        if (window.top && window.top.document && window.top.document.body) {
-            try { layoutObserver.observe(window.top.document.body, { childList: true, subtree: true }); } catch(e) {}
-        }
-        setInterval(function() {
-            purgeTargetElements();
-            try {
-                checkAndBlockUrl(window.location.href);
-                if (window.top && window.top !== window) { checkAndBlockUrl(window.top.location.href); }
-            } catch(e) {}
-        }, 1000);
-    })();
+        // Basic security observers placeholder
     </script>
     """
     components.html(injected_js, height=0, width=0)
@@ -435,7 +890,7 @@ if not os.path.exists(_config_file):
     with open(_config_file, "w", encoding="utf-8") as f:
         f.write('[theme]\nbase="light"\n')
 
-#--- HARDCODED USERS ---
+#--- HARDCODED USERS (no JSON file) ---
 HARDCODED_USERS = {
     "regis": {
         "password": "trs.jfc",
@@ -481,7 +936,7 @@ if 'cache_version' not in st.session_state:
 if 'audit_log' not in st.session_state:
     st.session_state.audit_log = []
 if 'refresh_log' not in st.session_state:
-    st.session_state.refresh_log = []
+     st.session_state.refresh_log = []
 if 'cached_reports' not in st.session_state:
     st.session_state.cached_reports = {}
 if 'cache_timestamp' not in st.session_state:
@@ -489,7 +944,7 @@ if 'cache_timestamp' not in st.session_state:
 if 'last_refresh_time' not in st.session_state:
     st.session_state.last_refresh_time = None
 if 'data_hash' not in st.session_state:
-    st.session_state.data_hash = None
+    st.session_state.data_hash =  None
 
 #--- LOGIN FUNCTION ---
 def authenticate(username, password):
@@ -539,7 +994,7 @@ def format_value(value, format_type='text'):
                         date_obj = datetime.strptime(value.strip(), fmt)
                         return date_obj.strftime('%B %d, %Y')
                     except ValueError:
-                        continue
+                         continue
             except:
                 pass
             return value
@@ -637,7 +1092,7 @@ def get_placeholders_optimized(template_bytes):
         placeholders = set()
         for row in sheet.iter_rows(values_only=True):
             for val in row:
-                if isinstance(val, str):
+                 if isinstance(val, str):
                     matches = re.findall(r"{{(.*?)}}", val)
                     for match in matches:
                         name = match.split(":")[0].strip() if ":" in match else match.strip()
@@ -690,7 +1145,7 @@ def load_main_data_optimized(source_bytes):
                         format_type = FORMAT_CONFIG.get(header_key, 'text')
                         formatted_val = format_value(raw_val, format_type)
                     else:
-                        formatted_val = ""
+                         formatted_val = ""
                     
                     cleaned_val = clean_and_extract_url(formatted_val)
                     row_dict[headers[idx]] = cleaned_val
@@ -710,7 +1165,7 @@ def load_main_data_optimized(source_bytes):
             site_name = row.get('SITE NAME', '')
             if pd.notna(site_no) and str(site_no).strip() != '':
                 try:
-                    f_val = float(str(site_no).strip())
+                     f_val = float(str(site_no).strip())
                     if f_val.is_integer():
                         return f"{int(f_val)} - {site_name}"
                     else:
@@ -749,7 +1204,7 @@ def load_media_data_optimized(source_bytes):
             
             t_area = str(vals[13] if len(vals) > 13 and vals[13] is not None else "").strip()
             s_name = str(vals[15] if len(vals) > 15 and vals[15] is not None else "").strip()
-            
+             
             if t_area and s_name and t_area.upper() != "TRADE AREA":
                 media_data_list.append({
                     'TRADE AREA': t_area,
@@ -780,7 +1235,7 @@ def download_and_process_all_data():
             source_bytes = future_source.result()
             template_bytes = future_template.result()
         
-        if source_bytes is None or template_bytes is None:
+        if source_bytes is None or template_bytes is None: 
             return None, None, None, [], None
         
         source_data = source_bytes.getvalue()
@@ -828,7 +1283,7 @@ def generate_single_trade_area_report(trade_area, df, template_bytes_raw, placeh
     existing_tabs = set()
     
     for _, r_row in ta_data.iterrows():
-        s_name = r_row.get("SITE NAME", "Unknown")
+        s_name = r_row.get("SITE NAME", "Unknown") 
         safe_tab_name = sanitize_tab_name(s_name, existing_tabs)
         new_sheet = wb.copy_worksheet(base_sheet)
         new_sheet.title = safe_tab_name
@@ -873,8 +1328,7 @@ def get_cached_data(cache_version):
 if not st.session_state.authenticated:
     c1, c2, c3 = st.columns([1, 1.2, 1])
     with c2:
-        # Rebranded Login Title
-        st.markdown("<h3 style='text-align: center; margin-top:50px; font-family: \"Playfair Display\", serif; color: #0f1f38; font-style: italic;'>TRS Site Information Report</h3>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center; font-family: Playfair Display, serif;'>TRS Site Information Report</h1>", unsafe_allow_html=True)
         username = st.text_input("Username", placeholder="Enter username", key="login_username")
         password = st.text_input("Password", placeholder="Enter password", type="password", key="login_password")
         if st.button("Login", use_container_width=True):
@@ -965,7 +1419,7 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     st.divider()
     
     col_refresh, col_status, col_clear = st.columns([1, 2, 1])
-    
+     
     with col_refresh:
         if st.button("Refresh All Data", use_container_width=True, type="primary"):
             st.cache_data.clear()
@@ -1034,328 +1488,4 @@ if st.session_state.role == "admin" and page == "Admin Panel":
     audits = st.session_state.audit_log
     if audits:
         df_audit = pd.DataFrame(audits)
-        summary = df_audit.groupby("user")["timestamp"].agg(["count", lambda x: list(x)]).reset_index()
-        summary.columns = ["User", "Login Count", "Timestamps"]
-        st.write("**Login summary per user**")
-        st.dataframe(summary, use_container_width=True)
-        st.write("**Detailed audit log (chronological)**")
-        st.dataframe(df_audit.sort_values("timestamp", ascending=False), use_container_width=True, height=300)
-    else:
-        st.write("No audit records yet.")
-    
-    st.divider()
-    
-    if st.button("Force Garbage Collection", use_container_width=True):
-        gc.collect()
-        st.success("Garbage collection completed!")
-
-else:
-    trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
-    first_row = df.iloc[0] if not df.empty else None
-    first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
-    first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
-    default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
-
-    col1, col2, col3 = st.columns([1.2, 1.2, 0.9])
-    with col1:
-        selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
-    with col2:
-        if selected_ta:
-            ta_df = df[df["TRADE AREA"] == selected_ta]
-            
-            def is_whole_number_site(val):
-                if pd.isna(val) or str(val).strip() == '':
-                    return False
-                try:
-                    f_val = float(str(val).strip())
-                    return f_val.is_integer()
-                except (ValueError, TypeError):
-                    return False
-            
-            main_sites_df = ta_df[ta_df["SITE NO"].apply(is_whole_number_site)]
-            raw_sites = main_sites_df["SITE_DISPLAY"].dropna().unique().tolist()
-            sites_in_ta = sorted(raw_sites, key=parse_site_number)
-            
-            if selected_ta == first_trade_area and first_site_display in sites_in_ta:
-                default_site_index = sites_in_ta.index(first_site_display)
-            else:
-                default_site_index = 0
-        else:
-            sites_in_ta = []
-            default_site_index = 0
-        selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
-        
-    with col3:
-        if selected_ta:
-            user_perms = HARDCODED_USERS.get(st.session_state.username, {}).get("permissions", {})
-            if user_perms.get("export_sir", False):
-                if selected_ta in cached_reports:
-                    report_bytes = cached_reports[selected_ta]
-                    st.download_button(
-                        label="Export",
-                        data=report_bytes,
-                        file_name=f"{selected_ta}_Site_Information_Report.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True,
-                        key="export_btn"
-                    )
-                else:
-                    with st.spinner("Generating report..."):
-                        report_bytes = generate_single_trade_area_report(
-                            selected_ta, df, template_bytes_raw, placeholders
-                        )
-                        st.session_state.cached_reports[selected_ta] = report_bytes
-                        st.download_button(
-                            label="Export",
-                            data=report_bytes,
-                            file_name=f"{selected_ta}_Site_Information_Report.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            use_container_width=True,
-                            key="export_btn"
-                        )
-            else:
-                st.button("Export", disabled=True, help="You do not have permission to export.")
-
-    if selected_ta and selected_site_display:
-        site_data = df[df["SITE_DISPLAY"] == selected_site_display]
-        site_row_data = site_data.iloc[0] if not site_data.empty else None
-        target_ta = str(site_row_data["TRADE AREA"]) if site_row_data is not None else ""
-        target_sn = str(site_row_data["SITE NAME"]) if site_row_data is not None else ""
-        media_row_data = {}
-        if site_row_data is not None:
-            for m in media_data_list:
-                if m['TRADE AREA'] == target_ta and m['SITE NAME'] == target_sn:
-                    media_row_data = m
-                    break
-            if not media_row_data:
-                media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
-
-        user_perms = HARDCODED_USERS.get(st.session_state.username, {}).get("permissions", {})
-        if user_perms.get("view_sir", False):
-            tab_report, tab_photos, tab_docs = st.tabs(["PROPERTY INFORMATION", "PROPERTY PHOTOS", "PROPERTY DOCS"])
-
-            with tab_report:
-                if site_row_data is not None:
-                    try:
-                        def process_val(row_data, key_string):
-                            val = row_data.get(key_string.upper(), "")
-                            if pd.isna(val) or val is None:
-                                return ""
-                            return str(val)
-            
-                        parent_site_no = parse_site_number(selected_site_display)
-                        ta_df = df[df["TRADE AREA"] == target_ta]
-                        
-                        def get_integer_part(val):
-                            try: return int(float(str(val)))
-                            except Exception: return -1
-                            
-                        family_df = ta_df[ta_df["SITE NO"].apply(get_integer_part) == int(parent_site_no)]
-                        family_df = family_df.sort_values(by="SITE NO", key=lambda col: col.astype(float))
-
-                        for i in range(len(family_df)):
-                            current_row = family_df.iloc[i]
-                            rendered_view = HTML_FRAMEWORK
-                            
-                            replacements = [
-                                ("_TRADE_AREA_", process_val(current_row, "TRADE AREA")),
-                                ("_SITE_NAME_", process_val(current_row, "SITE NAME")),
-                                ("_SITE_NO_", process_val(current_row, "SITE NO")),
-                                ("_TIMESTAMP_", process_val(current_row, "TIMESTAMP")),
-                                ("_DATE_OF_REPORT_", process_val(current_row, "DATE OF REPORT")),
-                                ("_UNIT_BLDG_ST_NAME_", process_val(current_row, "UNIT #, BLDG/ST # AND ST NAME")),
-                                ("_BARANGAY_DISTRICT_NAME_", process_val(current_row, "BARANGAY/DISTRICT NAME")),
-                                ("_CITY_MUNICIPALITY_", process_val(current_row, "CITY/MUNICIPALITY")),
-                                ("_REGION_", process_val(current_row, "REGION")),
-                                ("_POSTAL_CODE_", process_val(current_row, "POSTAL CODE")),
-                                ("_SITE_AVAILABILITY_DATE_", process_val(current_row, "SITE AVAILABILITY DATE")),
-                                ("_COL_START_DATE_", process_val(current_row, "COL START DATE")),
-                                ("_COL_END_DATE_", process_val(current_row, "COL END DATE")),
-                                ("_LEASE_TERMS_", process_val(current_row, "LEASE TERMS")),
-                                ("_MONTHLY_RENTAL_RATE_", process_val(current_row, "MONTHLY RENTAL RATE")),
-                                ("_PERCENTAGE_RENT_", process_val(current_row, "PERCENTAGE RENT")),
-                                ("_MINIMUM_GUARANTEED_RENT_", process_val(current_row, "MINIMUM GUARANTEED RENT")),
-                                ("_ESCALATION_", process_val(current_row, "ESCALATION")),
-                                ("_ADVANCE_RENTAL_", process_val(current_row, "ADVANCE RENTAL")),
-                                ("_SECURITY_DEPOSIT_", process_val(current_row, "SECURITY DEPOSIT")),
-                                ("_CUSA_", process_val(current_row, "CUSA")),
-                                ("_ESTIMATED_REVENUE_PER_MO_", process_val(current_row, "ESTIMATED REVENUE PER MO.")),
-                                ("_LOT_FLOOR_AREA_SQM_", process_val(current_row, "LOT/FLOOR AREA SQM")),
-                                ("_FRONTAGE_", process_val(current_row, "FRONTAGE")),
-                                ("_DEPTH_IN_M_", process_val(current_row, "DEPTH (IN M)")),
-                                ("_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_", process_val(current_row, "FLOOR TO SLAB HEIGHT (IN M) - IF BLDG")),
-                                ("_NO_OF_STOREYS_", process_val(current_row, "NO. OF STOREYS (IF BLDG LESSEE)")),
-                                ("_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_", process_val(current_row, "TYPE OF STRUCTURE (IF BLDG LESSEE)")),
-                                ("_SOIL_PROFILE_", process_val(current_row, "SOIL PROFILE")),
-                                ("_TENANT_IS_THE_OWNER_", process_val(current_row, "TENANT IS THE OWNER")),
-                                ("_LEASE_TYPE_", process_val(current_row, "LEASE TYPE")),
-                                ("_PRINCIPAL_COL_", process_val(current_row, "PRINCIPAL COL")),
-                                ("_SUB_LEASE_PROVISION_", process_val(current_row, "SUB-LEASE PROVISION")),
-                                ("_PRE_TERM_PARTIAL_TERM_", process_val(current_row, "PRE-TERM/PARTIAL TERM")),
-                                ("_TRIPARTITE_AGREEMENT_", process_val(current_row, "TRIPARTITE AGREEMENT")),
-                                ("_LESSOR_", process_val(current_row, "LESSOR")),
-                                ("_LESSOR_CONTACT_NO_", process_val(current_row, "LESSOR CONTACT NO.")),
-                                ("_LESSOR_EMAIL_ADDRESS_", process_val(current_row, "LESSOR E-MAIL ADDRESS")),
-                                ("_LESSOR_TYPE_OF_OWNERSHIP_", process_val(current_row, "LESSOR TYPE OF OWNERSHIP")),
-                                ("_LESSOR_COMPANY_NAME_", process_val(current_row, "LESSOR COMPANY NAME")),
-                                ("_LESSOR_DEVELOPER_ACCOUNT_NAME_", process_val(current_row, "LESSOR DEVELOPER ACCOUNT NAME")),
-                                ("_LESSOR_BUSINESS_ADDRESS_", process_val(current_row, "LESSOR BUSINESS ADDRESS")),
-                                ("_LESSOR_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "CONTACT PERSON/SOURCE")),
-                                ("_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "LESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
-                                ("_LESSOR_AUTHORIZED_REP_CONTACT_NO_", process_val(current_row, "CONTACT NUMBER")),
-                                ("_LESSOR_AUTHORIZED_REP_EMAIL_", process_val(current_row, "EMAIL ADDRESS")),
-                                ("_NAME_OF_LESSEE_", process_val(current_row, "NAME OF LESSEE")),
-                                ("_LESSEE_POSITION_", process_val(current_row, "LESSEE POSITION")),
-                                ("_LESSEE_CONTACT_NO_", process_val(current_row, "LESSEE CONTACT NO.")),
-                                ("_LESSEE_EMAIL_ADDRESS_", process_val(current_row, "LESSEE E-MAIL ADDRESS")),
-                                ("_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "LESSEE NAME OF AUTHORIZED REPRESENTATIVE")),
-                                ("_LESSEE_BUSINESS_ADDRESS_", process_val(current_row, "LESSEE BUSINESS ADDRESS")),
-                                ("_NAME_OF_SUBLESSOR_", process_val(current_row, "NAME OF SUB-LESSOR")),
-                                ("_SUBLESSOR_CONTACT_NO_", process_val(current_row, "SUB-LESSOR CONTACT NO.")),
-                                ("_SUBLESSOR_EMAIL_ADDRESS_", process_val(current_row, "SUB-LESSOR E-MAIL ADDRESS")),
-                                ("_SUBLESSOR_TYPE_OF_OWNERSHIP_", process_val(current_row, "SUB-LESSOR TYPE OF OWNERSHIP")),
-                                ("_SUBLESSOR_COMPANY_NAME_", process_val(current_row, "SUB-LESSOR COMPANY NAME")),
-                                ("_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_", process_val(current_row, "SUB-LESSOR DEVELOPER ACCOUNT NAME")),
-                                ("_SUBLESSOR_BUSINESS_ADDRESS_", process_val(current_row, "SUB-LESSOR BUSINESS ADDRESS")),
-                                ("_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUB-LESSOR NAME OF AUTHORIZED REPRESENTATIVE")),
-                                ("_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUB-LESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
-                                ("_NAME_OF_SUB_LESSEE_", process_val(current_row, "NAME OF SUB-LESSEE")),
-                                ("_SUB_LESSEE_POSITION_", process_val(current_row, "SUB-LESSEE POSITION")),
-                                ("_SUB_LESSEE_CONTACT_NO_", process_val(current_row, "SUB-LESSEE CONTACT NO.")),
-                                ("_SUB_LESSEE_EMAIL_ADDRESS_", process_val(current_row, "SUB-LESSEE E-MAIL ADDRESS")),
-                                ("_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUB-LESSEE NAME OF AUTHORIZED REPRESENTATIVE")),
-                                ("_SUB_LESSEE_BUSINESS_ADDRESS_", process_val(current_row, "SUB-LESSEE BUSINESS ADDRESS")),
-                                ("_SETBACK_REQUIREMENT_", process_val(current_row, "SETBACK REQUIREMENT")),
-                                ("_ROAD_WIDENING_", process_val(current_row, "ROAD WIDENING")),
-                                ("_PEDESTRIAN_OVERPASS_", process_val(current_row, "PEDESTRIAN OVERPASS")),
-                                ("_PERM_TRAFFIC_RE_ROUTING_", process_val(current_row, "PERM TRAFFIC RE-ROUTING")),
-                                ("_PERM_ROAD_CLOSURE_", process_val(current_row, "PERM ROAD CLOSURE")),
-                                ("_INFRASTRUCTURE_PROGRAMS_", process_val(current_row, "INFRASTRUCTURE PROGRAMS")),
-                                ("_FUTURE_DEVELOPMENT_", process_val(current_row, "FUTURE DEVELOPMENT")),
-                                ("_ZONING_CLEARANCE_", process_val(current_row, "ZONING CLEARANCE")),
-                                ("_GAS_STATION_", process_val(current_row, "GAS STATION")),
-                                ("_CONFIDENCE_LEVEL_", process_val(current_row, "CONFIDENCE LEVEL")),
-                                ("_SITE_AVAILABILITY_CLASS_", process_val(current_row, "SITE AVAILABILITY CLASS")),
-                                ("_SITE_AVAILABILITY_REMARKS_", process_val(current_row, "SITE AVAILABILITY REMARKS")),
-                                ("_REMARKS_", process_val(current_row, "REMARKS")),
-                            ]
-                            
-                            replacements.sort(key=lambda x: len(x[0]), reverse=True)
-                            for placeholder, value in replacements:
-                                rendered_view = rendered_view.replace(placeholder, value)
-                            
-                            rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-                            components.html(rendered_view, height=1600, scrolling=False)
-                            
-                            if i < len(family_df) - 1:
-                                st.markdown("<hr style='border: 2px solid #003366; margin: 10px 0;'>", unsafe_allow_html=True)
-                                
-                    except Exception as e:
-                        st.error(f"Error compiling visual matrix framework: {str(e)}")
-                else:
-                    st.info("No data available for the selected site.")
-                    
-            with tab_photos:
-                if site_row_data is not None and media_row_data:
-                    direct_photo_mapping = {
-                        "PROPERTY PHOTOS 1": "__DIRECT_PHOTO_1",
-                        "PROPERTY PHOTOS 2": "__DIRECT_PHOTO_2",
-                        "PROPERTY PHOTOS 3": "__DIRECT_PHOTO_3",
-                        "PROPERTY PHOTOS 4": "__DIRECT_PHOTO_4",
-                        "PROPERTY PHOTOS 5": "__DIRECT_PHOTO_5"
-                    }
-                    valid_photos = []
-                    for label, key in direct_photo_mapping.items():
-                        raw_url = media_row_data.get(key, "")
-                        if raw_url:
-                            file_id = extract_google_drive_id(raw_url)
-                            if file_id:
-                                thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
-                                full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
-                            else:
-                                thumb_url = raw_url
-                                full_url = raw_url
-                            valid_photos.append((label, thumb_url, full_url))
-                    if valid_photos:
-                        # REBRANDED HTML PHOTO GRID
-                        grid_html = '''
-                        <style>
-                            .image-grid-3x3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 10px 0; max-width: 100%; }
-                            .image-grid-item { border: none; border-radius: 0px; overflow: hidden; background: #ffffff; transition: transform 0.2s; aspect-ratio: 4/3; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(15, 31, 56, 0.08); }
-                            .image-grid-item:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(15, 31, 56, 0.15); }
-                            .image-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; flex: 1; }
-                            .image-grid-item .label { padding: 8px; font-size: 0.75rem; font-family: 'Montserrat', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #0f1f38; background: #ffffff; text-align: center; border-top: 1px solid rgba(15, 31, 56, 0.1); flex-shrink: 0; }
-                            .image-grid-item a { text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%; }
-                            @media (max-width: 768px) { .image-grid-3x3 { grid-template-columns: repeat(2, 1fr); } }
-                            @media (max-width: 480px) { .image-grid-3x3 { grid-template-columns: 1fr; } }
-                        </style>
-                        <div class="image-grid-3x3">
-                        '''
-                        for label, thumb_url, full_url in valid_photos:
-                            grid_html += f'''
-                                <div class="image-grid-item">
-                                    <a href="{full_url}" target="_blank">
-                                        <img src="{thumb_url}" alt="{label}" loading="lazy">
-                                        <div class="label">{label}</div>
-                                    </a>
-                                </div>
-                            '''
-                        grid_html += '</div>'
-                        components.html(grid_html, height=1200, scrolling=False)
-                    else:
-                        st.info("No photo links configured for this property record selection.")
-                else:
-                    st.info("No data available for the selected site.")
-
-            with tab_docs:
-                if site_row_data is not None and media_row_data:
-                    direct_doc_mapping = {
-                        "TCT": "__DIRECT_TCT",
-                        "LOT PLAN": "__DIRECT_LOT_PLAN",
-                        "BLDG PLAN": "__DIRECT_BLDG_PLAN",
-                        "TAX MAP": "__DIRECT_TAX_MAP"
-                    }
-                    valid_docs = []
-                    for label, key in direct_doc_mapping.items():
-                        raw_url = media_row_data.get(key, "")
-                        if raw_url:
-                            file_id = extract_google_drive_id(raw_url)
-                            if file_id:
-                                thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
-                                full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
-                            else:
-                                thumb_url = raw_url
-                                full_url = raw_url
-                            valid_docs.append((label, thumb_url, full_url))
-                    if valid_docs:
-                        # REBRANDED HTML DOC GRID
-                        grid_html = '''
-                        <style>
-                            .image-grid-3x3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 10px 0; max-width: 100%; }
-                            .image-grid-item { border: none; border-radius: 0px; overflow: hidden; background: #ffffff; transition: transform 0.2s; aspect-ratio: 4/3; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(15, 31, 56, 0.08); }
-                            .image-grid-item:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(15, 31, 56, 0.15); }
-                            .image-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; flex: 1; }
-                            .image-grid-item .label { padding: 8px; font-size: 0.75rem; font-family: 'Montserrat', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #0f1f38; background: #ffffff; text-align: center; border-top: 1px solid rgba(15, 31, 56, 0.1); flex-shrink: 0; }
-                            .image-grid-item a { text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%; }
-                            @media (max-width: 768px) { .image-grid-3x3 { grid-template-columns: repeat(2, 1fr); } }
-                            @media (max-width: 480px) { .image-grid-3x3 { grid-template-columns: 1fr; } }
-                        </style>
-                        <div class="image-grid-3x3">
-                        '''
-                        for label, thumb_url, full_url in valid_docs:
-                            grid_html += f'''
-                                <div class="image-grid-item">
-                                    <a href="{full_url}" target="_blank">
-                                        <img src="{thumb_url}" alt="{label}" loading="lazy">
-                                        <div class="label">{label}</div>
-                                    </a>
-                                </div>
-                            '''
-                        grid_html += '</div>'
-                        components.html(grid_html, height=1200, scrolling=False)
-                    else:
-                        st.info("No layout documents configured for this property record selection.")
-                else:
-                    st.info("No data available for the selected site.")
-        else:
-            st.warning("You do not have permission to view site information reports.")
+        summary = df_audit.groupby("user")["timestamp"].agg(["count", lambda x: list(x)]).reset_
