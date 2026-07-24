@@ -757,7 +757,7 @@ def load_media_data_optimized(source_bytes):
 def download_and_process_all_data():
     start_time = time.time()
     
-    with st.spinner("Downloading data from Google Sheets..."):
+    with st.spinner("Loading data..."):
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_source = executor.submit(download_file, SOURCE_URL)
             future_template = executor.submit(download_file, TEMPLATE_URL)
@@ -770,7 +770,7 @@ def download_and_process_all_data():
         source_data = source_bytes.getvalue()
         template_data = template_bytes.getvalue()
     
-    with st.spinner("Processing data..."):
+    with st.spinner("Loading media..."):
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_main = executor.submit(load_main_data_optimized, source_data)
             future_media = executor.submit(load_media_data_optimized, source_data)
@@ -782,7 +782,7 @@ def download_and_process_all_data():
         
         placeholders = get_placeholders_optimized(template_data)
     
-    with st.spinner("Pre-generating reports for all trade areas..."):
+    with st.spinner("Loading site information report..."):
         cached_reports = {}
         trade_areas = df["TRADE AREA"].dropna().unique()
         
