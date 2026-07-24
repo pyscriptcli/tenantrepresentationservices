@@ -1365,14 +1365,7 @@ else:
     # If show_report is True, show the report view, otherwise show the map
     if st.session_state.get('show_report', False):
         #--- REPORT VIEW ---
-        # Back to Map button (floating)
-        st.markdown("""
-        <button class="floating-btn-back" onclick="window.location.reload()">
-            Back to Map
-        </button>
-        """, unsafe_allow_html=True)
-        
-        # Also add a Streamlit button as backup
+        # Back to Map button (using Streamlit button)
         if st.button("Back to Map", key="back_to_map"):
             st.session_state.show_report = False
             st.rerun()
@@ -1695,16 +1688,7 @@ else:
         # Display the full-screen map
         components.html(GOOGLE_MAP_EMBED, height=0, width=0)
         
-        # Show "View Reports" button (enabled since data is loaded)
-        st.markdown("""
-        <button class="floating-btn" onclick="window.location.reload()">
-            View Reports
-        </button>
-        """, unsafe_allow_html=True)
-        
-        # Also add a Streamlit button as backup
+        # Show "View Reports" button (only one - using Streamlit button)
         if st.button("View Reports", key="view_reports"):
             st.session_state.show_report = True
             st.rerun()
-        
-        # No status bar - removed as requested
