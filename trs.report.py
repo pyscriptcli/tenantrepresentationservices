@@ -970,13 +970,14 @@ def get_cached_data(cache_version, force_refresh=False):
     return load_and_process_data(force_refresh=force_refresh)
 
 #--- GOOGLE MAPS EMBED ---
+# Using a standard Google Maps embed with proper sizing
 GOOGLE_MAP_EMBED = """
 <iframe src="https://www.google.com/maps/d/embed?mid=1CSUoDxCi-trQTTz_D6NjI3m0Kc5OQhM&ehbc=2E312F&noprof=1" 
         width="100%" 
-        height="100vh" 
+        height="100%" 
         style="border:0; position:fixed; top:0; left:0; width:100%; height:100%; z-index:1;" 
         allowfullscreen="" 
-        loading="lazy">
+        loading="eager">
 </iframe>
 """
 
@@ -999,11 +1000,18 @@ FLOATING_BUTTON_CSS = """
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     transition: all 0.3s ease;
     font-family: 'Google Sans', 'Roboto', sans-serif;
+    text-decoration: none;
+    display: inline-block;
 }
 .floating-btn:hover {
     background-color: #0b4cb4;
     transform: scale(1.05);
     box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+}
+.floating-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
 }
 .floating-btn-back {
     position: fixed;
@@ -1077,15 +1085,15 @@ if not st.session_state.authenticated:
                 st.warning("Please enter both username and password.")
     st.stop()
 
+# Inject the CSS for floating buttons
+st.markdown(FLOATING_BUTTON_CSS, unsafe_allow_html=True)
+
 # If data is not loaded yet, show the map with loading indicator
 if not st.session_state.data_loaded:
-    # Show the map immediately
-    st.markdown(FLOATING_BUTTON_CSS, unsafe_allow_html=True)
-    
     # Display the full-screen map
     components.html(GOOGLE_MAP_EMBED, height=0, width=0)
     
-    # Show loading indicator
+    # Show loading indicator at bottom
     st.markdown("""
     <div class="loading-indicator">
         <div class="spinner-small"></div>
@@ -1093,9 +1101,9 @@ if not st.session_state.data_loaded:
     </div>
     """, unsafe_allow_html=True)
     
-    # Show "View Reports" button (disabled while loading)
+    # Show "Loading Reports" button (disabled)
     st.markdown("""
-    <button class="floating-btn" style="opacity: 0.6; cursor: not-allowed;">
+    <button class="floating-btn" disabled>
         Loading Reports...
     </button>
     """, unsafe_allow_html=True)
@@ -1357,10 +1365,15 @@ else:
     # If show_report is True, show the report view, otherwise show the map
     if st.session_state.get('show_report', False):
         #--- REPORT VIEW ---
-        st.markdown(FLOATING_BUTTON_CSS, unsafe_allow_html=True)
+        # Back to Map button (floating)
+        st.markdown("""
+        <button class="floating-btn-back" onclick="window.location.reload()">
+            Back to Map
+        </button>
+        """, unsafe_allow_html=True)
         
-        # Back to Map button
-        if st.button("🗺️ Back to Map", key="back_to_map", use_container_width=False):
+        # Also add a Streamlit button as backup
+        if st.button("Back to Map", key="back_to_map"):
             st.session_state.show_report = False
             st.rerun()
         
@@ -1679,24 +1692,19 @@ else:
     
     else:
         #--- MAP VIEW ---
-        st.markdown(FLOATING_BUTTON_CSS, unsafe_allow_html=True)
-        
-        # Full screen map
+        # Display the full-screen map
         components.html(GOOGLE_MAP_EMBED, height=0, width=0)
         
-        # Floating "View Reports" button - now enabled since data is loaded
-        if st.button("📋 View Reports", key="view_reports", use_container_width=False):
+        # Show "View Reports" button (enabled since data is loaded)
+        st.markdown("""
+        <button class="floating-btn" onclick="window.location.reload()">
+            View Reports
+        </button>
+        """, unsafe_allow_html=True)
+        
+        # Also add a Streamlit button as backup
+        if st.button("View Reports", key="view_reports"):
             st.session_state.show_report = True
             st.rerun()
         
-        # Show a small status indicator
-        st.markdown(f"""
-        <div style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 9999; 
-                    background-color: rgba(0, 51, 102, 0.9); color: white; border-radius: 50px; 
-                    padding: 10px 24px; font-size: 13px; font-weight: 400; 
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-family: 'Google Sans', 'Roboto', sans-serif;
-                    display: flex; align-items: center; gap: 8px;">
-            <span style="color: #4caf50; font-size: 16px;">●</span>
-            Data loaded - {len(df)} sites available
-        </div>
-        """, unsafe_allow_html=True)
+        # No status bar - removed as requested
