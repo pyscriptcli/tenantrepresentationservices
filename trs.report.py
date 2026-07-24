@@ -23,9 +23,6 @@ import pyarrow.parquet as pq
 import json
 import traceback
 import gc
-from pathlib import Path
-import zipfile
-import shutil
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -477,12 +474,6 @@ if 'last_refresh_time' not in st.session_state:
     st.session_state.last_refresh_time = None
 if 'data_hash' not in st.session_state:
     st.session_state.data_hash = None
-if 'use_local_files' not in st.session_state:
-    st.session_state.use_local_files = True
-if 'show_report' not in st.session_state:
-    st.session_state.show_report = False
-if 'loading_complete' not in st.session_state:
-    st.session_state.loading_complete = False
 
 #--- LOGIN FUNCTION ---
 def authenticate(username, password):
@@ -497,16 +488,6 @@ def authenticate(username, password):
 #--- CONFIGURATION ---
 SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7iQZNW9fRX6TCip47CE/export?format=xlsx"
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
-
-#--- LOCAL FILE CONFIGURATION ---
-DATA_DIR = Path("data")
-DATA_FILE = DATA_DIR / "site_data.xlsx"
-TEMPLATE_FILE = DATA_DIR / "template.xlsx"
-CACHE_DIR = Path("cache")
-CACHE_FILE = CACHE_DIR / "processed_data.pkl"
-
-DATA_DIR.mkdir(exist_ok=True)
-CACHE_DIR.mkdir(exist_ok=True)
 
 #--- DATA FORMATTING CONFIGURATION ---
 FORMAT_CONFIG = {
@@ -773,80 +754,10 @@ def load_media_data_optimized(source_bytes):
         st.error(f"Error loading media data: {e}")
         return []
 
-def save_data_to_local(source_data, template_data):
-    try:
-        with open(DATA_FILE, 'wb') as f:
-            f.write(source_data)
-        
-        with open(TEMPLATE_FILE, 'wb') as f:
-            f.write(template_data)
-        
-        metadata = {
-            'timestamp': datetime.now().isoformat(),
-            'data_size': len(source_data),
-            'template_size': len(template_data)
-        }
-        with open(DATA_DIR / 'metadata.json', 'w') as f:
-            json.dump(metadata, f)
-        
-        return True
-    except Exception as e:
-        st.error(f"Failed to save local files: {e}")
-        return False
-
-def load_data_from_local():
-    try:
-        if not DATA_FILE.exists() or not TEMPLATE_FILE.exists():
-            return None, None
-        
-        with open(DATA_FILE, 'rb') as f:
-            source_data = f.read()
-        
-        with open(TEMPLATE_FILE, 'rb') as f:
-            template_data = f.read()
-        
-        metadata_file = DATA_DIR / 'metadata.json'
-        if metadata_file.exists():
-            with open(metadata_file, 'r') as f:
-                metadata = json.load(f)
-                timestamp = datetime.fromisoformat(metadata['timestamp'])
-        else:
-            timestamp = datetime.fromtimestamp(DATA_FILE.stat().st_mtime)
-        
-        return source_data, template_data, timestamp
-    except Exception as e:
-        st.warning(f"Failed to load local files: {e}")
-        return None, None, None
-
-def get_file_modification_time(file_path):
-    try:
-        if file_path.exists():
-            return datetime.fromtimestamp(file_path.stat().st_mtime)
-        return None
-    except:
-        return None
-
-def should_refresh_local_data():
-    if not DATA_FILE.exists() or not TEMPLATE_FILE.exists():
-        return True
+def download_and_process_all_data():
+    start_time = time.time()
     
-    metadata_file = DATA_DIR / 'metadata.json'
-    if not metadata_file.exists():
-        return True
-    
-    try:
-        with open(metadata_file, 'r') as f:
-            metadata = json.load(f)
-            timestamp = datetime.fromisoformat(metadata['timestamp'])
-            age = (datetime.now() - timestamp).total_seconds()
-            return age > 86400
-    except:
-        return True
-    
-    return False
-
-def download_from_google_sheets():
-    with st.spinner("Downloading from Google Sheets..."):
+    with st.spinner("Loading data..."):
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_source = executor.submit(download_file, SOURCE_URL)
             future_template = executor.submit(download_file, TEMPLATE_URL)
@@ -854,66 +765,39 @@ def download_from_google_sheets():
             template_bytes = future_template.result()
         
         if source_bytes is None or template_bytes is None:
-            return None, None
+            return None, None, None, [], None
         
         source_data = source_bytes.getvalue()
         template_data = template_bytes.getvalue()
-        
-        save_data_to_local(source_data, template_data)
-        
-        return source_data, template_data
-
-def load_and_process_data(force_refresh=False):
-    start_time = time.time()
     
-    use_local = not force_refresh and DATA_FILE.exists() and TEMPLATE_FILE.exists()
-    
-    if use_local:
-        result = load_data_from_local()
+    with st.spinner("Loading media..."):
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_main = executor.submit(load_main_data_optimized, source_data)
+            future_media = executor.submit(load_media_data_optimized, source_data)
+            df = future_main.result()
+            media_data_list = future_media.result()
         
-        if result and result[0] is not None:
-            source_data, template_data, file_timestamp = result
-            
-            age = (datetime.now() - file_timestamp).total_seconds()
-            if age > 604800:
-                source_data, template_data = download_from_google_sheets()
-                if source_data is None:
-                    result = load_data_from_local()
-                    if result and result[0] is not None:
-                        source_data, template_data, _ = result
-                    else:
-                        return None, None, None, [], None
-        else:
-            source_data, template_data = download_from_google_sheets()
-            if source_data is None:
-                return None, None, None, [], None
-    else:
-        source_data, template_data = download_from_google_sheets()
-        if source_data is None:
+        if df is None:
             return None, None, None, [], None
+        
+        placeholders = get_placeholders_optimized(template_data)
     
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        future_main = executor.submit(load_main_data_optimized, source_data)
-        future_media = executor.submit(load_media_data_optimized, source_data)
-        df = future_main.result()
-        media_data_list = future_media.result()
-    
-    if df is None:
-        return None, None, None, [], None
-    
-    placeholders = get_placeholders_optimized(template_data)
-    
-    cached_reports = {}
-    trade_areas = df["TRADE AREA"].dropna().unique()
-    
-    for idx, trade_area in enumerate(trade_areas):
-        report_bytes = generate_single_trade_area_report(
-            trade_area, df, template_data, placeholders
-        )
-        cached_reports[trade_area] = report_bytes
+    with st.spinner("Loading site information report..."):
+        cached_reports = {}
+        trade_areas = df["TRADE AREA"].dropna().unique()
+        
+        progress_bar = st.progress(0)
+        for idx, trade_area in enumerate(trade_areas):
+            report_bytes = generate_single_trade_area_report(
+                trade_area, df, template_data, placeholders
+            )
+            cached_reports[trade_area] = report_bytes
+            progress_bar.progress((idx + 1) / len(trade_areas))
+        
+        progress_bar.empty()
     
     elapsed = time.time() - start_time
-    print(f"Data loaded in {elapsed:.2f} seconds")
+    print(f"All data cached in {elapsed:.2f} seconds")
     
     return df, placeholders, template_data, media_data_list, cached_reports, datetime.now()
 
@@ -966,107 +850,8 @@ def generate_single_trade_area_report(trade_area, df, template_bytes_raw, placeh
     return wb_buffer.getvalue()
 
 @st.cache_data(ttl=None, show_spinner=False)
-def get_cached_data(cache_version, force_refresh=False):
-    return load_and_process_data(force_refresh=force_refresh)
-
-#--- GOOGLE MAPS EMBED ---
-# Using a standard Google Maps embed with proper sizing
-GOOGLE_MAP_EMBED = """
-<iframe src="https://www.google.com/maps/d/embed?mid=1CSUoDxCi-trQTTz_D6NjI3m0Kc5OQhM&ehbc=2E312F&noprof=1" 
-        width="100%" 
-        height="100%" 
-        style="border:0; position:fixed; top:0; left:0; width:100%; height:100%; z-index:1;" 
-        allowfullscreen="" 
-        loading="eager">
-</iframe>
-"""
-
-#--- FLOATING BUTTON STYLES ---
-FLOATING_BUTTON_CSS = """
-<style>
-.floating-btn {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-    background-color: #003366;
-    color: white;
-    border: none;
-    border-radius: 50px;
-    padding: 12px 24px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    transition: all 0.3s ease;
-    font-family: 'Google Sans', 'Roboto', sans-serif;
-    text-decoration: none;
-    display: inline-block;
-}
-.floating-btn:hover {
-    background-color: #0b4cb4;
-    transform: scale(1.05);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
-}
-.floating-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-}
-.floating-btn-back {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-    background-color: #003366;
-    color: white;
-    border: none;
-    border-radius: 50px;
-    padding: 12px 24px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    transition: all 0.3s ease;
-    font-family: 'Google Sans', 'Roboto', sans-serif;
-}
-.floating-btn-back:hover {
-    background-color: #0b4cb4;
-    transform: scale(1.05);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
-}
-.loading-indicator {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 9999;
-    background-color: rgba(0, 51, 102, 0.9);
-    color: white;
-    border-radius: 50px;
-    padding: 10px 24px;
-    font-size: 13px;
-    font-weight: 400;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    font-family: 'Google Sans', 'Roboto', sans-serif;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.spinner-small {
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top: 2px solid white;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-</style>
-"""
+def get_cached_data(cache_version):
+    return download_and_process_all_data()
 
 #--- MAIN APP ---
 if not st.session_state.authenticated:
@@ -1085,31 +870,14 @@ if not st.session_state.authenticated:
                 st.warning("Please enter both username and password.")
     st.stop()
 
-# Inject the CSS for floating buttons
-st.markdown(FLOATING_BUTTON_CSS, unsafe_allow_html=True)
-
-# If data is not loaded yet, show the map with loading indicator
 if not st.session_state.data_loaded:
-    # Display the full-screen map
-    components.html(GOOGLE_MAP_EMBED, height=0, width=0)
-    
-    # Show loading indicator at bottom
-    st.markdown("""
-    <div class="loading-indicator">
-        <div class="spinner-small"></div>
-        Loading site data... Please wait
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Show "Loading Reports" button (disabled)
-    st.markdown("""
-    <button class="floating-btn" disabled>
-        Loading Reports...
-    </button>
-    """, unsafe_allow_html=True)
-    
-    # Load data in the background
-    result = get_cached_data(st.session_state.cache_version, force_refresh=False)
+    loading_placeholder = st.empty()
+    loading_placeholder.markdown(
+        get_loading_overlay_html(message="Loading cached data..."), 
+        unsafe_allow_html=True
+    )
+
+    result = get_cached_data(st.session_state.cache_version)
     
     if result and result[0] is not None:
         df, placeholders, template_bytes_raw, media_data_list, cached_reports, data_timestamp = result
@@ -1125,13 +893,13 @@ if not st.session_state.data_loaded:
         st.session_state.data_hash = df_hash
         
         st.session_state.data_loaded = True
-        st.session_state.loading_complete = True
+        loading_placeholder.empty()
         st.rerun()
     else:
+        loading_placeholder.empty()
         st.error("Failed to load data assets. Please verify link paths.")
         st.stop()
 
-# Data is loaded - show the appropriate view
 df = st.session_state.df
 placeholders = st.session_state.placeholders
 template_bytes_raw = st.session_state.template_bytes_raw
@@ -1140,7 +908,6 @@ cached_reports = st.session_state.cached_reports
 
 deploy_workspace_security_protocols()
 
-# Handle admin vs viewer
 if st.session_state.role == "admin":
     st.sidebar.title("Navigation")
     page = st.sidebar.radio("Go to", ["Admin Panel", "Viewer"], index=0)
@@ -1148,7 +915,6 @@ else:
     page = "Viewer"
 
 if st.session_state.role == "admin" and page == "Admin Panel":
-    # Admin Panel (same as before)
     st.title("Admin Control Panel")
     
     st.subheader("Data Management")
@@ -1163,9 +929,9 @@ if st.session_state.role == "admin" and page == "Admin Panel":
                 age_str = f"{int(cache_age/60)} minutes"
             else:
                 age_str = f"{int(cache_age/3600)} hours"
-            st.metric("Data Age", age_str)
+            st.metric("Cache Age", age_str)
         else:
-            st.metric("Data Age", "Not set")
+            st.metric("Cache Age", "Not set")
     
     with col_info2:
         if st.session_state.df is not None:
@@ -1174,86 +940,37 @@ if st.session_state.role == "admin" and page == "Admin Panel":
             st.metric("Trade Areas", "0")
     
     with col_info3:
-        if DATA_FILE.exists():
-            file_size = DATA_FILE.stat().st_size / 1024 / 1024
-            st.metric("Local Data", f"{file_size:.1f} MB")
-        else:
-            st.metric("Local Data", "Not cached")
-    
-    st.divider()
-    
-    st.subheader("Data Source Status")
-    col_source1, col_source2 = st.columns(2)
-    with col_source1:
-        st.write("**Local Files:**")
-        if DATA_FILE.exists():
-            mod_time = get_file_modification_time(DATA_FILE)
-            st.success(f"Data file exists ({mod_time.strftime('%Y-%m-%d %H:%M') if mod_time else 'Unknown'})")
-        else:
-            st.warning("No local data file found")
-        
-        if TEMPLATE_FILE.exists():
-            mod_time = get_file_modification_time(TEMPLATE_FILE)
-            st.success(f"Template file exists ({mod_time.strftime('%Y-%m-%d %H:%M') if mod_time else 'Unknown'})")
-        else:
-            st.warning("No local template file found")
-    
-    with col_source2:
-        st.write("**Cache Status:**")
-        if CACHE_FILE.exists():
-            mod_time = get_file_modification_time(CACHE_FILE)
-            st.success(f"Cache exists ({mod_time.strftime('%Y-%m-%d %H:%M') if mod_time else 'Unknown'})")
-        else:
-            st.info("No cache file found")
-        
         if st.session_state.cached_reports:
-            st.success(f"{len(st.session_state.cached_reports)} reports cached")
+            st.metric("Cached Reports", len(st.session_state.cached_reports))
         else:
-            st.info("No reports cached")
+            st.metric("Cached Reports", "0")
     
     st.divider()
     
     col_refresh, col_status, col_clear = st.columns([1, 2, 1])
     
     with col_refresh:
-        if st.button("Refresh from Google Sheets", use_container_width=True, type="primary"):
+        if st.button("Refresh All Data", use_container_width=True, type="primary"):
             st.cache_data.clear()
-            
-            if DATA_FILE.exists():
-                DATA_FILE.unlink()
-            if TEMPLATE_FILE.exists():
-                TEMPLATE_FILE.unlink()
-            
             st.session_state.cache_version += 1
             st.session_state.data_loaded = False
             st.session_state.cached_reports = {}
-            st.session_state.loading_complete = False
-            
             st.session_state.refresh_log.append({
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "user": st.session_state.username,
-                "action": "Full data refresh from Google Sheets"
+                "action": "Full data refresh"
             })
-            
             st.success("Refresh initiated! Page will reload with fresh data...")
             time.sleep(1.5)
             st.rerun()
     
     with col_clear:
         if st.button("Clear Local Cache", use_container_width=True):
-            if DATA_FILE.exists():
-                DATA_FILE.unlink()
-            if TEMPLATE_FILE.exists():
-                TEMPLATE_FILE.unlink()
-            if CACHE_FILE.exists():
-                CACHE_FILE.unlink()
-            
+            st.cache_data.clear()
             st.session_state.cache_version += 1
             st.session_state.data_loaded = False
             st.session_state.cached_reports = {}
-            st.session_state.loading_complete = False
-            
-            st.success("Local cache cleared! Reloading...")
+            st.success("Cache cleared! Reloading...")
             time.sleep(1)
             st.rerun()
     
@@ -1267,47 +984,10 @@ if st.session_state.role == "admin" and page == "Admin Panel":
                 st.write(f"Last refresh: {last_refresh}")
             
             if st.session_state.cache_timestamp:
-                total_refreshes = len([log for log in st.session_state.refresh_log if isinstance(log, dict) and log.get('action') == 'Full data refresh from Google Sheets'])
+                total_refreshes = len([log for log in st.session_state.refresh_log if isinstance(log, dict) and log.get('action') == 'Full data refresh'])
                 st.write(f"Total refreshes: {total_refreshes}")
         else:
             st.write("No refresh performed yet")
-    
-    st.divider()
-    
-    st.subheader("Manual Data Upload")
-    st.info("Upload Excel files directly to update the data (bypasses Google Sheets)")
-    
-    col_upload1, col_upload2 = st.columns(2)
-    with col_upload1:
-        uploaded_data = st.file_uploader(
-            "Upload Site Data (Excel)",
-            type=['xlsx', 'xls'],
-            key="upload_data"
-        )
-    
-    with col_upload2:
-        uploaded_template = st.file_uploader(
-            "Upload Template (Excel)",
-            type=['xlsx', 'xls'],
-            key="upload_template"
-        )
-    
-    if uploaded_data is not None and uploaded_template is not None:
-        if st.button("Update from Uploaded Files", use_container_width=True):
-            with open(DATA_FILE, 'wb') as f:
-                f.write(uploaded_data.getvalue())
-            
-            with open(TEMPLATE_FILE, 'wb') as f:
-                f.write(uploaded_template.getvalue())
-            
-            st.session_state.cache_version += 1
-            st.session_state.data_loaded = False
-            st.session_state.cached_reports = {}
-            st.session_state.loading_complete = False
-            
-            st.success("Files uploaded successfully! Reloading...")
-            time.sleep(1)
-            st.rerun()
     
     st.divider()
     
@@ -1319,24 +999,17 @@ if st.session_state.role == "admin" and page == "Admin Panel":
                 st.write(f"DataFrame: {st.session_state.df.memory_usage(deep=True).sum() / 1024 / 1024:.2f} MB")
             if st.session_state.media_data_list:
                 st.write(f"Media entries: {len(st.session_state.media_data_list)}")
-        
         with col_stats2:
             st.write("**Cached Reports:**")
             if st.session_state.cached_reports:
                 total_size = sum(len(report) for report in st.session_state.cached_reports.values())
                 st.write(f"Total reports: {len(st.session_state.cached_reports)}")
                 st.write(f"Total size: {total_size / 1024 / 1024:.2f} MB")
-        
         with col_stats3:
             st.write("**Performance:**")
             if st.session_state.cache_timestamp:
                 age = (datetime.now() - st.session_state.cache_timestamp).total_seconds()
                 st.write(f"Cache age: {age:.0f} seconds")
-            
-            if DATA_FILE.exists():
-                st.write("Using local files (fast)")
-            else:
-                st.write("Using Google Sheets (slower)")
     
     st.divider()
     
@@ -1360,58 +1033,61 @@ if st.session_state.role == "admin" and page == "Admin Panel":
         st.success("Garbage collection completed!")
 
 else:
-    #--- VIEWER SECTION WITH MAP/REPORT TOGGLE ---
-    
-    # If show_report is True, show the report view, otherwise show the map
-    if st.session_state.get('show_report', False):
-        #--- REPORT VIEW ---
-        # Back to Map button (using Streamlit button)
-        if st.button("Back to Map", key="back_to_map"):
-            st.session_state.show_report = False
-            st.rerun()
-        
-        # Show the report content
-        trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
-        first_row = df.iloc[0] if not df.empty else None
-        first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
-        first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
-        default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
+    trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
+    first_row = df.iloc[0] if not df.empty else None
+    first_trade_area = first_row["TRADE AREA"] if first_row is not None else ""
+    first_site_display = first_row["SITE_DISPLAY"] if first_row is not None else ""
+    default_ta_index = trade_areas.index(first_trade_area) if first_trade_area in trade_areas else 0
 
-        col1, col2, col3 = st.columns([1.2, 1.2, 0.9])
-        with col1:
-            selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
-        with col2:
-            if selected_ta:
-                ta_df = df[df["TRADE AREA"] == selected_ta]
-                
-                def is_whole_number_site(val):
-                    if pd.isna(val) or str(val).strip() == '':
-                        return False
-                    try:
-                        f_val = float(str(val).strip())
-                        return f_val.is_integer()
-                    except (ValueError, TypeError):
-                        return False
-                
-                main_sites_df = ta_df[ta_df["SITE NO"].apply(is_whole_number_site)]
-                raw_sites = main_sites_df["SITE_DISPLAY"].dropna().unique().tolist()
-                sites_in_ta = sorted(raw_sites, key=parse_site_number)
-                
-                if selected_ta == first_trade_area and first_site_display in sites_in_ta:
-                    default_site_index = sites_in_ta.index(first_site_display)
-                else:
-                    default_site_index = 0
-            else:
-                sites_in_ta = []
-                default_site_index = 0
-            selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
+    col1, col2, col3 = st.columns([1.2, 1.2, 0.9])
+    with col1:
+        selected_ta = st.selectbox("Trade Area", options=trade_areas, index=default_ta_index, label_visibility="visible")
+    with col2:
+        if selected_ta:
+            ta_df = df[df["TRADE AREA"] == selected_ta]
             
-        with col3:
-            if selected_ta:
-                user_perms = HARDCODED_USERS.get(st.session_state.username, {}).get("permissions", {})
-                if user_perms.get("export_sir", False):
-                    if selected_ta in cached_reports:
-                        report_bytes = cached_reports[selected_ta]
+            def is_whole_number_site(val):
+                if pd.isna(val) or str(val).strip() == '':
+                    return False
+                try:
+                    f_val = float(str(val).strip())
+                    return f_val.is_integer()
+                except (ValueError, TypeError):
+                    return False
+            
+            main_sites_df = ta_df[ta_df["SITE NO"].apply(is_whole_number_site)]
+            raw_sites = main_sites_df["SITE_DISPLAY"].dropna().unique().tolist()
+            sites_in_ta = sorted(raw_sites, key=parse_site_number)
+            
+            if selected_ta == first_trade_area and first_site_display in sites_in_ta:
+                default_site_index = sites_in_ta.index(first_site_display)
+            else:
+                default_site_index = 0
+        else:
+            sites_in_ta = []
+            default_site_index = 0
+        selected_site_display = st.selectbox("Site Name", options=sites_in_ta, index=default_site_index, label_visibility="visible")
+        
+    with col3:
+        if selected_ta:
+            user_perms = HARDCODED_USERS.get(st.session_state.username, {}).get("permissions", {})
+            if user_perms.get("export_sir", False):
+                if selected_ta in cached_reports:
+                    report_bytes = cached_reports[selected_ta]
+                    st.download_button(
+                        label="Export",
+                        data=report_bytes,
+                        file_name=f"{selected_ta}_Site_Information_Report.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True,
+                        key="export_btn"
+                    )
+                else:
+                    with st.spinner("Generating report..."):
+                        report_bytes = generate_single_trade_area_report(
+                            selected_ta, df, template_bytes_raw, placeholders
+                        )
+                        st.session_state.cached_reports[selected_ta] = report_bytes
                         st.download_button(
                             label="Export",
                             data=report_bytes,
@@ -1420,275 +1096,247 @@ else:
                             use_container_width=True,
                             key="export_btn"
                         )
-                    else:
-                        with st.spinner("Generating report..."):
-                            report_bytes = generate_single_trade_area_report(
-                                selected_ta, df, template_bytes_raw, placeholders
-                            )
-                            st.session_state.cached_reports[selected_ta] = report_bytes
-                            st.download_button(
-                                label="Export",
-                                data=report_bytes,
-                                file_name=f"{selected_ta}_Site_Information_Report.xlsx",
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                use_container_width=True,
-                                key="export_btn"
-                            )
-                else:
-                    st.button("Export", disabled=True, help="You do not have permission to export.")
-
-        if selected_ta and selected_site_display:
-            site_data = df[df["SITE_DISPLAY"] == selected_site_display]
-            site_row_data = site_data.iloc[0] if not site_data.empty else None
-            target_ta = str(site_row_data["TRADE AREA"]) if site_row_data is not None else ""
-            target_sn = str(site_row_data["SITE NAME"]) if site_row_data is not None else ""
-            media_row_data = {}
-            if site_row_data is not None:
-                for m in media_data_list:
-                    if m['TRADE AREA'] == target_ta and m['SITE NAME'] == target_sn:
-                        media_row_data = m
-                        break
-                if not media_row_data:
-                    media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
-
-            user_perms = HARDCODED_USERS.get(st.session_state.username, {}).get("permissions", {})
-            if user_perms.get("view_sir", False):
-                tab_report, tab_photos, tab_docs = st.tabs([
-                    "PROPERTY INFORMATION", 
-                    "PROPERTY PHOTOS", 
-                    "PROPERTY DOCS"
-                ])
-
-                with tab_report:
-                    if site_row_data is not None:
-                        try:
-                            def process_val(row_data, key_string):
-                                val = row_data.get(key_string.upper(), "")
-                                if pd.isna(val) or val is None:
-                                    return ""
-                                return str(val)
-                
-                            parent_site_no = parse_site_number(selected_site_display)
-                            ta_df = df[df["TRADE AREA"] == target_ta]
-                            
-                            def get_integer_part(val):
-                                try: return int(float(str(val)))
-                                except Exception: return -1
-                                
-                            family_df = ta_df[ta_df["SITE NO"].apply(get_integer_part) == int(parent_site_no)]
-                            family_df = family_df.sort_values(by="SITE NO", key=lambda col: col.astype(float))
-
-                            for i in range(len(family_df)):
-                                current_row = family_df.iloc[i]
-                                rendered_view = HTML_FRAMEWORK
-                                
-                                replacements = [
-                                    ("_TRADE_AREA_", process_val(current_row, "TRADE AREA")),
-                                    ("_SITE_NAME_", process_val(current_row, "SITE NAME")),
-                                    ("_SITE_NO_", process_val(current_row, "SITE NO")),
-                                    ("_TIMESTAMP_", process_val(current_row, "TIMESTAMP")),
-                                    ("_DATE_OF_REPORT_", process_val(current_row, "DATE OF REPORT")),
-                                    ("_UNIT_BLDG_ST_NAME_", process_val(current_row, "UNIT #, BLDG/ST # AND ST NAME")),
-                                    ("_BARANGAY_DISTRICT_NAME_", process_val(current_row, "BARANGAY/DISTRICT NAME")),
-                                    ("_CITY_MUNICIPALITY_", process_val(current_row, "CITY/MUNICIPALITY")),
-                                    ("_REGION_", process_val(current_row, "REGION")),
-                                    ("_POSTAL_CODE_", process_val(current_row, "POSTAL CODE")),
-                                    ("_SITE_AVAILABILITY_DATE_", process_val(current_row, "SITE AVAILABILITY DATE")),
-                                    ("_COL_START_DATE_", process_val(current_row, "COL START DATE")),
-                                    ("_COL_END_DATE_", process_val(current_row, "COL END DATE")),
-                                    ("_LEASE_TERMS_", process_val(current_row, "LEASE TERMS")),
-                                    ("_MONTHLY_RENTAL_RATE_", process_val(current_row, "MONTHLY RENTAL RATE")),
-                                    ("_PERCENTAGE_RENT_", process_val(current_row, "PERCENTAGE RENT")),
-                                    ("_MINIMUM_GUARANTEED_RENT_", process_val(current_row, "MINIMUM GUARANTEED RENT")),
-                                    ("_ESCALATION_", process_val(current_row, "ESCALATION")),
-                                    ("_ADVANCE_RENTAL_", process_val(current_row, "ADVANCE RENTAL")),
-                                    ("_SECURITY_DEPOSIT_", process_val(current_row, "SECURITY DEPOSIT")),
-                                    ("_CUSA_", process_val(current_row, "CUSA")),
-                                    ("_ESTIMATED_REVENUE_PER_MO_", process_val(current_row, "ESTIMATED REVENUE PER MO.")),
-                                    ("_LOT_FLOOR_AREA_SQM_", process_val(current_row, "LOT/FLOOR AREA SQM")),
-                                    ("_FRONTAGE_", process_val(current_row, "FRONTAGE")),
-                                    ("_DEPTH_IN_M_", process_val(current_row, "DEPTH (IN M)")),
-                                    ("_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_", process_val(current_row, "FLOOR TO SLAB HEIGHT (IN M) - IF BLDG")),
-                                    ("_NO_OF_STOREYS_", process_val(current_row, "NO. OF STOREYS (IF BLDG LESSEE)")),
-                                    ("_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_", process_val(current_row, "TYPE OF STRUCTURE (IF BLDG LESSEE)")),
-                                    ("_SOIL_PROFILE_", process_val(current_row, "SOIL PROFILE")),
-                                    ("_TENANT_IS_THE_OWNER_", process_val(current_row, "TENANT IS THE OWNER")),
-                                    ("_LEASE_TYPE_", process_val(current_row, "LEASE TYPE")),
-                                    ("_PRINCIPAL_COL_", process_val(current_row, "PRINCIPAL COL")),
-                                    ("_SUB_LEASE_PROVISION_", process_val(current_row, "SUB-LEASE PROVISION")),
-                                    ("_PRE_TERM_PARTIAL_TERM_", process_val(current_row, "PRE-TERM/PARTIAL TERM")),
-                                    ("_TRIPARTITE_AGREEMENT_", process_val(current_row, "TRIPARTITE AGREEMENT")),
-                                    ("_LESSOR_", process_val(current_row, "LESSOR")),
-                                    ("_LESSOR_CONTACT_NO_", process_val(current_row, "LESSOR CONTACT NO.")),
-                                    ("_LESSOR_EMAIL_ADDRESS_", process_val(current_row, "LESSOR E-MAIL ADDRESS")),
-                                    ("_LESSOR_TYPE_OF_OWNERSHIP_", process_val(current_row, "LESSOR TYPE OF OWNERSHIP")),
-                                    ("_LESSOR_COMPANY_NAME_", process_val(current_row, "LESSOR COMPANY NAME")),
-                                    ("_LESSOR_DEVELOPER_ACCOUNT_NAME_", process_val(current_row, "LESSOR DEVELOPER ACCOUNT NAME")),
-                                    ("_LESSOR_BUSINESS_ADDRESS_", process_val(current_row, "LESSOR BUSINESS ADDRESS")),
-                                    ("_LESSOR_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "CONTACT PERSON/SOURCE")),
-                                    ("_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "LESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
-                                    ("_LESSOR_AUTHORIZED_REP_CONTACT_NO_", process_val(current_row, "CONTACT NUMBER")),
-                                    ("_LESSOR_AUTHORIZED_REP_EMAIL_", process_val(current_row, "EMAIL ADDRESS")),
-                                    ("_NAME_OF_LESSEE_", process_val(current_row, "NAME OF LESSEE")),
-                                    ("_LESSEE_POSITION_", process_val(current_row, "LESSEE POSITION")),
-                                    ("_LESSEE_CONTACT_NO_", process_val(current_row, "LESSEE CONTACT NO.")),
-                                    ("_LESSEE_EMAIL_ADDRESS_", process_val(current_row, "LESSEE E-MAIL ADDRESS")),
-                                    ("_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "LESSEE NAME OF AUTHORIZED REPRESENTATIVE")),
-                                    ("_LESSEE_BUSINESS_ADDRESS_", process_val(current_row, "LESSEE BUSINESS ADDRESS")),
-                                    ("_NAME_OF_SUBLESSOR_", process_val(current_row, "NAME OF SUB-LESSOR")),
-                                    ("_SUBLESSOR_CONTACT_NO_", process_val(current_row, "SUB-LESSOR CONTACT NO.")),
-                                    ("_SUBLESSOR_EMAIL_ADDRESS_", process_val(current_row, "SUB-LESSOR E-MAIL ADDRESS")),
-                                    ("_SUBLESSOR_TYPE_OF_OWNERSHIP_", process_val(current_row, "SUB-LESSOR TYPE OF OWNERSHIP")),
-                                    ("_SUBLESSOR_COMPANY_NAME_", process_val(current_row, "SUB-LESSOR COMPANY NAME")),
-                                    ("_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_", process_val(current_row, "SUB-LESSOR DEVELOPER ACCOUNT NAME")),
-                                    ("_SUBLESSOR_BUSINESS_ADDRESS_", process_val(current_row, "SUB-LESSOR BUSINESS ADDRESS")),
-                                    ("_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUB-LESSOR NAME OF AUTHORIZED REPRESENTATIVE")),
-                                    ("_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUB-LESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
-                                    ("_NAME_OF_SUB_LESSEE_", process_val(current_row, "NAME OF SUB-LESSEE")),
-                                    ("_SUB_LESSEE_POSITION_", process_val(current_row, "SUB-LESSEE POSITION")),
-                                    ("_SUB_LESSEE_CONTACT_NO_", process_val(current_row, "SUB-LESSEE CONTACT NO.")),
-                                    ("_SUB_LESSEE_EMAIL_ADDRESS_", process_val(current_row, "SUB-LESSEE E-MAIL ADDRESS")),
-                                    ("_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUB-LESSEE NAME OF AUTHORIZED REPRESENTATIVE")),
-                                    ("_SUB_LESSEE_BUSINESS_ADDRESS_", process_val(current_row, "SUB-LESSEE BUSINESS ADDRESS")),
-                                    ("_SETBACK_REQUIREMENT_", process_val(current_row, "SETBACK REQUIREMENT")),
-                                    ("_ROAD_WIDENING_", process_val(current_row, "ROAD WIDENING")),
-                                    ("_PEDESTRIAN_OVERPASS_", process_val(current_row, "PEDESTRIAN OVERPASS")),
-                                    ("_PERM_TRAFFIC_RE_ROUTING_", process_val(current_row, "PERM TRAFFIC RE-ROUTING")),
-                                    ("_PERM_ROAD_CLOSURE_", process_val(current_row, "PERM ROAD CLOSURE")),
-                                    ("_INFRASTRUCTURE_PROGRAMS_", process_val(current_row, "INFRASTRUCTURE PROGRAMS")),
-                                    ("_FUTURE_DEVELOPMENT_", process_val(current_row, "FUTURE DEVELOPMENT")),
-                                    ("_ZONING_CLEARANCE_", process_val(current_row, "ZONING CLEARANCE")),
-                                    ("_GAS_STATION_", process_val(current_row, "GAS STATION")),
-                                    ("_CONFIDENCE_LEVEL_", process_val(current_row, "CONFIDENCE LEVEL")),
-                                    ("_SITE_AVAILABILITY_CLASS_", process_val(current_row, "SITE AVAILABILITY CLASS")),
-                                    ("_SITE_AVAILABILITY_REMARKS_", process_val(current_row, "SITE AVAILABILITY REMARKS")),
-                                    ("_REMARKS_", process_val(current_row, "REMARKS")),
-                                ]
-                                
-                                replacements.sort(key=lambda x: len(x[0]), reverse=True)
-                                for placeholder, value in replacements:
-                                    rendered_view = rendered_view.replace(placeholder, value)
-                                
-                                rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
-                                components.html(rendered_view, height=1600, scrolling=False)
-                                
-                                if i < len(family_df) - 1:
-                                    st.markdown("<hr style='border: 2px solid #003366; margin: 10px 0;'>", unsafe_allow_html=True)
-                                    
-                        except Exception as e:
-                            st.error(f"Error compiling visual matrix framework: {str(e)}")
-                    else:
-                        st.info("No data available for the selected site.")
-                        
-                with tab_photos:
-                    if site_row_data is not None and media_row_data:
-                        direct_photo_mapping = {
-                            "PROPERTY PHOTOS 1": "__DIRECT_PHOTO_1",
-                            "PROPERTY PHOTOS 2": "__DIRECT_PHOTO_2",
-                            "PROPERTY PHOTOS 3": "__DIRECT_PHOTO_3",
-                            "PROPERTY PHOTOS 4": "__DIRECT_PHOTO_4",
-                            "PROPERTY PHOTOS 5": "__DIRECT_PHOTO_5"
-                        }
-                        valid_photos = []
-                        for label, key in direct_photo_mapping.items():
-                            raw_url = media_row_data.get(key, "")
-                            if raw_url:
-                                file_id = extract_google_drive_id(raw_url)
-                                if file_id:
-                                    thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
-                                    full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
-                                else:
-                                    thumb_url = raw_url
-                                    full_url = raw_url
-                                valid_photos.append((label, thumb_url, full_url))
-                        if valid_photos:
-                            grid_html = '''
-                            <style>
-                                .image-grid-3x3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 10px 0; max-width: 100%; }
-                                .image-grid-item { border: 1px solid #dadce0; border-radius: 8px; overflow: hidden; background: #f8f9fa; transition: transform 0.2s; aspect-ratio: 4/3; display: flex; flex-direction: column; }
-                                .image-grid-item:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-                                .image-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; flex: 1; }
-                                .image-grid-item .label { padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #5f6368; background: white; text-align: center; border-top: 1px solid #dadce0; flex-shrink: 0; }
-                                .image-grid-item a { text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%; }
-                                @media (max-width: 768px) { .image-grid-3x3 { grid-template-columns: repeat(2, 1fr); } }
-                                @media (max-width: 480px) { .image-grid-3x3 { grid-template-columns: 1fr; } }
-                            </style>
-                            <div class="image-grid-3x3">
-                            '''
-                            for label, thumb_url, full_url in valid_photos:
-                                grid_html += f'''
-                                    <div class="image-grid-item">
-                                        <a href="{full_url}" target="_blank">
-                                            <img src="{thumb_url}" alt="{label}" loading="lazy">
-                                            <div class="label">{label}</div>
-                                        </a>
-                                    </div>
-                                '''
-                            grid_html += '</div>'
-                            components.html(grid_html, height=1200, scrolling=False)
-                        else:
-                            st.info("No photo links configured for this property record selection.")
-                    else:
-                        st.info("No data available for the selected site.")
-
-                with tab_docs:
-                    if site_row_data is not None and media_row_data:
-                        direct_doc_mapping = {
-                            "TCT": "__DIRECT_TCT",
-                            "LOT PLAN": "__DIRECT_LOT_PLAN",
-                            "BLDG PLAN": "__DIRECT_BLDG_PLAN",
-                            "TAX MAP": "__DIRECT_TAX_MAP"
-                        }
-                        valid_docs = []
-                        for label, key in direct_doc_mapping.items():
-                            raw_url = media_row_data.get(key, "")
-                            if raw_url:
-                                file_id = extract_google_drive_id(raw_url)
-                                if file_id:
-                                    thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
-                                    full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
-                                else:
-                                    thumb_url = raw_url
-                                    full_url = raw_url
-                                valid_docs.append((label, thumb_url, full_url))
-                        if valid_docs:
-                            grid_html = '''
-                            <style>
-                                .image-grid-3x3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 10px 0; max-width: 100%; }
-                                .image-grid-item { border: 1px solid #dadce0; border-radius: 8px; overflow: hidden; background: #f8f9fa; transition: transform 0.2s; aspect-ratio: 4/3; display: flex; flex-direction: column; }
-                                .image-grid-item:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-                                .image-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; flex: 1; }
-                                .image-grid-item .label { padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #5f6368; background: white; text-align: center; border-top: 1px solid #dadce0; flex-shrink: 0; }
-                                .image-grid-item a { text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%; }
-                                @media (max-width: 768px) { .image-grid-3x3 { grid-template-columns: repeat(2, 1fr); } }
-                                @media (max-width: 480px) { .image-grid-3x3 { grid-template-columns: 1fr; } }
-                            </style>
-                            <div class="image-grid-3x3">
-                            '''
-                            for label, thumb_url, full_url in valid_docs:
-                                grid_html += f'''
-                                    <div class="image-grid-item">
-                                        <a href="{full_url}" target="_blank">
-                                            <img src="{thumb_url}" alt="{label}" loading="lazy">
-                                            <div class="label">{label}</div>
-                                        </a>
-                                    </div>
-                                '''
-                            grid_html += '</div>'
-                            components.html(grid_html, height=1200, scrolling=False)
-                        else:
-                            st.info("No layout documents configured for this property record selection.")
-                    else:
-                        st.info("No data available for the selected site.")
             else:
-                st.warning("You do not have permission to view site information reports.")
-    
-    else:
-        #--- MAP VIEW ---
-        # Display the full-screen map
-        components.html(GOOGLE_MAP_EMBED, height=0, width=0)
-        
-        # Show "View Reports" button (only one - using Streamlit button)
-        if st.button("View Reports", key="view_reports"):
-            st.session_state.show_report = True
-            st.rerun()
+                st.button("Export", disabled=True, help="You do not have permission to export.")
+
+    if selected_ta and selected_site_display:
+        site_data = df[df["SITE_DISPLAY"] == selected_site_display]
+        site_row_data = site_data.iloc[0] if not site_data.empty else None
+        target_ta = str(site_row_data["TRADE AREA"]) if site_row_data is not None else ""
+        target_sn = str(site_row_data["SITE NAME"]) if site_row_data is not None else ""
+        media_row_data = {}
+        if site_row_data is not None:
+            for m in media_data_list:
+                if m['TRADE AREA'] == target_ta and m['SITE NAME'] == target_sn:
+                    media_row_data = m
+                    break
+            if not media_row_data:
+                media_row_data = site_row_data.to_dict() if hasattr(site_row_data, 'to_dict') else {}
+
+        user_perms = HARDCODED_USERS.get(st.session_state.username, {}).get("permissions", {})
+        if user_perms.get("view_sir", False):
+            tab_report, tab_photos, tab_docs = st.tabs(["PROPERTY INFORMATION", "PROPERTY PHOTOS", "PROPERTY DOCS"])
+
+            with tab_report:
+                if site_row_data is not None:
+                    try:
+                        def process_val(row_data, key_string):
+                            val = row_data.get(key_string.upper(), "")
+                            if pd.isna(val) or val is None:
+                                return ""
+                            return str(val)
+            
+                        parent_site_no = parse_site_number(selected_site_display)
+                        ta_df = df[df["TRADE AREA"] == target_ta]
+                        
+                        def get_integer_part(val):
+                            try: return int(float(str(val)))
+                            except Exception: return -1
+                            
+                        family_df = ta_df[ta_df["SITE NO"].apply(get_integer_part) == int(parent_site_no)]
+                        family_df = family_df.sort_values(by="SITE NO", key=lambda col: col.astype(float))
+
+                        for i in range(len(family_df)):
+                            current_row = family_df.iloc[i]
+                            rendered_view = HTML_FRAMEWORK
+                            
+                            replacements = [
+                                ("_TRADE_AREA_", process_val(current_row, "TRADE AREA")),
+                                ("_SITE_NAME_", process_val(current_row, "SITE NAME")),
+                                ("_SITE_NO_", process_val(current_row, "SITE NO")),
+                                ("_TIMESTAMP_", process_val(current_row, "TIMESTAMP")),
+                                ("_DATE_OF_REPORT_", process_val(current_row, "DATE OF REPORT")),
+                                ("_UNIT_BLDG_ST_NAME_", process_val(current_row, "UNIT #, BLDG/ST # AND ST NAME")),
+                                ("_BARANGAY_DISTRICT_NAME_", process_val(current_row, "BARANGAY/DISTRICT NAME")),
+                                ("_CITY_MUNICIPALITY_", process_val(current_row, "CITY/MUNICIPALITY")),
+                                ("_REGION_", process_val(current_row, "REGION")),
+                                ("_POSTAL_CODE_", process_val(current_row, "POSTAL CODE")),
+                                ("_SITE_AVAILABILITY_DATE_", process_val(current_row, "SITE AVAILABILITY DATE")),
+                                ("_COL_START_DATE_", process_val(current_row, "COL START DATE")),
+                                ("_COL_END_DATE_", process_val(current_row, "COL END DATE")),
+                                ("_LEASE_TERMS_", process_val(current_row, "LEASE TERMS")),
+                                ("_MONTHLY_RENTAL_RATE_", process_val(current_row, "MONTHLY RENTAL RATE")),
+                                ("_PERCENTAGE_RENT_", process_val(current_row, "PERCENTAGE RENT")),
+                                ("_MINIMUM_GUARANTEED_RENT_", process_val(current_row, "MINIMUM GUARANTEED RENT")),
+                                ("_ESCALATION_", process_val(current_row, "ESCALATION")),
+                                ("_ADVANCE_RENTAL_", process_val(current_row, "ADVANCE RENTAL")),
+                                ("_SECURITY_DEPOSIT_", process_val(current_row, "SECURITY DEPOSIT")),
+                                ("_CUSA_", process_val(current_row, "CUSA")),
+                                ("_ESTIMATED_REVENUE_PER_MO_", process_val(current_row, "ESTIMATED REVENUE PER MO.")),
+                                ("_LOT_FLOOR_AREA_SQM_", process_val(current_row, "LOT/FLOOR AREA SQM")),
+                                ("_FRONTAGE_", process_val(current_row, "FRONTAGE")),
+                                ("_DEPTH_IN_M_", process_val(current_row, "DEPTH (IN M)")),
+                                ("_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_", process_val(current_row, "FLOOR TO SLAB HEIGHT (IN M) - IF BLDG")),
+                                ("_NO_OF_STOREYS_", process_val(current_row, "NO. OF STOREYS (IF BLDG LESSEE)")),
+                                ("_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_", process_val(current_row, "TYPE OF STRUCTURE (IF BLDG LESSEE)")),
+                                ("_SOIL_PROFILE_", process_val(current_row, "SOIL PROFILE")),
+                                ("_TENANT_IS_THE_OWNER_", process_val(current_row, "TENANT IS THE OWNER")),
+                                ("_LEASE_TYPE_", process_val(current_row, "LEASE TYPE")),
+                                ("_PRINCIPAL_COL_", process_val(current_row, "PRINCIPAL COL")),
+                                ("_SUB_LEASE_PROVISION_", process_val(current_row, "SUB-LEASE PROVISION")),
+                                ("_PRE_TERM_PARTIAL_TERM_", process_val(current_row, "PRE-TERM/PARTIAL TERM")),
+                                ("_TRIPARTITE_AGREEMENT_", process_val(current_row, "TRIPARTITE AGREEMENT")),
+                                ("_LESSOR_", process_val(current_row, "LESSOR")),
+                                ("_LESSOR_CONTACT_NO_", process_val(current_row, "LESSOR CONTACT NO.")),
+                                ("_LESSOR_EMAIL_ADDRESS_", process_val(current_row, "LESSOR E-MAIL ADDRESS")),
+                                ("_LESSOR_TYPE_OF_OWNERSHIP_", process_val(current_row, "LESSOR TYPE OF OWNERSHIP")),
+                                ("_LESSOR_COMPANY_NAME_", process_val(current_row, "LESSOR COMPANY NAME")),
+                                ("_LESSOR_DEVELOPER_ACCOUNT_NAME_", process_val(current_row, "LESSOR DEVELOPER ACCOUNT NAME")),
+                                ("_LESSOR_BUSINESS_ADDRESS_", process_val(current_row, "LESSOR BUSINESS ADDRESS")),
+                                ("_LESSOR_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "CONTACT PERSON/SOURCE")),
+                                ("_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "LESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
+                                ("_LESSOR_AUTHORIZED_REP_CONTACT_NO_", process_val(current_row, "CONTACT NUMBER")),
+                                ("_LESSOR_AUTHORIZED_REP_EMAIL_", process_val(current_row, "EMAIL ADDRESS")),
+                                ("_NAME_OF_LESSEE_", process_val(current_row, "NAME OF LESSEE")),
+                                ("_LESSEE_POSITION_", process_val(current_row, "LESSEE POSITION")),
+                                ("_LESSEE_CONTACT_NO_", process_val(current_row, "LESSEE CONTACT NO.")),
+                                ("_LESSEE_EMAIL_ADDRESS_", process_val(current_row, "LESSEE E-MAIL ADDRESS")),
+                                ("_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "LESSEE NAME OF AUTHORIZED REPRESENTATIVE")),
+                                ("_LESSEE_BUSINESS_ADDRESS_", process_val(current_row, "LESSEE BUSINESS ADDRESS")),
+                                ("_NAME_OF_SUBLESSOR_", process_val(current_row, "NAME OF SUB-LESSOR")),
+                                ("_SUBLESSOR_CONTACT_NO_", process_val(current_row, "SUB-LESSOR CONTACT NO.")),
+                                ("_SUBLESSOR_EMAIL_ADDRESS_", process_val(current_row, "SUB-LESSOR E-MAIL ADDRESS")),
+                                ("_SUBLESSOR_TYPE_OF_OWNERSHIP_", process_val(current_row, "SUB-LESSOR TYPE OF OWNERSHIP")),
+                                ("_SUBLESSOR_COMPANY_NAME_", process_val(current_row, "SUB-LESSOR COMPANY NAME")),
+                                ("_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_", process_val(current_row, "SUB-LESSOR DEVELOPER ACCOUNT NAME")),
+                                ("_SUBLESSOR_BUSINESS_ADDRESS_", process_val(current_row, "SUB-LESSOR BUSINESS ADDRESS")),
+                                ("_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUB-LESSOR NAME OF AUTHORIZED REPRESENTATIVE")),
+                                ("_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUB-LESSOR RESIDENCE ADDRESS OF AUTHORIZED REPRESENTATIVE")),
+                                ("_NAME_OF_SUB_LESSEE_", process_val(current_row, "NAME OF SUB-LESSEE")),
+                                ("_SUB_LESSEE_POSITION_", process_val(current_row, "SUB-LESSEE POSITION")),
+                                ("_SUB_LESSEE_CONTACT_NO_", process_val(current_row, "SUB-LESSEE CONTACT NO.")),
+                                ("_SUB_LESSEE_EMAIL_ADDRESS_", process_val(current_row, "SUB-LESSEE E-MAIL ADDRESS")),
+                                ("_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_", process_val(current_row, "SUB-LESSEE NAME OF AUTHORIZED REPRESENTATIVE")),
+                                ("_SUB_LESSEE_BUSINESS_ADDRESS_", process_val(current_row, "SUB-LESSEE BUSINESS ADDRESS")),
+                                ("_SETBACK_REQUIREMENT_", process_val(current_row, "SETBACK REQUIREMENT")),
+                                ("_ROAD_WIDENING_", process_val(current_row, "ROAD WIDENING")),
+                                ("_PEDESTRIAN_OVERPASS_", process_val(current_row, "PEDESTRIAN OVERPASS")),
+                                ("_PERM_TRAFFIC_RE_ROUTING_", process_val(current_row, "PERM TRAFFIC RE-ROUTING")),
+                                ("_PERM_ROAD_CLOSURE_", process_val(current_row, "PERM ROAD CLOSURE")),
+                                ("_INFRASTRUCTURE_PROGRAMS_", process_val(current_row, "INFRASTRUCTURE PROGRAMS")),
+                                ("_FUTURE_DEVELOPMENT_", process_val(current_row, "FUTURE DEVELOPMENT")),
+                                ("_ZONING_CLEARANCE_", process_val(current_row, "ZONING CLEARANCE")),
+                                ("_GAS_STATION_", process_val(current_row, "GAS STATION")),
+                                ("_CONFIDENCE_LEVEL_", process_val(current_row, "CONFIDENCE LEVEL")),
+                                ("_SITE_AVAILABILITY_CLASS_", process_val(current_row, "SITE AVAILABILITY CLASS")),
+                                ("_SITE_AVAILABILITY_REMARKS_", process_val(current_row, "SITE AVAILABILITY REMARKS")),
+                                ("_REMARKS_", process_val(current_row, "REMARKS")),
+                            ]
+                            
+                            replacements.sort(key=lambda x: len(x[0]), reverse=True)
+                            for placeholder, value in replacements:
+                                rendered_view = rendered_view.replace(placeholder, value)
+                            
+                            rendered_view = re.sub(r"_[A-Z0-9_]+_", "", rendered_view)
+                            components.html(rendered_view, height=1600, scrolling=False)
+                            
+                            if i < len(family_df) - 1:
+                                st.markdown("<hr style='border: 2px solid #003366; margin: 10px 0;'>", unsafe_allow_html=True)
+                                
+                    except Exception as e:
+                        st.error(f"Error compiling visual matrix framework: {str(e)}")
+                else:
+                    st.info("No data available for the selected site.")
+                    
+            with tab_photos:
+                if site_row_data is not None and media_row_data:
+                    direct_photo_mapping = {
+                        "PROPERTY PHOTOS 1": "__DIRECT_PHOTO_1",
+                        "PROPERTY PHOTOS 2": "__DIRECT_PHOTO_2",
+                        "PROPERTY PHOTOS 3": "__DIRECT_PHOTO_3",
+                        "PROPERTY PHOTOS 4": "__DIRECT_PHOTO_4",
+                        "PROPERTY PHOTOS 5": "__DIRECT_PHOTO_5"
+                    }
+                    valid_photos = []
+                    for label, key in direct_photo_mapping.items():
+                        raw_url = media_row_data.get(key, "")
+                        if raw_url:
+                            file_id = extract_google_drive_id(raw_url)
+                            if file_id:
+                                thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
+                                full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                            else:
+                                thumb_url = raw_url
+                                full_url = raw_url
+                            valid_photos.append((label, thumb_url, full_url))
+                    if valid_photos:
+                        grid_html = '''
+                        <style>
+                            .image-grid-3x3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 10px 0; max-width: 100%; }
+                            .image-grid-item { border: 1px solid #dadce0; border-radius: 8px; overflow: hidden; background: #f8f9fa; transition: transform 0.2s; aspect-ratio: 4/3; display: flex; flex-direction: column; }
+                            .image-grid-item:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+                            .image-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; flex: 1; }
+                            .image-grid-item .label { padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #5f6368; background: white; text-align: center; border-top: 1px solid #dadce0; flex-shrink: 0; }
+                            .image-grid-item a { text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%; }
+                            @media (max-width: 768px) { .image-grid-3x3 { grid-template-columns: repeat(2, 1fr); } }
+                            @media (max-width: 480px) { .image-grid-3x3 { grid-template-columns: 1fr; } }
+                        </style>
+                        <div class="image-grid-3x3">
+                        '''
+                        for label, thumb_url, full_url in valid_photos:
+                            grid_html += f'''
+                                <div class="image-grid-item">
+                                    <a href="{full_url}" target="_blank">
+                                        <img src="{thumb_url}" alt="{label}" loading="lazy">
+                                        <div class="label">{label}</div>
+                                    </a>
+                                </div>
+                            '''
+                        grid_html += '</div>'
+                        components.html(grid_html, height=1200, scrolling=False)
+                    else:
+                        st.info("No photo links configured for this property record selection.")
+                else:
+                    st.info("No data available for the selected site.")
+
+            with tab_docs:
+                if site_row_data is not None and media_row_data:
+                    direct_doc_mapping = {
+                        "TCT": "__DIRECT_TCT",
+                        "LOT PLAN": "__DIRECT_LOT_PLAN",
+                        "BLDG PLAN": "__DIRECT_BLDG_PLAN",
+                        "TAX MAP": "__DIRECT_TAX_MAP"
+                    }
+                    valid_docs = []
+                    for label, key in direct_doc_mapping.items():
+                        raw_url = media_row_data.get(key, "")
+                        if raw_url:
+                            file_id = extract_google_drive_id(raw_url)
+                            if file_id:
+                                thumb_url = f"https://drive.google.com/thumbnail?sz=w800&id={file_id}"
+                                full_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                            else:
+                                thumb_url = raw_url
+                                full_url = raw_url
+                            valid_docs.append((label, thumb_url, full_url))
+                    if valid_docs:
+                        grid_html = '''
+                        <style>
+                            .image-grid-3x3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 10px 0; max-width: 100%; }
+                            .image-grid-item { border: 1px solid #dadce0; border-radius: 8px; overflow: hidden; background: #f8f9fa; transition: transform 0.2s; aspect-ratio: 4/3; display: flex; flex-direction: column; }
+                            .image-grid-item:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+                            .image-grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; flex: 1; }
+                            .image-grid-item .label { padding: 6px 8px; font-size: 0.7rem; font-weight: 600; color: #5f6368; background: white; text-align: center; border-top: 1px solid #dadce0; flex-shrink: 0; }
+                            .image-grid-item a { text-decoration: none; color: inherit; display: flex; flex-direction: column; height: 100%; }
+                            @media (max-width: 768px) { .image-grid-3x3 { grid-template-columns: repeat(2, 1fr); } }
+                            @media (max-width: 480px) { .image-grid-3x3 { grid-template-columns: 1fr; } }
+                        </style>
+                        <div class="image-grid-3x3">
+                        '''
+                        for label, thumb_url, full_url in valid_docs:
+                            grid_html += f'''
+                                <div class="image-grid-item">
+                                    <a href="{full_url}" target="_blank">
+                                        <img src="{thumb_url}" alt="{label}" loading="lazy">
+                                        <div class="label">{label}</div>
+                                    </a>
+                                </div>
+                            '''
+                        grid_html += '</div>'
+                        components.html(grid_html, height=1200, scrolling=False)
+                    else:
+                        st.info("No layout documents configured for this property record selection.")
+                else:
+                    st.info("No data available for the selected site.")
+        else:
+            st.warning("You do not have permission to view site information reports.")
