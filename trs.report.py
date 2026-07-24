@@ -22,6 +22,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import json
 import traceback
+import gc
 
 #--- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -219,6 +220,14 @@ if 'audit_log' not in st.session_state:
     st.session_state.audit_log = []
 if 'refresh_log' not in st.session_state:
     st.session_state.refresh_log = []
+if 'cached_reports' not in st.session_state:
+    st.session_state.cached_reports = {}
+if 'cache_timestamp' not in st.session_state:
+    st.session_state.cache_timestamp = None
+if 'last_refresh_time' not in st.session_state:
+    st.session_state.last_refresh_time = None
+if 'data_hash' not in st.session_state:
+    st.session_state.data_hash = None
 
 #--- LOGIN FUNCTION ---
 def authenticate(username, password):
@@ -235,10 +244,7 @@ SOURCE_URL = "https://docs.google.com/spreadsheets/d/14nhO9u7zJRcOoux8I7l2IzwU7i
 TEMPLATE_URL = "https://docs.google.com/spreadsheets/d/1uS3xmnPi0o4c_EayQtURYDSMMPRDRGSb/export?format=xlsx"
 
 #--- DATA FORMATTING CONFIGURATION ---
-# Easy to configure - just add/modify entries here
 FORMAT_CONFIG = {
-    # Format: 'column_name': 'format_type'
-    # format_type can be: 'date', 'number', 'currency', 'percent', 'text'
     'TIMESTAMP': 'date',
     'DATE OF REPORT': 'date',
     'SITE AVAILABILITY DATE': 'date',
@@ -258,17 +264,14 @@ FORMAT_CONFIG = {
 }
 
 def format_value(value, format_type='text'):
-    """Format a value based on the specified format type"""
     if pd.isna(value) or value is None:
         return ""
     
     if format_type == 'date':
-        # Try to convert to date
         if isinstance(value, datetime):
             return value.strftime('%B %d, %Y')
         if isinstance(value, str):
             try:
-                # Try common date formats
                 for fmt in ['%Y-%m-%d', '%Y/%m/%d', '%m/%d/%Y', '%d/%m/%Y']:
                     try:
                         date_obj = datetime.strptime(value.strip(), fmt)
@@ -289,7 +292,6 @@ def format_value(value, format_type='text'):
         return str(value)
     
     elif format_type == 'number':
-        # Format as number with commas
         try:
             num = float(str(value).replace(',', ''))
             if num.is_integer():
@@ -300,7 +302,6 @@ def format_value(value, format_type='text'):
             return str(value)
     
     elif format_type == 'currency':
-        # Format as currency with ₱
         try:
             num = float(str(value).replace(',', '').replace('₱', ''))
             if num.is_integer():
@@ -311,7 +312,6 @@ def format_value(value, format_type='text'):
             return str(value)
     
     elif format_type == 'percent':
-        # Format as percentage
         try:
             num = float(str(value).replace('%', ''))
             return f"{num}%"
@@ -319,52 +319,28 @@ def format_value(value, format_type='text'):
             return str(value)
     
     else:
-        # Default: just return as string
         return str(value)
 
-#--- DEDICATED PHOTO/DOC HANDLER ---
 def extract_photo_url_from_cell(cell):
-    """
-    Extract photo URL from Excel cell, handling both:
-    1. =IMAGE("https://...") formulas
-    2. Direct URLs
-    3. Raw values
-    """
     if cell is None:
         return ""
-    
-    # Get the raw value
     raw_val = cell.value if hasattr(cell, 'value') else cell
-    
     if raw_val is None:
         return ""
-    
-    # Convert to string
     val_str = str(raw_val).strip()
-    
-    # Check for IMAGE formula: =IMAGE("https://...")
     image_formula_match = re.search(r'IMAGE\s*\(\s*["\'](https?://[^"\']+)["\']', val_str, re.IGNORECASE)
     if image_formula_match:
         return image_formula_match.group(1)
-    
-    # Check for direct URL
     url_match = re.search(r'(https?://[^\s"\']+)', val_str)
     if url_match:
         return url_match.group(1)
-    
-    # Return as is if nothing found
     return val_str
 
 def get_photo_display_value(cell):
-    """
-    Get the display value for photos/docs, preserving the exact URL
-    """
     if cell is None or cell.value is None:
         return ""
-    
     return extract_photo_url_from_cell(cell)
 
-#--- HELPER FUNCTIONS ---
 def download_file(url):
     try:
         response = requests.get(url, timeout=30)
@@ -435,7 +411,6 @@ def load_main_data_optimized(source_bytes):
         wb = load_workbook(io.BytesIO(source_bytes), data_only=True)
         ws = wb.active
         
-        # Get headers
         header_row = list(ws.iter_rows(min_row=1, max_row=1, values_only=True))[0]
         headers = [str(h).strip().upper() if h else "" for h in header_row]
         
@@ -448,7 +423,6 @@ def load_main_data_optimized(source_bytes):
                 if idx < len(headers) and headers[idx]:
                     raw_val = cell.value
                     
-                    # Apply formatting based on configuration
                     if raw_val is not None:
                         header_key = headers[idx]
                         format_type = FORMAT_CONFIG.get(header_key, 'text')
@@ -456,7 +430,6 @@ def load_main_data_optimized(source_bytes):
                     else:
                         formatted_val = ""
                     
-                    # Clean URL if needed (for non-photo fields)
                     cleaned_val = clean_and_extract_url(formatted_val)
                     row_dict[headers[idx]] = cleaned_val
                     
@@ -491,17 +464,11 @@ def load_main_data_optimized(source_bytes):
         return None
 
 def load_media_data_optimized(source_bytes):
-    """
-    Load media data with dedicated photo/doc handling
-    This function is isolated from the main data formatting
-    """
     try:
-        # Use data_only=False to preserve formulas like =IMAGE()
         wb = load_workbook(io.BytesIO(source_bytes), data_only=False)
         media_data_list = []
         media_ws = None
         
-        # Find the media sheet
         for sheet_name in wb.sheetnames:
             if "PHOTO" in sheet_name.upper() or "DOC" in sheet_name.upper() or "MEDIA" in sheet_name.upper():
                 media_ws = wb[sheet_name]
@@ -509,19 +476,15 @@ def load_media_data_optimized(source_bytes):
         if not media_ws:
             media_ws = wb.active
         
-        # Process each row using cell objects to extract formulas
         for row in media_ws.iter_rows():
-            # Extract values using the photo handler
             vals = []
             for cell in row:
                 if cell is None:
                     vals.append("")
                 else:
-                    # Use the dedicated photo handler
                     photo_url = extract_photo_url_from_cell(cell)
                     vals.append(photo_url)
             
-            # Get Trade Area and Site Name
             t_area = str(vals[13] if len(vals) > 13 and vals[13] is not None else "").strip()
             s_name = str(vals[15] if len(vals) > 15 and vals[15] is not None else "").strip()
             
@@ -545,37 +508,55 @@ def load_media_data_optimized(source_bytes):
         st.error(f"Error loading media data: {e}")
         return []
 
-def load_data_parallel():
+def download_and_process_all_data():
     start_time = time.time()
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        future_source = executor.submit(download_file, SOURCE_URL)
-        future_template = executor.submit(download_file, TEMPLATE_URL)
-        source_bytes = future_source.result()
-        template_bytes = future_template.result()
-    if source_bytes is None or template_bytes is None:
-        return None, None, None, [], None
-    source_data = source_bytes.getvalue()
-    template_data = template_bytes.getvalue()
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        future_main = executor.submit(load_main_data_optimized, source_data)
-        future_media = executor.submit(load_media_data_optimized, source_data)
-        df = future_main.result()
-        media_data_list = future_media.result()
-    if df is None:
-        return None, None, None, [], None
-    placeholders = get_placeholders_optimized(template_data)
+    
+    with st.spinner("Downloading data from Google Sheets..."):
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_source = executor.submit(download_file, SOURCE_URL)
+            future_template = executor.submit(download_file, TEMPLATE_URL)
+            source_bytes = future_source.result()
+            template_bytes = future_template.result()
+        
+        if source_bytes is None or template_bytes is None:
+            return None, None, None, [], None
+        
+        source_data = source_bytes.getvalue()
+        template_data = template_bytes.getvalue()
+    
+    with st.spinner("Processing data..."):
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_main = executor.submit(load_main_data_optimized, source_data)
+            future_media = executor.submit(load_media_data_optimized, source_data)
+            df = future_main.result()
+            media_data_list = future_media.result()
+        
+        if df is None:
+            return None, None, None, [], None
+        
+        placeholders = get_placeholders_optimized(template_data)
+    
+    with st.spinner("Pre-generating reports for all trade areas..."):
+        cached_reports = {}
+        trade_areas = df["TRADE AREA"].dropna().unique()
+        
+        progress_bar = st.progress(0)
+        for idx, trade_area in enumerate(trade_areas):
+            report_bytes = generate_single_trade_area_report(
+                trade_area, df, template_data, placeholders
+            )
+            cached_reports[trade_area] = report_bytes
+            progress_bar.progress((idx + 1) / len(trade_areas))
+        
+        progress_bar.empty()
+    
     elapsed = time.time() - start_time
-    print(f"Data loaded in {elapsed:.2f} seconds")
-    return df, placeholders, template_data, media_data_list, datetime.now()
+    print(f"All data cached in {elapsed:.2f} seconds")
+    
+    return df, placeholders, template_data, media_data_list, cached_reports, datetime.now()
 
-@st.cache_data(ttl=None, show_spinner=False)
-def get_cached_data(cache_version):
-    return load_data_parallel()
-
-@st.cache_data(ttl=None, show_spinner=False)
-def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeholders_tuple, cache_version):
-    placeholders = list(placeholders_tuple)
-    placeholders.sort(key=len, reverse=True)
+def generate_single_trade_area_report(trade_area, df, template_bytes_raw, placeholders):
+    placeholders_sorted = sorted(placeholders, key=len, reverse=True)
     
     ta_data = df[df["TRADE AREA"] == trade_area]
     wb = load_workbook(io.BytesIO(template_bytes_raw))
@@ -583,16 +564,18 @@ def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeh
     base_sheet = wb.active
     base_sheet.title = "TEMPLATE_TO_DELETE"
     existing_tabs = set()
+    
     for _, r_row in ta_data.iterrows():
         s_name = r_row.get("SITE NAME", "Unknown")
         safe_tab_name = sanitize_tab_name(s_name, existing_tabs)
         new_sheet = wb.copy_worksheet(base_sheet)
         new_sheet.title = safe_tab_name
+        
         for row_cells in new_sheet.iter_rows():
             for cell in row_cells:
                 if isinstance(cell.value, str) and "{{" in cell.value:
                     new_val = cell.value
-                    for ph in placeholders:
+                    for ph in placeholders_sorted:
                         target_regex = r"\{\{\s*" + re.escape(ph) + r"(\s*:.*?)?\}\}"
                         if re.search(target_regex, new_val):
                             raw_data_val = r_row.get(ph.upper(), "")
@@ -602,265 +585,27 @@ def generate_trade_area_report_cached(trade_area, df, template_bytes_raw, placeh
                             new_val = re.sub(target_regex, val_str, new_val)
                     new_val = re.sub(r"\{\{.*?\}\}", "", new_val)
                     cell.value = new_val.strip() if new_val else ""
+        
         for row in new_sheet.iter_rows():
             max_len = max([len(str(cell.value or '')) for cell in row])
             if max_len > 45:
                 new_sheet.row_dimensions[row[0].row].height = None
+    
     if "TEMPLATE_TO_DELETE" in wb.sheetnames:
         wb.remove(wb["TEMPLATE_TO_DELETE"])
+    
     for name in original_sheets:
         if name in wb.sheetnames and name != "TEMPLATE_TO_DELETE":
             wb.remove(wb[name])
+    
     wb_buffer = io.BytesIO()
     wb.save(wb_buffer)
     wb_buffer.seek(0)
     return wb_buffer.getvalue()
 
-#--- HTML FRAMEWORK ---
-HTML_FRAMEWORK = """
-<!DOCTYPE html>
-<html>
-<head>
-<style type="text/css">
-html, body { margin: 0; padding: 0; background-color: #ffffff; font-family: Arial, sans-serif; height: 100%; overflow-y: auto !important; overflow-x: hidden !important; }
-.report-wrapper { width: 100%; overflow-y: visible !important; overflow-x: hidden !important; display: flex; justify-content: center; align-items: flex-start; padding: 0; margin: 0; min-height: 100%; }
-.report-scaler { transform-origin: center top; width: 100%; display: inline-block; overflow: visible; text-align: center; }
-.ritz.grid-container { height: auto; overflow: visible !important; padding: 10px; box-sizing: border-box; width: 100%; display: inline-block; text-align: left; }
-.ritz .waffle a { color: inherit; }
-.ritz .waffle td { padding: 2px 3px !important; vertical-align: middle; border: none !important; }
-.freezebar-origin-ltr { background-color: #cecece; border: none !important; }
-.column-headers-background { background-color: #cecece; text-align: center; font-size: 10pt; color: #444746; font-weight: normal; border: none !important; }
-.row-headers-background { background-color: #cecece; text-align: center; font-size: 10pt; color: #444746; font-weight: normal; border: none !important; }
-.ritz .waffle .s0 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#800000;text-align:center;font-weight:bold;color:#ffffff;font-size:10pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
-.ritz .waffle .s1 {border-bottom:1px SOLID #bfbfbf;border-right:1px SOLID #bfbfbf;background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;padding: 4px 3px !important;}
-.ritz .waffle .s2 {background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s3 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s4 {border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
-.ritz .waffle .s4.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
-.ritz .waffle .s5 {background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s6 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s7 {border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s8 {border: none !important;background-color:#ffffff;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s9 {border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;vertical-align:middle;white-space:nowrap;direction:ltr;padding: 4px 3px !important;line-height: 1.4;max-width: 0;overflow: hidden;text-overflow: ellipsis;}
-.ritz .waffle .s9.wrap-text {white-space:normal !important;word-wrap:break-word !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width: 100% !important;overflow: visible !important;text-overflow: clip !important;height: auto !important;}
-.ritz .waffle .s10{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s11{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s12{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s13{background-color:#cecece;text-align:left;font-weight:bold;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s14{background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s15{border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s16{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s17{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s18{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s19{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s20{border: none !important;background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s21{border: none !important;background-color:#cecece;text-align:left;color:#ff0000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s22{background-color:#ffffff;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s23{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s24{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s25{border: none !important;background-color:#ffffff;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;}
-.ritz .waffle .s26{background-color:#cecece;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s27{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s28{background-color:#cecece;text-align:left;font-weight:bold;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s29{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;}
-.ritz .waffle .s30{background-color:#cecece;text-align:left;color:#000000;font-size:10pt;white-space:nowrap;direction:ltr;border: none !important;padding: 4px 3px !important;}
-.ritz .waffle { border-collapse: collapse; width: 100%; }
-.ritz .waffle tr { height: auto !important; }
-.ritz .waffle td[class*="s4"], .ritz .waffle td[class*="s9"] { height: auto !important; min-height: 20px; }
-.remarks-row { height: auto !important; }
-.remarks-row td { height: auto !important; padding: 6px 3px !important; vertical-align: top !important; }
-.remarks-row td.s5 { white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; overflow-wrap: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important; height: auto !important; line-height: 1.6 !important; padding: 8px 6px !important; }
-.remarks-label { white-space: nowrap !important; vertical-align: top !important; padding-top: 8px !important; }
-.regulatory-header { background-color: #cecece !important; font-weight: bold !important; color: #000000 !important; }
-.regulatory-label { background-color: #cecece !important; color: #ff0000 !important; }
-.regulatory-value { background-color: #cecece !important; color: #000000 !important; }
-</style>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    function scaleReportToFit() {
-        const wrapper = document.querySelector('.report-wrapper');
-        const scaler = document.querySelector('.report-scaler');
-        const container = document.querySelector('.ritz.grid-container');
-        if (!wrapper || !scaler || !container) return;
-        const table = document.querySelector('.waffle');
-        if (!table) return;
-        const containerWidth = wrapper.parentElement ? wrapper.parentElement.clientWidth : window.innerWidth;
-        const availableWidth = containerWidth - 40;
-        table.style.width = 'auto';
-        const naturalWidth = table.scrollWidth;
-        table.style.width = '100%';
-        let scale = 1;
-        if (naturalWidth > availableWidth) {
-            scale = (availableWidth / naturalWidth) * 0.95;
-            if (scale < 0.4) scale = 0.4;
-        }
-        if (scale < 1) {
-            scaler.style.transform = 'scale(' + scale + ')';
-            scaler.style.transformOrigin = 'center top';
-            scaler.style.width = (100 / scale) + '%';
-            scaler.style.marginBottom = '0px';
-            scaler.style.display = 'inline-block';
-            scaler.style.textAlign = 'center';
-        } else {
-            scaler.style.transform = 'none';
-            scaler.style.width = '100%';
-            scaler.style.marginBottom = '0px';
-            scaler.style.display = 'inline-block';
-            scaler.style.textAlign = 'center';
-        }
-        container.style.display = 'inline-block';
-        container.style.textAlign = 'left';
-        container.style.margin = '0 auto';
-        wrapper.style.overflowY = 'visible';
-        wrapper.style.overflowX = 'hidden';
-        wrapper.style.width = '100%';
-        wrapper.style.display = 'flex';
-        wrapper.style.justifyContent = 'center';
-        wrapper.style.alignItems = 'flex-start';
-        wrapper.style.minHeight = '100%';
-        container.style.overflowX = 'visible';
-        container.style.overflowY = 'visible';
-        container.style.width = '100%';
-        document.body.style.overflowY = 'auto';
-        document.body.style.overflowX = 'hidden';
-        document.documentElement.style.overflowY = 'auto';
-        document.documentElement.style.overflowX = 'hidden';
-        const tableHeight = table.scrollHeight;
-        if (scale < 1) {
-            scaler.style.height = (tableHeight * scale + 50) + 'px';
-        } else {
-            scaler.style.height = 'auto';
-        }
-    }
-    setTimeout(scaleReportToFit, 100);
-    let resizeTimer;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(scaleReportToFit, 100);
-    });
-    const observer = new MutationObserver(function() { setTimeout(scaleReportToFit, 100); });
-    const tableBody = document.querySelector('.waffle tbody');
-    if (tableBody) { observer.observe(tableBody, { childList: true, subtree: true, characterData: true }); }
-    window.addEventListener('load', function() { setTimeout(scaleReportToFit, 200); });
-});
-</script>
-</head>
-<body>
-<div class="report-wrapper">
-    <div class="report-scaler">
-        <div class="ritz grid-container" dir="ltr">
-        <table class="waffle" cellspacing="0" cellpadding="0" style="table-layout: fixed; width: 100%; border-collapse: collapse;">
-        <colgroup>
-        <col style="width:223px;"> <col style="width:100px;"> <col style="width:86px;"> <col style="width:100px;"> <col style="width:94px;"> <col style="width:100px;"> <col style="width:81px;"> <col style="width:15px;"> <col style="width:148px;"> <col style="width:176px;"> <col style="width:100px;"> <col style="width:100px;"> <col style="width:100px;"> <col style="width:125px;"> <col style="width:29px;">
-        </colgroup>
-        <tbody>
-        <tr style="height: auto;"> <td class="s0" colspan="15">SITE INFORMATION REPORT</td> </tr>
-        <tr style="height: auto"> <td class="s1" colspan="7">General Information</td> <td class="s1"></td> <td class="s1" colspan="7">Location</td> </tr>
-        <tr style="height: auto"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Trade Area Name</td> <td class="s2"></td> <td class="s4" colspan="5">_TRADE_AREA_</td> <td class="s3"></td> <td class="s5" colspan="2">Site Name</td> <td class="s4" colspan="5">_SITE_NAME_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Site Name:</td> <td class="s2"></td> <td class="s4" colspan="5">_SITE_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Unit #, Bldg/St # and St Name</td> <td class="s4" colspan="5">_UNIT_BLDG_ST_NAME_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Site Number:</td> <td class="s2"></td> <td class="s4" colspan="5">_SITE_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Barangay/District Name</td> <td class="s4" colspan="5">_BARANGAY_DISTRICT_NAME_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Date Started</td> <td class="s2"></td> <td class="s4" colspan="5">_TIMESTAMP_</td> <td class="s3"></td> <td class="s5" colspan="2">City/Municipality</td> <td class="s4" colspan="5">_CITY_MUNICIPALITY_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Date Report Submitted</td> <td class="s4" colspan="5">_DATE_OF_REPORT_</td> <td class="s3"></td> <td class="s5" colspan="2">Region</td> <td class="s4" colspan="5">_REGION_</td> </tr>
-        <tr style="height: auto;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s5" colspan="2">Postal Code</td> <td class="s4" colspan="5">_POSTAL_CODE_</td> </tr>
-        <tr style="height: 9px"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
-        <tr style="height: 19px"> <td class="s1" colspan="7">Terms</td> <td class="s3"></td> <td class="s1" colspan="7">Rates</td> </tr>
-        <tr style="height: 19px"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Site Availability Date</td> <td class="s2"></td> <td class="s4" colspan="5">_SITE_AVAILABILITY_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Monthly Rental Rate (Php)</td> <td class="s4" colspan="5">_MONTHLY_RENTAL_RATE_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">COL Start Date</td> <td class="s2"></td> <td class="s4" colspan="5">_COL_START_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Percentage Rent</td> <td class="s4" colspan="5">_PERCENTAGE_RENT_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">COL End Date</td> <td class="s2"></td> <td class="s4" colspan="5">_COL_END_DATE_</td> <td class="s3"></td> <td class="s8" colspan="2">Minimum Guaranteed Rent</td> <td class="s4" colspan="5">_MINIMUM_GUARANTEED_RENT_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Lease Terms</td> <td class="s2"></td> <td class="s4" colspan="5">_LEASE_TERMS_</td> <td class="s3"></td> <td class="s8" colspan="2">Annual Escalation Rate (%)</td> <td class="s4" colspan="5">_ESCALATION_</td> </tr>
-        <tr style="height: 19px"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s8" colspan="2">Advance Rental (Php)</td> <td class="s4" colspan="5">_ADVANCE_RENTAL_</td> </tr>
-        <tr style="height: 19px"> <td class="s1" colspan="7">Technical Info</td> <td class="s3"></td> <td class="s8" colspan="2">Security Deposit Amount (Php)</td> <td class="s4" colspan="5">_SECURITY_DEPOSIT_</td> </tr>
-        <tr style="height: 19px"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s8" colspan="2">CUSA Dues</td> <td class="s4" colspan="5">_CUSA_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Lot/Floor Area (in sqm)</td> <td class="s4" colspan="5">_LOT_FLOOR_AREA_SQM_</td> <td class="s3"></td> <td class="s8" colspan="2">Estimated Revenue Per Mo.</td> <td class="s4" colspan="5">_ESTIMATED_REVENUE_PER_MO_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Frontage (in m)</td> <td class="s2"></td> <td class="s4" colspan="5">_FRONTAGE_</td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Depth (in m)</td> <td class="s2"></td> <td class="s4" colspan="5">_DEPTH_IN_M_</td> <td class="s3"></td> <td class="s1" colspan="7">Provisions</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Floor to Slab Height (in m) - if Bldg</td> <td class="s4" colspan="5">_FLOOR_TO_SLAB_HEIGHT_IN_M_IF_BLDG_</td> <td class="s3"></td> <td class="s2" colspan="7"></td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">No. of Storeys (If Bldg Lessee)</td> <td class="s4" colspan="5">_NO_OF_STOREYS_</td> <td class="s3"></td> <td class="s5" colspan="2">Tenant is the Owner</td> <td class="s9" colspan="5">_TENANT_IS_THE_OWNER_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Type of Structure (if Bldg Lessee)</td> <td class="s4" colspan="5">_TYPE_OF_STRUCTURE_IF_BLDG_LESSEE_</td> <td class="s3"></td> <td class="s5" colspan="2">Lease Type</td> <td class="s9" colspan="5">_LEASE_TYPE_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Soil Profile</td> <td class="s2"></td> <td class="s4" colspan="5">_SOIL_PROFILE_</td> <td class="s3"></td> <td class="s5" colspan="2">Principal COL</td> <td class="s9" colspan="5">_PRINCIPAL_COL_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Supply Access:</td> <td class="s2"></td> <td class="s2" colspan="5"></td> <td class="s3"></td> <td class="s5" colspan="2">Sub-Lease Provision</td> <td class="s9" colspan="5">_SUB_LEASE_PROVISION_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Power</td> <td class="s10"></td> <td class="s2">Aircon</td> <td class="s10"></td> <td class="s5" colspan="2">LPG Fire Pro</td> <td class="s10"></td> <td class="s3"></td> <td class="s5" colspan="2">Pre-Term/Partial Term</td> <td class="s9" colspan="5">_PRE_TERM_PARTIAL_TERM_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Water</td> <td class="s10"></td> <td class="s2">Exhaust</td> <td class="s10"></td> <td class="s5" colspan="2">Drainage TP</td> <td class="s10"></td> <td class="s3"></td> <td class="s5" colspan="2">Tripartite Agreement</td> <td class="s9" colspan="5">_TRIPARTITE_AGREEMENT_</td> </tr>
-        <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
-        <tr style="height: 19px;"> <td class="s1" colspan="7">Lessor and Tenant Details</td> <td class="s3"></td> <td class="s1" colspan="7">If with Sub-Lessor/ Sub-Lessee</td> </tr>
-        <tr style="height: 9px;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Name of Lessor</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Sub-Lessor</td> <td class="s9" colspan="5">_NAME_OF_SUBLESSOR_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_CONTACT_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUBLESSOR_CONTACT_NO_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_EMAIL_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUBLESSOR_EMAIL_ADDRESS_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Type of Ownership</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_TYPE_OF_OWNERSHIP_</td> <td class="s3"></td> <td class="s5" colspan="2">Type of Ownership</td> <td class="s9" colspan="5">_SUBLESSOR_TYPE_OF_OWNERSHIP_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Company Name</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_COMPANY_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Company Name</td> <td class="s9" colspan="5">_SUBLESSOR_COMPANY_NAME_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Developer Account Name</td> <td class="s4" colspan="5">_LESSOR_DEVELOPER_ACCOUNT_NAME_</td> <td class="s3"></td> <td class="s5" colspan="2">Developer Account Name</td> <td class="s9" colspan="5">_SUBLESSOR_DEVELOPER_ACCOUNT_NAME_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_BUSINESS_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5">_SUBLESSOR_BUSINESS_ADDRESS_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_LESSOR_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5">_SUBLESSOR_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s4" colspan="5">_LESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Residence Address of Authorized Representative</td> <td class="s9" colspan="5">_SUBLESSOR_RESIDENCE_ADDRESS_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_AUTHORIZED_REP_CONTACT_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUBLESSOR_CONTACT_NO_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSOR_AUTHORIZED_REP_EMAIL_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUBLESSOR_EMAIL_ADDRESS_</td> </tr>
-        <tr style="height: auto;"> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3"></td> <td class="s2"></td> <td class="s2"></td> <td class="s2"></td> <td class="s3" colspan="5"></td> </tr>
-        <tr style="height: auto;"> <td class="s2">Name of Lessee</td> <td class="s2"></td> <td class="s4" colspan="5">_NAME_OF_LESSEE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Sub-Lessee</td> <td class="s9" colspan="5">_NAME_OF_SUB_LESSEE_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Position</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_POSITION_</td> <td class="s3"></td> <td class="s5" colspan="2">Position</td> <td class="s9" colspan="5">_SUB_LESSEE_POSITION_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Contact No.</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_CONTACT_NO_</td> <td class="s3"></td> <td class="s5" colspan="2">Contact No.</td> <td class="s9" colspan="5">_SUB_LESSEE_CONTACT_NO_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">E-mail Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_EMAIL_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">E-mail Address</td> <td class="s9" colspan="5">_SUB_LESSEE_EMAIL_ADDRESS_</td> </tr>
-        <tr style="height: auto;"> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s4" colspan="5">_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> <td class="s3"></td> <td class="s5" colspan="2">Name of Authorized Representative</td> <td class="s9" colspan="5">_SUB_LESSEE_NAME_OF_AUTHORIZED_REPRESENTATIVE_</td> </tr>
-        <tr style="height: auto;"> <td class="s2">Business Address</td> <td class="s2"></td> <td class="s4" colspan="5">_LESSEE_BUSINESS_ADDRESS_</td> <td class="s3"></td> <td class="s5" colspan="2">Business Address</td> <td class="s9" colspan="5">_SUB_LESSEE_BUSINESS_ADDRESS_</td> </tr>
-        <tr style="height: 9px;"> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s11"></td> <td class="s12"></td> </tr>
-        
-        <!-- REGULATORY SECTION -->
-        <tr style="height: 19px;"> <td class="s13" colspan="15" style="border: 1px solid #cccccc !important;">Regulatory</td> </tr>
-        <tr style="height: auto;"> 
-            <td class="s14" style="border: 1px solid #cccccc !important;">Setback Requirement</td> 
-            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_SETBACK_REQUIREMENT_</td> 
-            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Perm Traffic Re-Routing</td> 
-            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_PERM_TRAFFIC_RE_ROUTING_</td> 
-            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Future Development</td> 
-            <td class="s17" colspan="4" style="border: 1px solid #cccccc !important;">_FUTURE_DEVELOPMENT_</td> 
-        </tr>
-        <tr style="height: auto;"> 
-            <td class="s14" style="border: 1px solid #cccccc !important;">Road Widening</td> 
-            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_ROAD_WIDENING_</td> 
-            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Perm Road Closure</td> 
-            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_PERM_ROAD_CLOSURE_</td> 
-            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Zoning Clearance</td> 
-            <td class="s17" colspan="4" style="border: 1px solid #cccccc !important;">_ZONING_CLEARANCE_</td> 
-        </tr>
-        <tr style="height: auto;"> 
-            <td class="s14" style="border: 1px solid #cccccc !important;">Pedestrian Overpass</td> 
-            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_PEDESTRIAN_OVERPASS_</td> 
-            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Infrastructure Programs</td> 
-            <td class="s17" colspan="3" style="border: 1px solid #cccccc !important;">_INFRASTRUCTURE_PROGRAMS_</td> 
-            <td class="s14" colspan="2" style="border: 1px solid #cccccc !important;">Gas Station</td> 
-            <td class="s17" colspan="4" style="border: 1px solid #cccccc !important;">_GAS_STATION_</td> 
-        </tr>
-        <tr style="height: 9px;"> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s3"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s6"></td> <td class="s7"></td> </tr>
-        
-        <!-- SITE ACQUIRABILITY SECTION -->
-        <tr style="height: 19px;"> 
-            <td class="s22" colspan="3" style="border-bottom: 1px solid #000000 !important; padding-bottom: 4px !important;">Site Acquirability:</td>
-            <td class="s3" colspan="12"></td>
-        </tr>
-        <tr style="height: auto;"> 
-            <td class="s2" style="border: 1px solid #cccccc !important;">Confidence Level</td> 
-            <td class="s17" colspan="6" style="border: 1px solid #cccccc !important;">_CONFIDENCE_LEVEL_</td> 
-            <td class="s3"></td> 
-            <td class="s22" colspan="2" style="border: 1px solid #cccccc !important;">Site Availability</td> 
-            <td class="s17" colspan="5" style="border: 1px solid #cccccc !important;">_SITE_AVAILABILITY_CLASS_</td> 
-        </tr>
-        <tr class="remarks-row" style="height: 300px !important;"> 
-            <td class="s6 remarks-label" style="white-space: nowrap; vertical-align: top; padding-top: 8px; border: 1px solid #cccccc !important;">Other Remarks:</td> 
-            <td class="s5" colspan="6" style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: 300px !important; line-height: 1.6; padding: 8px 6px; border: 1px solid #cccccc !important; vertical-align: top;">_REMARKS_</td> 
-            <td class="s3"></td> 
-            <td class="s6 remarks-label" style="white-space: normal; vertical-align: top; padding-top: 8px; border: 1px solid #cccccc !important;" colspan="2">Site Availability<br>Remarks:</td> 
-            <td class="s5" colspan="5" style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 100%; overflow: visible; text-overflow: clip; height: 300px !important; line-height: 1.6; padding: 8px 6px; border: 1px solid #cccccc !important; vertical-align: top;">_SITE_AVAILABILITY_REMARKS_</td> 
-        </tr>
-        </tbody>
-        </table>
-        </div>
-    </div>
-</div>
-</body>
-</html>
-"""
+@st.cache_data(ttl=None, show_spinner=False)
+def get_cached_data(cache_version):
+    return download_and_process_all_data()
 
 #--- MAIN APP ---
 if not st.session_state.authenticated:
@@ -881,16 +626,26 @@ if not st.session_state.authenticated:
 
 if not st.session_state.data_loaded:
     loading_placeholder = st.empty()
-    loading_placeholder.markdown(get_loading_overlay_html(message="Fetching Site Information..."), unsafe_allow_html=True)
+    loading_placeholder.markdown(
+        get_loading_overlay_html(message="Loading cached data..."), 
+        unsafe_allow_html=True
+    )
 
     result = get_cached_data(st.session_state.cache_version)
+    
     if result and result[0] is not None:
-        df, placeholders, template_bytes_raw, media_data_list, data_timestamp = result
+        df, placeholders, template_bytes_raw, media_data_list, cached_reports, data_timestamp = result
         st.session_state.df = df
         st.session_state.placeholders = placeholders
         st.session_state.template_bytes_raw = template_bytes_raw
         st.session_state.media_data_list = media_data_list
-        st.session_state.data_timestamp = data_timestamp
+        st.session_state.cached_reports = cached_reports
+        st.session_state.cache_timestamp = data_timestamp
+        st.session_state.last_refresh_time = datetime.now()
+        
+        df_hash = hashlib.md5(pd.util.hash_pandas_object(df).values).hexdigest()
+        st.session_state.data_hash = df_hash
+        
         st.session_state.data_loaded = True
         loading_placeholder.empty()
         st.rerun()
@@ -903,6 +658,7 @@ df = st.session_state.df
 placeholders = st.session_state.placeholders
 template_bytes_raw = st.session_state.template_bytes_raw
 media_data_list = st.session_state.media_data_list
+cached_reports = st.session_state.cached_reports
 
 deploy_workspace_security_protocols()
 
@@ -914,25 +670,103 @@ else:
 
 if st.session_state.role == "admin" and page == "Admin Panel":
     st.title("Admin Control Panel")
-    st.subheader("Data Refresh")
-    col_refresh, col_status = st.columns([1, 3])
+    
+    st.subheader("Data Management")
+    
+    col_info1, col_info2, col_info3 = st.columns(3)
+    with col_info1:
+        if st.session_state.cache_timestamp:
+            cache_age = (datetime.now() - st.session_state.cache_timestamp).total_seconds()
+            if cache_age < 60:
+                age_str = f"{int(cache_age)} seconds"
+            elif cache_age < 3600:
+                age_str = f"{int(cache_age/60)} minutes"
+            else:
+                age_str = f"{int(cache_age/3600)} hours"
+            st.metric("Cache Age", age_str)
+        else:
+            st.metric("Cache Age", "Not set")
+    
+    with col_info2:
+        if st.session_state.df is not None:
+            st.metric("Trade Areas", len(st.session_state.df["TRADE AREA"].dropna().unique()))
+        else:
+            st.metric("Trade Areas", "0")
+    
+    with col_info3:
+        if st.session_state.cached_reports:
+            st.metric("Cached Reports", len(st.session_state.cached_reports))
+        else:
+            st.metric("Cached Reports", "0")
+    
+    st.divider()
+    
+    col_refresh, col_status, col_clear = st.columns([1, 2, 1])
+    
     with col_refresh:
-        if st.button("Refresh Data Now", use_container_width=True):
+        if st.button("Refresh All Data", use_container_width=True, type="primary"):
             st.cache_data.clear()
             st.session_state.cache_version += 1
             st.session_state.data_loaded = False
-            st.session_state.refresh_log.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-            st.success("Refresh logged.")
+            st.session_state.cached_reports = {}
+            st.session_state.refresh_log.append({
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "user": st.session_state.username,
+                "action": "Full data refresh"
+            })
+            st.success("Refresh initiated! Page will reload with fresh data...")
+            time.sleep(1.5)
             st.rerun()
+    
+    with col_clear:
+        if st.button("Clear Local Cache", use_container_width=True):
+            st.cache_data.clear()
+            st.session_state.cache_version += 1
+            st.session_state.data_loaded = False
+            st.session_state.cached_reports = {}
+            st.success("Cache cleared! Reloading...")
+            time.sleep(1)
+            st.rerun()
+    
     with col_status:
         if st.session_state.refresh_log:
-            last = st.session_state.refresh_log[-1]
-            st.write(f"Last refresh: {last}  |  Total: {len(st.session_state.refresh_log)}")
-            if len(st.session_state.refresh_log) > 1:
-                st.write("Previous: " + ", ".join(st.session_state.refresh_log[-5:]))
+            last_refresh = st.session_state.refresh_log[-1]
+            if isinstance(last_refresh, dict):
+                st.write(f"Last refresh: {last_refresh.get('timestamp', 'Unknown')}")
+                st.write(f"By: {last_refresh.get('user', 'Unknown')}")
+            else:
+                st.write(f"Last refresh: {last_refresh}")
+            
+            if st.session_state.cache_timestamp:
+                total_refreshes = len([log for log in st.session_state.refresh_log if isinstance(log, dict) and log.get('action') == 'Full data refresh'])
+                st.write(f"Total refreshes: {total_refreshes}")
         else:
-            st.write("No refresh performed yet.")
+            st.write("No refresh performed yet")
+    
     st.divider()
+    
+    with st.expander("Cache Statistics", expanded=False):
+        col_stats1, col_stats2, col_stats3 = st.columns(3)
+        with col_stats1:
+            st.write("**Data Sizes:**")
+            if st.session_state.df is not None:
+                st.write(f"DataFrame: {st.session_state.df.memory_usage(deep=True).sum() / 1024 / 1024:.2f} MB")
+            if st.session_state.media_data_list:
+                st.write(f"Media entries: {len(st.session_state.media_data_list)}")
+        with col_stats2:
+            st.write("**Cached Reports:**")
+            if st.session_state.cached_reports:
+                total_size = sum(len(report) for report in st.session_state.cached_reports.values())
+                st.write(f"Total reports: {len(st.session_state.cached_reports)}")
+                st.write(f"Total size: {total_size / 1024 / 1024:.2f} MB")
+        with col_stats3:
+            st.write("**Performance:**")
+            if st.session_state.cache_timestamp:
+                age = (datetime.now() - st.session_state.cache_timestamp).total_seconds()
+                st.write(f"Cache age: {age:.0f} seconds")
+    
+    st.divider()
+    
     st.subheader("Audit Log")
     audits = st.session_state.audit_log
     if audits:
@@ -945,6 +779,13 @@ if st.session_state.role == "admin" and page == "Admin Panel":
         st.dataframe(df_audit.sort_values("timestamp", ascending=False), use_container_width=True, height=300)
     else:
         st.write("No audit records yet.")
+    
+    st.divider()
+    
+    if st.button("Force Garbage Collection", use_container_width=True):
+        gc.collect()
+        st.success("Garbage collection completed!")
+
 else:
     trade_areas = sorted(df["TRADE AREA"].dropna().unique().tolist())
     first_row = df.iloc[0] if not df.empty else None
@@ -985,17 +826,30 @@ else:
         if selected_ta:
             user_perms = HARDCODED_USERS.get(st.session_state.username, {}).get("permissions", {})
             if user_perms.get("export_sir", False):
-                report_bytes = generate_trade_area_report_cached(
-                    selected_ta, df, template_bytes_raw, tuple(placeholders), st.session_state.cache_version
-                )
-                st.download_button(
-                    label="Export",
-                    data=report_bytes,
-                    file_name=f"{selected_ta}_Site_Information_Report.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True,
-                    key="export_btn"
-                )
+                if selected_ta in cached_reports:
+                    report_bytes = cached_reports[selected_ta]
+                    st.download_button(
+                        label="Export",
+                        data=report_bytes,
+                        file_name=f"{selected_ta}_Site_Information_Report.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True,
+                        key="export_btn"
+                    )
+                else:
+                    with st.spinner("Generating report..."):
+                        report_bytes = generate_single_trade_area_report(
+                            selected_ta, df, template_bytes_raw, placeholders
+                        )
+                        st.session_state.cached_reports[selected_ta] = report_bytes
+                        st.download_button(
+                            label="Export",
+                            data=report_bytes,
+                            file_name=f"{selected_ta}_Site_Information_Report.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True,
+                            key="export_btn"
+                        )
             else:
                 st.button("Export", disabled=True, help="You do not have permission to export.")
 
