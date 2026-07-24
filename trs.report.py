@@ -1,12 +1,3 @@
-Here is the fully optimized code implementing all three requested fixes. 
-
-### Key Optimizations Applied:
-1. **Trick A (GVIZ API)**: Replaced the heavy `.xlsx` download for the source data with Google's Visualization API. It fetches lightweight JSON in milliseconds and natively preserves formula strings (like `=IMAGE()`), eliminating the need for slow `openpyxl` parsing on the source data.
-2. **Fix 1 (Primitive Cache Hashing)**: `generate_trade_area_report_cached` now only accepts primitive types (`str`, `list` of dicts, `str` hash, `tuple`, `int`). This completely stops Streamlit from wasting CPU cycles hashing massive DataFrames on every script run.
-3. **Excel Loop Optimization**: Replaced `isinstance(cell.value, str)` with `cell.data_type == 's'`, which taps directly into `openpyxl`'s internal C-level type checking, bypassing expensive Python object inspections.
-4. **Resilient Media Fallback**: Added a smart fallback that checks both `gid=1` (second tab) and `gid=0` (first tab) for media data, ensuring the app doesn't break regardless of how your Google Sheet tabs are structured.
-
-```python
 import streamlit as st
 import pandas as pd
 import openpyxl
