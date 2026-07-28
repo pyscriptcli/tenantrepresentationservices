@@ -104,7 +104,7 @@ def preprocess_image(image, method):
     return img
 
 def perform_ocr(image, lang_code):
-    """Perform OCR using EasyOCR"""
+    """Perform OCR using EasyOCR - this is the key function that was wrong before"""
     try:
         # Load the EasyOCR reader (cached)
         reader = load_reader(lang_code)
@@ -124,7 +124,7 @@ def perform_ocr(image, lang_code):
         if preprocessing and preprocessing != 'None':
             img = preprocess_image(img, preprocessing)
         
-        # Perform OCR using EasyOCR
+        # Perform OCR using EasyOCR - NOT Tesseract!
         # The result is a list of tuples: (bounding_box, text, confidence)
         result = reader.readtext(img)
         
