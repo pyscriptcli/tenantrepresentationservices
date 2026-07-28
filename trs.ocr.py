@@ -108,8 +108,3 @@ def perform_ocr(image):
         st.error("""
         ⚠️ **Tesseract OCR not found!**
         
-        Please install Tesseract OCR on your system:
-        
-        **Ubuntu/Debian:**
-        ```bash
-        sudo apt-get install tesseract-ocr
