@@ -1,5 +1,5 @@
 import streamlit as st
-import pytesseract
+import easyocr
 from PIL import Image
 import cv2
 import numpy as np
@@ -32,6 +32,31 @@ with st.sidebar:
         index=4,
         help="Preprocessing can improve OCR accuracy for poor quality images"
     )
+    
+    # Language selection for EasyOCR
+    st.header("OCR Language")
+    language = st.selectbox(
+        "Select language for OCR",
+        options=['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese'],
+        index=0,
+        help="Select the language of the text in your document"
+    )
+    
+    # Map user-friendly names to EasyOCR language codes
+    language_map = {
+        'English': 'en',
+        'Spanish': 'es',
+        'French': 'fr',
+        'German': 'de',
+        'Italian': 'it',
+        'Portuguese': 'pt'
+    }
+
+# Cache the EasyOCR reader to avoid reloading models
+@st.cache_resource
+def load_reader(lang_code):
+    """Load the EasyOCR reader with caching"""
+    return easyocr.Reader([lang_code], gpu=False)
 
 def preprocess_image(image, method):
     """Apply preprocessing to improve OCR accuracy"""
@@ -78,47 +103,39 @@ def preprocess_image(image, method):
     
     return img
 
-def perform_ocr(image):
-    """Perform OCR on the image"""
+def perform_ocr(image, lang_code):
+    """Perform OCR using EasyOCR"""
     try:
-        # Convert PIL to OpenCV if needed
+        # Load the EasyOCR reader (cached)
+        reader = load_reader(lang_code)
+        
+        # Convert PIL image to numpy array for EasyOCR
         if isinstance(image, Image.Image):
             img = np.array(image)
-            if len(img.shape) == 3:
-                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            # EasyOCR expects RGB format
+            if len(img.shape) == 3 and img.shape[2] == 3:
+                # If it's BGR (from OpenCV), convert to RGB
+                if img[0,0,0] > img[0,0,2]:  # Simple heuristic to check if it's BGR
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         else:
             img = image
         
-        # Preprocess
+        # Apply preprocessing if selected
         if preprocessing and preprocessing != 'None':
             img = preprocess_image(img, preprocessing)
-            
-            # Convert back to PIL for pytesseract
-            if len(img.shape) == 3:
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(img)
         
-        # Perform OCR - English only, optimized for documents
-        custom_config = r'--oem 3 --psm 6 -l eng'
-        text = pytesseract.image_to_string(img, config=custom_config)
+        # Perform OCR using EasyOCR
+        # The result is a list of tuples: (bounding_box, text, confidence)
+        result = reader.readtext(img)
         
-        return text.strip()
+        # Extract just the text from the results
+        extracted_text = ""
+        for detection in result:
+            text = detection[1]
+            confidence = detection[2]
+            extracted_text += text + "\n"
         
-    except pytesseract.TesseractNotFoundError:
-        st.error("Tesseract OCR not found. Please install Tesseract OCR on your system.")
-        st.markdown("""
-        Installation instructions:
-        
-        Ubuntu/Debian:
-        sudo apt-get install tesseract-ocr
-        
-        macOS:
-        brew install tesseract
-        
-        Windows:
-        Download from: https://github.com/UB-Mannheim/tesseract/wiki
-        """)
-        return None
+        return extracted_text.strip()
         
     except Exception as e:
         st.error(f"OCR Error: {str(e)}")
@@ -150,8 +167,11 @@ def main():
         with col2:
             st.subheader("Extracted Text")
             
+            # Get the selected language code
+            lang_code = language_map.get(language, 'en')
+            
             with st.spinner("Processing image and extracting text..."):
-                text = perform_ocr(image)
+                text = perform_ocr(image, lang_code)
             
             if text:
                 # Display text in a nice text area
@@ -187,6 +207,7 @@ def main():
                     - Use the 'All' preprocessing option for poor quality images
                     - Ensure text is at least 12pt or larger
                     - Avoid shadows and glare
+                    - For best results, try the 'All' preprocessing option
                     """)
 
 if __name__ == "__main__":
