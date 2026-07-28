@@ -1,0 +1,9 @@
+# .streamlit/config.toml
+[server]
+headless = true
+# Increase health check timeout to prevent premature disconnects
+scriptHealthCheckTimeout = 600
+maxUploadSize = 200
+
+[browser]
+gatherUsageStats = false
