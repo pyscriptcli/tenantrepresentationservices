@@ -3,6 +3,7 @@ import easyocr
 from PIL import Image
 import cv2
 import numpy as np
+import time
 
 # Set page config
 st.set_page_config(
@@ -55,8 +56,11 @@ with st.sidebar:
 # Cache the EasyOCR reader to avoid reloading models
 @st.cache_resource
 def load_reader(lang_code):
-    """Load the EasyOCR reader with caching"""
-    return easyocr.Reader([lang_code], gpu=False)
+    """Load the EasyOCR reader with caching and progress indication"""
+    # Show a progress message since model download takes time
+    with st.spinner("Loading EasyOCR models for the first time. This may take a few minutes..."):
+        # Initialize the reader with explicit parameters to optimize for CPU
+        return easyocr.Reader([lang_code], gpu=False, download_enabled=True)
 
 def preprocess_image(image, method):
     """Apply preprocessing to improve OCR accuracy"""
@@ -104,7 +108,7 @@ def preprocess_image(image, method):
     return img
 
 def perform_ocr(image, lang_code):
-    """Perform OCR using EasyOCR - this is the key function that was wrong before"""
+    """Perform OCR using EasyOCR with error handling"""
     try:
         # Load the EasyOCR reader (cached)
         reader = load_reader(lang_code)
@@ -124,7 +128,7 @@ def perform_ocr(image, lang_code):
         if preprocessing and preprocessing != 'None':
             img = preprocess_image(img, preprocessing)
         
-        # Perform OCR using EasyOCR - NOT Tesseract!
+        # Perform OCR using EasyOCR
         # The result is a list of tuples: (bounding_box, text, confidence)
         result = reader.readtext(img)
         
@@ -142,6 +146,18 @@ def perform_ocr(image, lang_code):
         return None
 
 def main():
+    # Check if models are already loaded
+    if 'models_loaded' not in st.session_state:
+        st.session_state.models_loaded = False
+        
+        # Show a message about first-time setup
+        info_placeholder = st.empty()
+        info_placeholder.info("""
+        First-time setup: EasyOCR needs to download model files (~500MB).
+        This will happen once and may take 2-5 minutes depending on your internet speed.
+        The app will start working after the download completes.
+        """)
+    
     # File uploader
     uploaded_file = st.file_uploader(
         "Choose an image file",
@@ -157,7 +173,8 @@ def main():
         with col1:
             st.subheader("Original Image")
             image = Image.open(uploaded_file)
-            st.image(image, use_column_width=True)
+            # Fix for deprecation warning - use width parameter instead
+            st.image(image, width=400)  # Changed from use_column_width
             
             # Show image info
             st.caption(f"Size: {image.size[0]}x{image.size[1]} pixels")
@@ -195,6 +212,9 @@ def main():
                 words = len(text.split())
                 chars = len(text)
                 st.caption(f"Words: {words} | Characters: {chars}")
+                
+                # Mark models as loaded
+                st.session_state.models_loaded = True
                 
             else:
                 st.warning("No text was extracted. Try a different image or preprocessing method.")
