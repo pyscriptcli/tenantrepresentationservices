@@ -26,7 +26,7 @@ def save_registration(name, contact, email):
 if 'registered' not in st.session_state:
     st.session_state.registered = False
 
-# --- CSS INJECTION (MATCHING REFERENCE IMAGE & TRANSPARENT FIELDS) ---
+# --- CSS INJECTION ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@500;600;700;800&display=swap');
@@ -47,76 +47,50 @@ st.markdown("""
         max-width: 800px;
     }
 
-    /* HEADER TYPOGRAPHY (Matched to Reference Image) */
+    /* HEADER TYPOGRAPHY */
     .header-container {
         margin-top: 10px;
-        margin-bottom: 40px;
+        margin-bottom: 35px;
     }
     
-    .title-the { 
+    .title-main { 
         font-family: 'Playfair Display', serif; 
-        font-size: 3.8rem; 
-        color: #0c1a30; 
-        margin: 0; 
-        line-height: 0.95;
-        letter-spacing: 2px;
-    }
-    
-    .title-confidence { 
-        font-family: 'Playfair Display', serif; 
-        font-size: 7.2rem; 
+        font-size: 4.8rem; 
         font-weight: 700;
         color: #0c1a30; 
         margin: 0; 
-        line-height: 0.95;
+        line-height: 1.05;
         letter-spacing: 1px;
     }
     
-    .gap-row { 
-        display: flex; 
-        align-items: center; 
-        margin-top: 5px; 
-    }
-    
-    .title-gap { 
-        font-family: 'Playfair Display', serif; 
-        font-size: 8rem; 
-        font-weight: 700;
-        color: #c9a35e; /* Gold tone from reference image */
-        margin: 0; 
-        line-height: 0.85; 
-    }
-    
-    .vertical-divider {
-        width: 1.5px;
-        height: 75px;
-        background-color: #c9a35e;
-        margin: 0 25px;
+    .title-gap-gold {
+        color: #c9a35e; /* Signature Gold */
     }
 
     .tagline { 
         font-family: 'Montserrat', sans-serif; 
-        font-size: 1.05rem; 
+        font-size: 1.15rem; 
         color: #0c1a30; 
-        font-weight: 600; 
+        font-weight: 700; 
         letter-spacing: 2px; 
-        line-height: 1.45;
+        margin-top: 12px;
+        margin-bottom: 25px;
     }
 
     .horizontal-divider {
-        width: 60%;
-        height: 1.5px;
+        width: 100%;
+        height: 2px;
         background-color: #c9a35e;
-        margin: 25px 0 15px 0;
+        margin: 20px 0 15px 0;
     }
     
     .sub-header-1 { 
         font-family: 'Montserrat', sans-serif; 
-        font-size: 0.85rem; 
+        font-size: 0.9rem; 
         color: #0c1a30; 
         font-weight: 800; 
         letter-spacing: 2.5px; 
-        margin-bottom: 5px;
+        margin-bottom: 6px;
     }
 
     .sub-header-2 { 
@@ -127,30 +101,36 @@ st.markdown("""
         letter-spacing: 4px; 
     }
 
-    /* FORM STYLING (Square with Sharp Edges) */
+    /* FORM CONTAINER (Black Border Outer Box) */
     [data-testid="stForm"] {
         background-color: white !important;
         border: 8px solid black !important;
-        border-radius: 0px !important; /* Sharp box */
+        border-radius: 0px !important;
         padding: 35px 40px !important;
         box-shadow: 0px 10px 30px rgba(0,0,0,0.1);
         margin-top: 30px;
     }
 
-    /* Text Input Boxes - Transparent, Sharp Edges, #003366 Border */
-    .stTextInput > div > div > input {
-        border-radius: 0px !important; /* Forces square sharp edges */
-        background-color: transparent !important; /* Transparent background */
-        color: #0c1a30 !important;
-        font-weight: 600;
-        border: 2px solid #003366 !important; /* Custom Border Color */
-        padding: 10px 15px;
-    }
-    
-    /* Ensure Streamlit's wrapper doesn't override the transparency or borders */
-    .stTextInput > div > div {
+    /* FIX FOR INPUT TEXT BOX UI */
+    div[data-baseweb="input"] {
+        border: 2px solid #003366 !important;
+        border-radius: 0px !important;
         background-color: transparent !important;
+        box-shadow: none !important;
+        padding: 4px 8px !important;
+    }
+
+    div[data-baseweb="input"]:focus-within {
+        border-color: #c9a35e !important;
+    }
+
+    div[data-baseweb="input"] input {
+        background-color: transparent !important;
+        color: #0c1a30 !important;
+        font-family: 'Montserrat', sans-serif !important;
+        font-weight: 600 !important;
         border: none !important;
+        outline: none !important;
         box-shadow: none !important;
     }
     
@@ -162,24 +142,25 @@ st.markdown("""
         letter-spacing: 1px;
     }
 
-    /* Submit Button - Sharp/Square Edges */
+    /* SUBMIT BUTTON */
     [data-testid="stFormSubmitButton"] > button {
         background-color: #003366 !important;
         color: white !important;
-        border-radius: 0px !important; /* Forces sharp edges */
+        border-radius: 0px !important;
         font-family: 'Montserrat', sans-serif;
         font-weight: 700 !important;
         letter-spacing: 1px;
         border: none;
         width: 100%;
         padding: 12px;
+        margin-top: 10px;
     }
     [data-testid="stFormSubmitButton"] > button:hover {
         background-color: #c9a35e !important;
         color: white !important;
     }
     
-    /* Download Button - Sharp/Square Edges */
+    /* DOWNLOAD BUTTON */
     a.custom-download-btn {
         display: block;
         width: 100%;
@@ -187,7 +168,7 @@ st.markdown("""
         background-color: #003366;
         color: white !important;
         padding: 14px 20px;
-        border-radius: 0px !important; /* Sharp edges */
+        border-radius: 0px !important;
         text-decoration: none;
         font-family: 'Montserrat', sans-serif;
         font-weight: 700;
@@ -204,7 +185,7 @@ st.markdown("""
     .success-box {
         background-color: white;
         border: 8px solid black;
-        border-radius: 0px !important; /* Sharp edges */
+        border-radius: 0px !important;
         padding: 35px 40px;
         box-shadow: 0px 10px 30px rgba(0,0,0,0.1);
         text-align: center;
@@ -226,18 +207,11 @@ st.markdown("""
 
 # --- MAIN APP LOGIC ---
 
-# Inject Typography Layout Matching Reference Image
+# Header Section
 st.markdown("""
     <div class="header-container">
-        <p class="title-the">THE</p>
-        <p class="title-confidence">CONFIDENCE</p>
-        <div class="gap-row">
-            <p class="title-gap">GAP</p>
-            <div class="vertical-divider"></div>
-            <div class="tagline">
-                CLOSING THE DISTANCE<br>BETWEEN FEAR AND FACT.
-            </div>
-        </div>
+        <h1 class="title-main">THE CONFIDENCE <span class="title-gap-gold">GAP</span></h1>
+        <div class="tagline">CLOSING THE DISTANCE BETWEEN FEAR AND FACT.</div>
         <div class="horizontal-divider"></div>
         <div class="sub-header-1">PHILIPPINE REAL ESTATE MARKET OVERVIEW</div>
         <div class="sub-header-2">INDUSTRIAL &nbsp;•&nbsp; OFFICE &nbsp;•&nbsp; RETAIL</div>
@@ -251,15 +225,11 @@ if not st.session_state.registered:
         contact = st.text_input("CONTACT NUMBER")
         email = st.text_input("EMAIL")
         
-        # Spacer
-        st.markdown("<br>", unsafe_allow_html=True)
-        
         submitted = st.form_submit_button("REGISTER")
         
         if submitted:
             if name and contact and email:
                 try:
-                    # Save to Supabase
                     save_registration(name, contact, email)
                     st.session_state.registered = True
                     st.session_state.user_name = name
@@ -270,7 +240,7 @@ if not st.session_state.registered:
                 st.error("Please fill in all fields before submitting.")
 
 else:
-    # 2. SUCCESS PAGE & DIRECT DOWNLOAD REVEAL
+    # 2. SUCCESS PAGE & DOWNLOAD REVEAL
     download_link = "https://jpyholdings-my.sharepoint.com/:b:/g/personal/sondi_tuazon_primephilippines_com/IQCjmzWqCLZCRo0Khn9zkCWpAfP7pow-_TTcQdB9LDWuIB0?e=rXQ6mY&download=1"
     
     st.markdown(f"""
