@@ -287,14 +287,13 @@ else:
     # 2. SUCCESS PAGE & DOWNLOAD REVEAL
     download_link = "https://jpyholdings-my.sharepoint.com/:b:/g/personal/sondi_tuazon_primephilippines_com/IQCjmzWqCLZCRo0Khn9zkCWpAfP7pow-_TTcQdB9LDWuIB0?e=rXQ6mY&download=1"
     
-    # Notice that the HTML below is deliberately NOT indented deeply! 
-    # This stops Streamlit from turning it into a grey code block.
     st.markdown(f"""
 <div class="success-box">
     <h3 style="font-family: 'Montserrat', sans-serif; color: #0c1a30; margin-bottom: 10px;">Registration Successful!</h3>
     <p style="font-family: 'Montserrat', sans-serif; color: #333;">Thank you, <b>{st.session_state.user_name}</b>. Click below to begin your download.</p>
-    <iframe name="hidden_iframe" style="display:none;"></iframe>
-    <a href="{download_link}" target="hidden_iframe" class="custom-download-btn">DOWNLOAD PUBLICATION</a>
+    
+    <!-- Using target="_blank" safely passes Microsoft's security rules -->
+    <a href="{download_link}" target="_blank" rel="noopener noreferrer" class="custom-download-btn">DOWNLOAD PUBLICATION</a>
 </div>
     """, unsafe_allow_html=True)
     
