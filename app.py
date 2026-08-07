@@ -29,18 +29,14 @@ if 'registered' not in st.session_state:
 # --- CSS INJECTION ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@500;600;700;800&display=swap');
+    /* Imported Cormorant Garamond and Montserrat */
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
 
     /* Hide default Streamlit elements */
     header { visibility: hidden; }
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     
-    /* Solid White Background */
-    .stApp {
-        background-color: #ffffff;
-    }
-
     /* Container alignment */
     .main .block-container {
         padding-top: 2rem; 
@@ -54,27 +50,28 @@ st.markdown("""
     }
     
     .title-main { 
-        font-family: 'Playfair Display', serif; 
-        font-size: 4.8rem; 
-        font-weight: 700;
-        color: #0c1a30; 
-        margin: 0; 
-        line-height: 1.05;
-        letter-spacing: 1px;
+        font-family: 'Cormorant Garamond', serif !important; 
+        font-size: 4.8rem !important; 
+        font-weight: 700 !important;
+        color: #0c1a30 !important; 
+        margin: 0 !important; 
+        line-height: 1.05 !important;
+        letter-spacing: 1px !important;
     }
     
     .title-gap-gold {
-        color: #c9a35e; /* Signature Gold */
+        font-family: 'Cormorant Garamond', serif !important; 
+        color: #c9a35e !important; 
     }
 
     .tagline { 
-        font-family: 'Montserrat', sans-serif; 
-        font-size: 1.15rem; 
-        color: #0c1a30; 
-        font-weight: 700; 
-        letter-spacing: 2px; 
-        margin-top: 12px;
-        margin-bottom: 25px;
+        font-family: 'Montserrat', sans-serif !important; 
+        font-size: 1.15rem !important; 
+        color: #0c1a30 !important; 
+        font-weight: 700 !important; 
+        letter-spacing: 2px !important; 
+        margin-top: 12px !important;
+        margin-bottom: 25px !important;
     }
 
     .horizontal-divider {
@@ -85,20 +82,20 @@ st.markdown("""
     }
     
     .sub-header-1 { 
-        font-family: 'Montserrat', sans-serif; 
-        font-size: 0.9rem; 
-        color: #0c1a30; 
-        font-weight: 800; 
-        letter-spacing: 2.5px; 
-        margin-bottom: 6px;
+        font-family: 'Montserrat', sans-serif !important; 
+        font-size: 0.9rem !important; 
+        color: #0c1a30 !important; 
+        font-weight: 800 !important; 
+        letter-spacing: 2.5px !important; 
+        margin-bottom: 6px !important;
     }
 
     .sub-header-2 { 
-        font-family: 'Montserrat', sans-serif; 
-        font-size: 0.85rem; 
-        color: #0c1a30; 
-        font-weight: 600; 
-        letter-spacing: 4px; 
+        font-family: 'Montserrat', sans-serif !important; 
+        font-size: 0.85rem !important; 
+        color: #0c1a30 !important; 
+        font-weight: 600 !important; 
+        letter-spacing: 4px !important; 
     }
 
     /* FORM CONTAINER (Black Border Outer Box) */
@@ -107,39 +104,36 @@ st.markdown("""
         border: 8px solid black !important;
         border-radius: 0px !important;
         padding: 35px 40px !important;
-        box-shadow: 0px 10px 30px rgba(0,0,0,0.1);
-        margin-top: 30px;
+        box-shadow: 0px 10px 30px rgba(0,0,0,0.1) !important;
+        margin-top: 30px !important;
     }
 
-    /* FIX FOR INPUT TEXT BOX UI */
-    div[data-baseweb="input"] {
+    /* FIX FOR INPUT TEXT BOX UI (Transparent, Sharp, #003366 Border) */
+    [data-testid="stTextInput"] > div > div {
+        background-color: transparent !important;
         border: 2px solid #003366 !important;
         border-radius: 0px !important;
-        background-color: transparent !important;
         box-shadow: none !important;
-        padding: 4px 8px !important;
     }
 
-    div[data-baseweb="input"]:focus-within {
+    [data-testid="stTextInput"] > div > div:focus-within {
         border-color: #c9a35e !important;
     }
 
-    div[data-baseweb="input"] input {
+    [data-testid="stTextInput"] input {
         background-color: transparent !important;
         color: #0c1a30 !important;
         font-family: 'Montserrat', sans-serif !important;
         font-weight: 600 !important;
-        border: none !important;
-        outline: none !important;
-        box-shadow: none !important;
     }
     
+    /* Input Labels */
     .stTextInput label p {
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Montserrat', sans-serif !important;
         color: #003366 !important;
         font-weight: 800 !important;
-        font-size: 0.95rem;
-        letter-spacing: 1px;
+        font-size: 0.95rem !important;
+        letter-spacing: 1px !important;
     }
 
     /* SUBMIT BUTTON */
@@ -147,13 +141,13 @@ st.markdown("""
         background-color: #003366 !important;
         color: white !important;
         border-radius: 0px !important;
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Montserrat', sans-serif !important;
         font-weight: 700 !important;
-        letter-spacing: 1px;
-        border: none;
-        width: 100%;
-        padding: 12px;
-        margin-top: 10px;
+        letter-spacing: 1px !important;
+        border: none !important;
+        width: 100% !important;
+        padding: 12px !important;
+        margin-top: 10px !important;
     }
     [data-testid="stFormSubmitButton"] > button:hover {
         background-color: #c9a35e !important;
@@ -183,31 +177,31 @@ st.markdown("""
     }
     
     .success-box {
-        background-color: white;
-        border: 8px solid black;
+        background-color: white !important;
+        border: 8px solid black !important;
         border-radius: 0px !important;
-        padding: 35px 40px;
-        box-shadow: 0px 10px 30px rgba(0,0,0,0.1);
-        text-align: center;
-        margin-top: 30px;
+        padding: 35px 40px !important;
+        box-shadow: 0px 10px 30px rgba(0,0,0,0.1) !important;
+        text-align: center !important;
+        margin-top: 30px !important;
     }
 
     .footer-text { 
         margin-top: 60px; 
         margin-bottom: 20px; 
         text-align: center; 
-        font-family: 'Montserrat', sans-serif; 
-        color: #0c1a30; 
-        font-weight: 700; 
-        letter-spacing: 3px; 
-        font-size: 0.9rem; 
+        font-family: 'Montserrat', sans-serif !important; 
+        color: #0c1a30 !important; 
+        font-weight: 700 !important; 
+        letter-spacing: 3px !important; 
+        font-size: 0.9rem !important; 
     }
     </style>
 """, unsafe_allow_html=True)
 
 # --- MAIN APP LOGIC ---
 
-# Header Section
+# Header Section (Title unified on one row with Cormorant Garamond)
 st.markdown("""
     <div class="header-container">
         <h1 class="title-main">THE CONFIDENCE <span class="title-gap-gold">GAP</span></h1>
