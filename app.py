@@ -265,7 +265,7 @@ st.markdown("""
 if not st.session_state.registered:
     # 1. REGISTRATION FORM 
     with st.form("registration_form"):
-        name = st.text_input("NAME")
+        name = st.text_input("FULL NAME")
         contact = st.text_input("CONTACT NUMBER")
         email = st.text_input("EMAIL")
         
