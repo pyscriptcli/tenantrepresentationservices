@@ -1,11 +1,8 @@
 import streamlit as st
-import qrcode
-import base64
-from io import BytesIO
 from supabase import create_client, Client
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="The Confidence Gap - Registration", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="The Confidence Gap - Publication", layout="centered", initial_sidebar_state="collapsed")
 
 # --- SUPABASE DATABASE SETUP ---
 # Initialize the connection to Supabase using Streamlit Secrets
@@ -19,30 +16,16 @@ supabase: Client = init_connection()
 
 def save_registration(name, contact, email):
     """Saves registration data directly to the Supabase cloud database."""
-    # Data formatted as a dictionary to match Supabase columns
     data = {
         "name": name,
         "contact": contact,
         "email": email
     }
-    # Insert data into the 'attendees' table
     supabase.table("attendees").insert(data).execute()
 
 # --- SESSION STATE ---
 if 'registered' not in st.session_state:
     st.session_state.registered = False
-
-# --- HELPER FUNCTIONS ---
-def generate_qr(data):
-    """Generates a QR code and returns the base64 string for HTML injection."""
-    qr = qrcode.QRCode(version=1, box_size=10, border=2)
-    qr.add_data(data)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    
-    buf = BytesIO()
-    img.save(buf, format="PNG")
-    return base64.b64encode(buf.getvalue()).decode()
 
 # --- CSS INJECTION ---
 st.markdown("""
@@ -59,27 +42,27 @@ st.markdown("""
         background-color: #ffffff;
     }
 
-    /* Typography Styles */
+    /* Typography Styles - SIZES INCREASED */
     .header-container {
         margin-top: 20px;
         margin-bottom: 50px;
     }
     
-    .title-the { font-family: 'Playfair Display', serif; font-size: 10rem; color: #1a2a40; margin: 0; line-height: 1; }
-    .title-confidence { font-family: 'Playfair Display', serif; font-size: 10rem; color: #1a2a40; margin: 0; line-height: 1; }
+    .title-the { font-family: 'Playfair Display', serif; font-size: 5.5rem; color: #1a2a40; margin: 0; line-height: 1; }
+    .title-confidence { font-family: 'Playfair Display', serif; font-size: 8.5rem; color: #1a2a40; margin: 0; line-height: 1; }
     
     .gap-container { display: flex; align-items: center; margin-top: 5px; gap: 20px; }
-    .title-gap { font-family: 'Playfair Display', serif; font-size: 8rem; color: #cba365; margin: 0; line-height: 0.9; }
-    .title-closing { font-family: 'Montserrat', sans-serif; font-size: 1.1rem; color: #1a2a40; font-weight: 600; letter-spacing: 2px; border-left: 3px solid #cba365; padding-left: 15px; line-height: 1.5; }
+    .title-gap { font-family: 'Playfair Display', serif; font-size: 9.5rem; color: #cba365; margin: 0; line-height: 0.9; }
+    .title-closing { font-family: 'Montserrat', sans-serif; font-size: 1.2rem; color: #1a2a40; font-weight: 600; letter-spacing: 2px; border-left: 4px solid #cba365; padding-left: 20px; line-height: 1.5; }
     
-    .title-subtitle { font-family: 'Montserrat', sans-serif; font-size: 1rem; color: #1a2a40; font-weight: 700; letter-spacing: 2px; margin-top: 35px; line-height: 1.6; }
+    .title-subtitle { font-family: 'Montserrat', sans-serif; font-size: 1.1rem; color: #1a2a40; font-weight: 700; letter-spacing: 2px; margin-top: 40px; line-height: 1.6; }
 
     .footer-text { margin-top: 60px; margin-bottom: 20px; text-align: center; font-family: 'Montserrat', sans-serif; color: #1a2a40; font-weight: 600; letter-spacing: 3px; font-size: 0.9rem; }
 
     /* Adjust Streamlit Block Container */
     .main .block-container {
         padding-top: 2rem; 
-        max-width: 700px;
+        max-width: 750px;
     }
 
     /* Style Streamlit Form to look exactly like the black bordered box */
@@ -119,22 +102,37 @@ st.markdown("""
         color: white !important;
     }
     
-    /* Custom QR Code Box Styling */
-    .qr-box {
+    /* Custom Download Button Styling */
+    a.custom-download-btn {
+        display: block;
+        width: 100%;
+        text-align: center;
+        background-color: #003366;
+        color: white !important;
+        padding: 12px 20px;
+        border-radius: 20px;
+        text-decoration: none;
+        font-family: 'Montserrat', sans-serif;
+        font-weight: bold;
+        font-size: 1rem;
+        margin-top: 15px;
+        margin-bottom: 15px;
+        transition: background-color 0.3s ease;
+    }
+    a.custom-download-btn:hover {
+        background-color: #cba365;
+    }
+    
+    .success-box {
         background-color: white;
         border: 8px solid black;
         border-radius: 15px;
-        padding: 20px;
+        padding: 30px 40px;
         box-shadow: 0px 10px 30px rgba(0,0,0,0.1);
         text-align: center;
     }
-    .qr-box img {
-        width: 100%;
-        max-width: 350px;
-    }
     </style>
 """, unsafe_allow_html=True)
-
 
 # --- MAIN APP LOGIC ---
 
@@ -152,7 +150,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 if not st.session_state.registered:
-    # 1. REGISTRATION FORM (Styled as the center box)
+    # 1. REGISTRATION FORM 
     with st.form("registration_form"):
         name = st.text_input("NAME")
         contact = st.text_input("CONTACT NUMBER")
@@ -177,37 +175,23 @@ if not st.session_state.registered:
                 st.error("Please fill in all fields before submitting.")
 
 else:
-    # 2. SUCCESS PAGE & QR CODE REVEAL
-    qr_data = f"ACCESS_GRANTED | Name: {st.session_state.user_name} | Event: The Confidence Gap"
-    qr_b64 = generate_qr(qr_data)
+    # 2. SUCCESS PAGE & DOWNLOAD REVEAL
+    download_link = "https://jpyholdings-my.sharepoint.com/personal/sondi_tuazon_primephilippines_com/_layouts/15/download.aspx?UniqueId=aa359ba3%2Db608%2D4642%2D8d0a%2D867f739025a9"
     
-    # Render the QR code strictly matching the reference image's thick black border layout
     st.markdown(f"""
-        <div class="qr-box">
-            <img src="data:image/png;base64,{qr_b64}" alt="Your QR Code">
+        <div class="success-box">
+            <h3 style="font-family: 'Montserrat', sans-serif; color: #1a2a40;">Registration Successful!</h3>
+            <p style="font-family: 'Montserrat', sans-serif; color: #333;">Thank you, <b>{st.session_state.user_name}</b>. You can now download the publication.</p>
+            <a href="{download_link}" class="custom-download-btn" target="_blank">DOWNLOAD PUBLICATION</a>
         </div>
     """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Download and Reset Buttons 
-    col1, col2 = st.columns(2)
-    
-    # Convert base64 back to bytes for the download button
-    qr_bytes = base64.b64decode(qr_b64)
-    
-    with col1:
-        st.download_button(
-            label="Download QR Code",
-            data=qr_bytes,
-            file_name="event_access_qr.png",
-            mime="image/png",
-            use_container_width=True
-        )
-    with col2:
-        if st.button("New Registration", use_container_width=True):
-            st.session_state.registered = False
-            st.rerun()
+    # Reset Button 
+    if st.button("Register Another User", use_container_width=True):
+        st.session_state.registered = False
+        st.rerun()
 
 # Inject Footer
 st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)
