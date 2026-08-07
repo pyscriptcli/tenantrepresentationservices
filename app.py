@@ -106,7 +106,7 @@ st.markdown("""
     /* FORM CONTAINER (Gold Border Outer Box) */
     [data-testid="stForm"] {
         background-color: white !important;
-        border: 8px solid #c9a35e !important;
+        border: 2px solid #c9a35e !important;
         border-radius: 0px !important;
         padding: 35px 40px !important;
         box-shadow: 0px 10px 30px rgba(0,0,0,0.1) !important;
