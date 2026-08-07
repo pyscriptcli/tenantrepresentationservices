@@ -46,4 +46,5 @@ requests
 reportlab
 st-gsheets-connection
 folium
+supabase
 streamlit-folium
