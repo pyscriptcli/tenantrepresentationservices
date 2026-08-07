@@ -37,13 +37,18 @@ st.markdown("""
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     
+    /* Solid White Background - Forced */
+    .stApp, .main {
+        background-color: #ffffff !important;
+    }
+
     /* Container alignment */
     .main .block-container {
         padding-top: 2rem; 
         max-width: 800px;
     }
 
-    /* HEADER TYPOGRAPHY */
+    /* HEADER TYPOGRAPHY - DESKTOP BASE */
     .header-container {
         margin-top: 10px;
         margin-bottom: 35px;
@@ -195,6 +200,47 @@ st.markdown("""
         font-weight: 700 !important; 
         letter-spacing: 3px !important; 
         font-size: 0.9rem !important; 
+    }
+
+    /* ==================================================
+       MOBILE OPTIMIZATION (Media Queries)
+       ================================================== */
+    @media screen and (max-width: 768px) {
+        .main .block-container {
+            padding-top: 1rem !important;
+            padding-left: 1.5rem !important;
+            padding-right: 1.5rem !important;
+        }
+        
+        .title-main { 
+            font-size: 2.8rem !important; 
+        }
+        
+        .tagline { 
+            font-size: 0.9rem !important; 
+            letter-spacing: 1px !important; 
+            margin-bottom: 15px !important;
+        }
+        
+        .sub-header-1 { 
+            font-size: 0.7rem !important; 
+            letter-spacing: 1px !important; 
+        }
+        
+        .sub-header-2 { 
+            font-size: 0.65rem !important; 
+            letter-spacing: 2px !important; 
+        }
+        
+        [data-testid="stForm"] {
+            padding: 20px 20px !important;
+            border-width: 5px !important; /* Slightly thinner outer border on phones */
+        }
+        
+        .success-box {
+            padding: 20px 20px !important;
+            border-width: 5px !important;
+        }
     }
     </style>
 """, unsafe_allow_html=True)
