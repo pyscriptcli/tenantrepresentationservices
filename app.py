@@ -26,7 +26,7 @@ def save_registration(name, contact, email):
 if 'registered' not in st.session_state:
     st.session_state.registered = False
 
-# --- CSS INJECTION (MATCHING REFERENCE IMAGE & SHARP SQUARED FIELDS) ---
+# --- CSS INJECTION (MATCHING REFERENCE IMAGE & TRANSPARENT FIELDS) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@500;600;700;800&display=swap');
@@ -127,7 +127,7 @@ st.markdown("""
         letter-spacing: 4px; 
     }
 
-    /* FORM & INPUT FIELD STYLING (Square with Sharp Edges) */
+    /* FORM STYLING (Square with Sharp Edges) */
     [data-testid="stForm"] {
         background-color: white !important;
         border: 8px solid black !important;
@@ -137,14 +137,21 @@ st.markdown("""
         margin-top: 30px;
     }
 
-    /* Text Input Boxes - Sharp/Square Edges */
+    /* Text Input Boxes - Transparent, Sharp Edges, #003366 Border */
     .stTextInput > div > div > input {
         border-radius: 0px !important; /* Forces square sharp edges */
-        background-color: #aebce0; 
-        color: #000;
+        background-color: transparent !important; /* Transparent background */
+        color: #0c1a30 !important;
         font-weight: 600;
-        border: 1px solid #8e9ec7 !important;
+        border: 2px solid #003366 !important; /* Custom Border Color */
         padding: 10px 15px;
+    }
+    
+    /* Ensure Streamlit's wrapper doesn't override the transparency or borders */
+    .stTextInput > div > div {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
     }
     
     .stTextInput label p {
@@ -238,7 +245,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 if not st.session_state.registered:
-    # 1. REGISTRATION FORM (Square with Sharp Edges)
+    # 1. REGISTRATION FORM 
     with st.form("registration_form"):
         name = st.text_input("NAME")
         contact = st.text_input("CONTACT NUMBER")
