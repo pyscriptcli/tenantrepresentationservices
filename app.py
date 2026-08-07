@@ -56,12 +56,13 @@ st.markdown("""
     
     .title-main { 
         font-family: 'Cormorant Garamond', serif !important; 
-        font-size: 4.8rem !important; 
+        font-size: 4.2rem !important; /* Slightly reduced to fit one line */
         font-weight: 700 !important;
         color: #0c1a30 !important; 
         margin: 0 !important; 
         line-height: 1.05 !important;
         letter-spacing: 1px !important;
+        white-space: nowrap !important; /* Forces the text to stay on ONE row */
     }
     
     .title-gap-gold {
@@ -103,13 +104,13 @@ st.markdown("""
         letter-spacing: 4px !important; 
     }
 
-    /* FORM CONTAINER (Gold Border Outer Box) */
+    /* FORM CONTAINER (Thinner Gold Border Outer Box) */
     [data-testid="stForm"] {
         background-color: white !important;
-        border: 2px solid #c9a35e !important;
+        border: 3px solid #c9a35e !important; 
         border-radius: 0px !important;
         padding: 35px 40px !important;
-        box-shadow: 0px 10px 30px rgba(0,0,0,0.1) !important;
+        box-shadow: 0px 10px 30px rgba(0,0,0,0.05) !important;
         margin-top: 30px !important;
     }
 
@@ -183,10 +184,10 @@ st.markdown("""
     
     .success-box {
         background-color: white !important;
-        border: 8px solid #c9a35e !important;
+        border: 3px solid #c9a35e !important; 
         border-radius: 0px !important;
         padding: 35px 40px !important;
-        box-shadow: 0px 10px 30px rgba(0,0,0,0.1) !important;
+        box-shadow: 0px 10px 30px rgba(0,0,0,0.05) !important;
         text-align: center !important;
         margin-top: 30px !important;
     }
@@ -213,11 +214,13 @@ st.markdown("""
         }
         
         .title-main { 
-            font-size: 2.8rem !important; 
+            font-size: 1.8rem !important; /* Scaled down for mobile */
+            white-space: nowrap !important; /* Keeps it on one row on phones */
+            letter-spacing: 0px !important;
         }
         
         .tagline { 
-            font-size: 0.9rem !important; 
+            font-size: 0.85rem !important; 
             letter-spacing: 1px !important; 
             margin-bottom: 15px !important;
         }
@@ -234,12 +237,12 @@ st.markdown("""
         
         [data-testid="stForm"] {
             padding: 20px 20px !important;
-            border: 5px solid #c9a35e !important; 
+            border: 2px solid #c9a35e !important; 
         }
         
         .success-box {
             padding: 20px 20px !important;
-            border: 5px solid #c9a35e !important;
+            border: 2px solid #c9a35e !important; 
         }
     }
     </style>
@@ -247,7 +250,7 @@ st.markdown("""
 
 # --- MAIN APP LOGIC ---
 
-# Header Section (Title unified on one row with Cormorant Garamond)
+# Header Section
 st.markdown("""
     <div class="header-container">
         <h1 class="title-main">THE CONFIDENCE <span class="title-gap-gold">GAP</span></h1>
