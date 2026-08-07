@@ -103,10 +103,10 @@ st.markdown("""
         letter-spacing: 4px !important; 
     }
 
-    /* FORM CONTAINER (Black Border Outer Box) */
+    /* FORM CONTAINER (Gold Border Outer Box) */
     [data-testid="stForm"] {
         background-color: white !important;
-        border: 8px solid black !important;
+        border: 8px solid #c9a35e !important;
         border-radius: 0px !important;
         padding: 35px 40px !important;
         box-shadow: 0px 10px 30px rgba(0,0,0,0.1) !important;
@@ -183,7 +183,7 @@ st.markdown("""
     
     .success-box {
         background-color: white !important;
-        border: 8px solid black !important;
+        border: 8px solid #c9a35e !important;
         border-radius: 0px !important;
         padding: 35px 40px !important;
         box-shadow: 0px 10px 30px rgba(0,0,0,0.1) !important;
@@ -234,12 +234,12 @@ st.markdown("""
         
         [data-testid="stForm"] {
             padding: 20px 20px !important;
-            border-width: 5px !important; /* Slightly thinner outer border on phones */
+            border: 5px solid #c9a35e !important; 
         }
         
         .success-box {
             padding: 20px 20px !important;
-            border-width: 5px !important;
+            border: 5px solid #c9a35e !important;
         }
     }
     </style>
