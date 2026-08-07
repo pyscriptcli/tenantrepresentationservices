@@ -176,7 +176,7 @@ if not st.session_state.registered:
 
 else:
     # 2. SUCCESS PAGE & DOWNLOAD REVEAL
-    download_link = "https://jpyholdings-my.sharepoint.com/personal/sondi_tuazon_primephilippines_com/_layouts/15/download.aspx?UniqueId=aa359ba3%2Db608%2D4642%2D8d0a%2D867f739025a9"
+    download_link = "https://jpyholdings-my.sharepoint.com/:b:/g/personal/sondi_tuazon_primephilippines_com/IQCjmzWqCLZCRo0Khn9zkCWpAfP7pow-_TTcQdB9LDWuIB0?e=rXQ6mY&download=1"
     
     st.markdown(f"""
         <div class="success-box">
