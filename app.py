@@ -1,42 +1,32 @@
 import streamlit as st
 import qrcode
-import sqlite3
 import base64
 from io import BytesIO
+from supabase import create_client, Client
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="The Confidence Gap - Registration", layout="centered", initial_sidebar_state="collapsed")
 
-# --- DATABASE SETUP ---
-def init_db():
-    """Initializes the SQLite database."""
-    conn = sqlite3.connect('registrations.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS attendees (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            contact TEXT NOT NULL,
-            email TEXT NOT NULL,
-            registration_date DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    conn.commit()
-    conn.close()
+# --- SUPABASE DATABASE SETUP ---
+# Initialize the connection to Supabase using Streamlit Secrets
+@st.cache_resource
+def init_connection():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
+
+supabase: Client = init_connection()
 
 def save_registration(name, contact, email):
-    """Saves registration data to SQLite."""
-    conn = sqlite3.connect('registrations.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO attendees (name, contact, email) 
-        VALUES (?, ?, ?)
-    ''', (name, contact, email))
-    conn.commit()
-    conn.close()
-
-# Initialize database
-init_db()
+    """Saves registration data directly to the Supabase cloud database."""
+    # Data formatted as a dictionary to match Supabase columns
+    data = {
+        "name": name,
+        "contact": contact,
+        "email": email
+    }
+    # Insert data into the 'attendees' table
+    supabase.table("attendees").insert(data).execute()
 
 # --- SESSION STATE ---
 if 'registered' not in st.session_state:
@@ -75,8 +65,8 @@ st.markdown("""
         margin-bottom: 50px;
     }
     
-    .title-the { font-family: 'Playfair Display', serif; font-size: 4rem; color: #1a2a40; margin: 0; line-height: 1; }
-    .title-confidence { font-family: 'Playfair Display', serif; font-size: 7rem; color: #1a2a40; margin: 0; line-height: 1; }
+    .title-the { font-family: 'Playfair Display', serif; font-size: 10rem; color: #1a2a40; margin: 0; line-height: 1; }
+    .title-confidence { font-family: 'Playfair Display', serif; font-size: 10rem; color: #1a2a40; margin: 0; line-height: 1; }
     
     .gap-container { display: flex; align-items: center; margin-top: 5px; gap: 20px; }
     .title-gap { font-family: 'Playfair Display', serif; font-size: 8rem; color: #cba365; margin: 0; line-height: 0.9; }
@@ -175,10 +165,14 @@ if not st.session_state.registered:
         
         if submitted:
             if name and contact and email:
-                save_registration(name, contact, email)
-                st.session_state.registered = True
-                st.session_state.user_name = name
-                st.rerun() 
+                try:
+                    # Save to Supabase
+                    save_registration(name, contact, email)
+                    st.session_state.registered = True
+                    st.session_state.user_name = name
+                    st.rerun() 
+                except Exception as e:
+                    st.error(f"Failed to register. Please try again. Error: {e}")
             else:
                 st.error("Please fill in all fields before submitting.")
 
