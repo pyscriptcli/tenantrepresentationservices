@@ -253,13 +253,13 @@ st.markdown("""
 
 # Header Section
 st.markdown("""
-    <div class="header-container">
-        <h1 class="title-main">THE CONFIDENCE <span class="title-gap-gold">GAP</span></h1>
-        <div class="tagline">CLOSING THE DISTANCE BETWEEN FEAR AND FACT.</div>
-        <div class="horizontal-divider"></div>
-        <div class="sub-header-1">PHILIPPINE REAL ESTATE MARKET OVERVIEW</div>
-        <div class="sub-header-2">INDUSTRIAL &nbsp;•&nbsp; OFFICE &nbsp;•&nbsp; RETAIL</div>
-    </div>
+<div class="header-container">
+    <h1 class="title-main">THE CONFIDENCE <span class="title-gap-gold">GAP</span></h1>
+    <div class="tagline">CLOSING THE DISTANCE BETWEEN FEAR AND FACT.</div>
+    <div class="horizontal-divider"></div>
+    <div class="sub-header-1">PHILIPPINE REAL ESTATE MARKET OVERVIEW</div>
+    <div class="sub-header-2">INDUSTRIAL &nbsp;•&nbsp; OFFICE &nbsp;•&nbsp; RETAIL</div>
+</div>
 """, unsafe_allow_html=True)
 
 if not st.session_state.registered:
@@ -287,17 +287,15 @@ else:
     # 2. SUCCESS PAGE & DOWNLOAD REVEAL
     download_link = "https://jpyholdings-my.sharepoint.com/:b:/g/personal/sondi_tuazon_primephilippines_com/IQCjmzWqCLZCRo0Khn9zkCWpAfP7pow-_TTcQdB9LDWuIB0?e=rXQ6mY&download=1"
     
+    # Notice that the HTML below is deliberately NOT indented deeply! 
+    # This stops Streamlit from turning it into a grey code block.
     st.markdown(f"""
-        <div class="success-box">
-            <h3 style="font-family: 'Montserrat', sans-serif; color: #0c1a30; margin-bottom: 10px;">Registration Successful!</h3>
-            <p style="font-family: 'Montserrat', sans-serif; color: #333;">Thank you, <b>{st.session_state.user_name}</b>. Click below to begin your download.</p>
-            
-            <!-- Hidden Iframe to process download without redirecting -->
-            <iframe name="hidden_iframe" style="display:none;"></iframe>
-            
-            <!-- Button configured to target the hidden Iframe -->
-            <a href="{download_link}" target="hidden_iframe" class="custom-download-btn">DOWNLOAD PUBLICATION</a>
-        </div>
+<div class="success-box">
+    <h3 style="font-family: 'Montserrat', sans-serif; color: #0c1a30; margin-bottom: 10px;">Registration Successful!</h3>
+    <p style="font-family: 'Montserrat', sans-serif; color: #333;">Thank you, <b>{st.session_state.user_name}</b>. Click below to begin your download.</p>
+    <iframe name="hidden_iframe" style="display:none;"></iframe>
+    <a href="{download_link}" target="hidden_iframe" class="custom-download-btn">DOWNLOAD PUBLICATION</a>
+</div>
     """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
@@ -309,4 +307,3 @@ else:
 
 # Inject Footer
 st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)
-    
