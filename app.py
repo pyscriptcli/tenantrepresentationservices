@@ -56,13 +56,13 @@ st.markdown("""
     
     .title-main { 
         font-family: 'Cormorant Garamond', serif !important; 
-        font-size: 4.2rem !important; /* Slightly reduced to fit one line */
+        font-size: 4.2rem !important; 
         font-weight: 700 !important;
         color: #0c1a30 !important; 
         margin: 0 !important; 
         line-height: 1.05 !important;
         letter-spacing: 1px !important;
-        white-space: nowrap !important; /* Forces the text to stay on ONE row */
+        white-space: nowrap !important;
     }
     
     .title-gap-gold {
@@ -177,6 +177,7 @@ st.markdown("""
         margin-top: 20px;
         margin-bottom: 10px;
         transition: background-color 0.3s ease;
+        cursor: pointer;
     }
     a.custom-download-btn:hover {
         background-color: #c9a35e;
@@ -214,8 +215,8 @@ st.markdown("""
         }
         
         .title-main { 
-            font-size: 1.8rem !important; /* Scaled down for mobile */
-            white-space: nowrap !important; /* Keeps it on one row on phones */
+            font-size: 1.8rem !important; 
+            white-space: nowrap !important; 
             letter-spacing: 0px !important;
         }
         
@@ -252,13 +253,13 @@ st.markdown("""
 
 # Header Section
 st.markdown("""
-    <div class="header-container">
-        <h1 class="title-main">THE CONFIDENCE <span class="title-gap-gold">GAP</span></h1>
-        <div class="tagline">CLOSING THE DISTANCE BETWEEN FEAR AND FACT.</div>
-        <div class="horizontal-divider"></div>
-        <div class="sub-header-1">PHILIPPINE REAL ESTATE MARKET OVERVIEW</div>
-        <div class="sub-header-2">INDUSTRIAL &nbsp;•&nbsp; OFFICE &nbsp;•&nbsp; RETAIL</div>
-    </div>
+<div class="header-container">
+    <h1 class="title-main">THE CONFIDENCE <span class="title-gap-gold">GAP</span></h1>
+    <div class="tagline">CLOSING THE DISTANCE BETWEEN FEAR AND FACT.</div>
+    <div class="horizontal-divider"></div>
+    <div class="sub-header-1">PHILIPPINE REAL ESTATE MARKET OVERVIEW</div>
+    <div class="sub-header-2">INDUSTRIAL &nbsp;•&nbsp; OFFICE &nbsp;•&nbsp; RETAIL</div>
+</div>
 """, unsafe_allow_html=True)
 
 if not st.session_state.registered:
@@ -283,16 +284,18 @@ if not st.session_state.registered:
                 st.error("Please fill in all fields before submitting.")
 
 else:
-    # 2. SUCCESS PAGE & DOWNLOAD REVEAL
-    download_link = "https://jpyholdings-my.sharepoint.com/:b:/g/personal/sondi_tuazon_primephilippines_com/IQCjmzWqCLZCRo0Khn9zkCWpAfP7pow-_TTcQdB9LDWuIB0?e=rXQ6mY&download=1"
+    # 2. SUCCESS PAGE & DIRECT DROPBOX DOWNLOAD REVEAL
+    download_link = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&st=q9ifvnzt&dl=1"
     
-    st.markdown(f"""
-        <div class="success-box">
-            <h3 style="font-family: 'Montserrat', sans-serif; color: #0c1a30; margin-bottom: 10px;">Registration Successful!</h3>
-            <p style="font-family: 'Montserrat', sans-serif; color: #333;">Thank you, <b>{st.session_state.user_name}</b>. Click below to begin your download.</p>
-            <a href="{download_link}" class="custom-download-btn" target="_blank">DOWNLOAD PUBLICATION</a>
-        </div>
-    """, unsafe_allow_html=True)
+    success_html = (
+        '<div class="success-box">'
+        '<h3 style="font-family: \'Montserrat\', sans-serif; color: #0c1a30; margin-bottom: 10px;">Registration Successful!</h3>'
+        f'<p style="font-family: \'Montserrat\', sans-serif; color: #333;">Thank you, <b>{st.session_state.user_name}</b>. Click below to download the publication.</p>'
+        f'<a href="{download_link}" class="custom-download-btn">DOWNLOAD PUBLICATION</a>'
+        '</div>'
+    )
+    
+    st.markdown(success_html, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
