@@ -56,7 +56,7 @@ st.markdown("""
     
     .title-main { 
         font-family: 'Cormorant Garamond', serif !important; 
-        font-size: 4.2rem !important; /* Slightly reduced to fit one line */
+        font-size: 4.2rem !important; 
         font-weight: 700 !important;
         color: #0c1a30 !important; 
         margin: 0 !important; 
@@ -177,6 +177,7 @@ st.markdown("""
         margin-top: 20px;
         margin-bottom: 10px;
         transition: background-color 0.3s ease;
+        cursor: pointer;
     }
     a.custom-download-btn:hover {
         background-color: #c9a35e;
@@ -214,8 +215,8 @@ st.markdown("""
         }
         
         .title-main { 
-            font-size: 1.8rem !important; /* Scaled down for mobile */
-            white-space: nowrap !important; /* Keeps it on one row on phones */
+            font-size: 1.8rem !important; 
+            white-space: nowrap !important; 
             letter-spacing: 0px !important;
         }
         
@@ -290,7 +291,12 @@ else:
         <div class="success-box">
             <h3 style="font-family: 'Montserrat', sans-serif; color: #0c1a30; margin-bottom: 10px;">Registration Successful!</h3>
             <p style="font-family: 'Montserrat', sans-serif; color: #333;">Thank you, <b>{st.session_state.user_name}</b>. Click below to begin your download.</p>
-            <a href="{download_link}" class="custom-download-btn" target="_blank">DOWNLOAD PUBLICATION</a>
+            
+            <!-- Hidden Iframe to process download without redirecting -->
+            <iframe name="hidden_iframe" style="display:none;"></iframe>
+            
+            <!-- Button configured to target the hidden Iframe -->
+            <a href="{download_link}" target="hidden_iframe" class="custom-download-btn">DOWNLOAD PUBLICATION</a>
         </div>
     """, unsafe_allow_html=True)
     
@@ -303,3 +309,4 @@ else:
 
 # Inject Footer
 st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)
+    
