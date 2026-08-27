@@ -1,10 +1,8 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import requests
-import base64
 from supabase import create_client, Client
 
-# --- PAGE CONFIGURATION ---
+# --- PAGE CONFIGURATION (Full screen edge-to-edge layout) ---
 st.set_page_config(page_title="The Confidence Gap - Publication", layout="wide", initial_sidebar_state="collapsed")
 
 # --- SUPABASE DATABASE SETUP ---
@@ -22,25 +20,22 @@ def save_registration(name, contact, email):
         "contact": contact,
         "email": email
     }
-    supabase.table("attendees").insert(data).execute()
+    supabase.table("attendees").insert(data).execute()[cite: 1]
 
-# --- PDF CACHING AS BASE64 ---
-PDF_RAW_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1"
-DOWNLOAD_LINK = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
-
-@st.cache_data(show_spinner="Loading publication preview...")
-def get_pdf_base64():
-    response = requests.get(PDF_RAW_URL)
-    return base64.b64encode(response.content).decode("utf-8")
-
+# --- SESSION STATE & LINKS ---
 if 'page_step' not in st.session_state:
     st.session_state.page_step = 'viewer'
 
-# --- CSS STYLES ---
+# Embed URL for SharePoint/OneDrive document viewer
+SHAREPOINT_EMBED_URL = "https://jpyholdings-my.sharepoint.com/personal/sondi_tuazon_primephilippines_com/_layouts/15/Doc.aspx?sourcedoc={personal/sondi_tuazon_primephilippines_com/Documents/CRD 2026  COMPILED ONE DRIVE/01_2026 ANNUAL PROPERTY OUTLOOK (1).pdf}&action=embedview&wdStartOn=1"
+DOWNLOAD_LINK = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"[cite: 1]
+
+# --- GLOBAL STYLES ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
 
+    /* Remove Streamlit chrome and margins */
     header, #MainMenu, footer { visibility: hidden !important; display: none !important; }
     
     .stApp {
@@ -52,6 +47,7 @@ st.markdown("""
         max-width: 100% !important;
     }
 
+    /* TOPBAR BUTTON */
     .viewer-btn-container div[data-testid="stButton"] > button {
         background-color: #c9a35e !important;
         color: #0c1a30 !important;
@@ -61,7 +57,7 @@ st.markdown("""
         letter-spacing: 1px !important;
         border: none !important;
         border-radius: 0px !important;
-        padding: 10px 22px !important;
+        padding: 10px 24px !important;
         transition: all 0.2s ease !important;
     }
 
@@ -70,6 +66,7 @@ st.markdown("""
         color: #0c1a30 !important;
     }
 
+    /* FORM STYLES */
     [data-testid="stForm"], .success-box {
         background-color: #ffffff !important;
         border: 2px solid #c9a35e !important;
@@ -127,8 +124,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- STEP 1: BRAVE-PROOF PDF.JS VIEWER ---
+# --- STEP 1: SHAREPOINT EMBEDDED VIEWER WITH COVERED TOOLBAR ---
 if st.session_state.page_step == 'viewer':
+    # Top Action Bar
     bar_left, bar_right = st.columns([3.5, 1.2])
     with bar_left:
         st.markdown("""
@@ -145,20 +143,55 @@ if st.session_state.page_step == 'viewer':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    pdf_base64 = get_pdf_base64()
-
-    viewer_component = f"""
+    # SharePoint Iframe with a CSS top overlay that hides the OneDrive/SharePoint ribbon header
+    sharepoint_viewer_html = f"""
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
       <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body, html {{ width: 100%; height: 100%; overflow-x: hidden; background-color: #1a222d; }}
-        #viewer-container {{ width: 100%; display: flex; flex-direction: column; align-items: center; padding: 20px 0 60px 0; }}
-        canvas {{ margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 90%; height: auto !important; }}
+        body, html {{ width: 100%; height: 100%; overflow: hidden; background-color: #0c1a30; }}
+        
+        .viewer-wrapper {{
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 75px);
+            overflow: hidden;
+        }}
+        
+        /* Masks the default SharePoint top toolbar */
+        .toolbar-mask {{
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 52px;
+            background-color: #0c1a30;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            padding-left: 20px;
+            border-bottom: 1px solid #1d2d44;
+        }}
+        
+        .toolbar-mask span {{
+            font-family: 'Montserrat', sans-serif;
+            font-size: 11px;
+            color: #c9a35e;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }}
+
+        /* Negative top margin pulls iframe upward to tuck SharePoint toolbar under mask */
+        iframe {{
+            width: 100%;
+            height: calc(100% + 52px);
+            border: none;
+            margin-top: -52px;
+        }}
+
         #bottom-bar {{
             position: fixed;
             bottom: 0;
@@ -180,44 +213,17 @@ if st.session_state.page_step == 'viewer':
       </style>
     </head>
     <body>
-      <div id="viewer-container"></div>
+      <div class="viewer-wrapper">
+        <div class="toolbar-mask">
+            <span>2026 PROPERTY OUTLOOK &bull; PREVIEW MODE</span>
+        </div>
+        <iframe src="{SHAREPOINT_EMBED_URL}" allowfullscreen="true"></iframe>
+      </div>
       <div id="bottom-bar">🔒 REGISTER TO DOWNLOAD FULL PUBLICATION</div>
-
-      <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-
-        // Decode Base64 safely without network cross-origin calls
-        const pdfData = atob("{pdf_base64}");
-        const uint8Array = new Uint8Array(pdfData.length);
-        for (let i = 0; i < pdfData.length; i++) {{
-            uint8Array[i] = pdfData.charCodeAt(i);
-        }}
-
-        pdfjsLib.getDocument({{ data: uint8Array }}).promise.then(function(pdf) {{
-          const container = document.getElementById('viewer-container');
-          
-          for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {{
-            pdf.getPage(pageNum).then(function(page) {{
-              const viewport = page.getViewport({{ scale: 1.5 }});
-              const canvas = document.createElement('canvas');
-              const context = canvas.getContext('2d');
-              canvas.height = viewport.height;
-              canvas.width = viewport.width;
-
-              container.appendChild(canvas);
-
-              page.render({{
-                canvasContext: context,
-                viewport: viewport
-              }});
-            }});
-          }}
-        }});
-      </script>
     </body>
     </html>
     """
-    components.html(viewer_component, height=920, scrolling=True)
+    components.html(sharepoint_viewer_html, height=920)
 
 # --- STEP 2: REGISTRATION FORM ---
 elif st.session_state.page_step == 'register':
@@ -230,24 +236,24 @@ elif st.session_state.page_step == 'register':
                 CLOSING THE DISTANCE BETWEEN FEAR AND FACT.
             </p>
         </div>
-    """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)[cite: 1]
     
     with st.form("registration_form"):
         st.markdown("<p style='font-family: Montserrat; font-weight:800; color:#0c1a30; font-size:0.95rem; text-align:center; letter-spacing:1px; margin-bottom:20px;'>ENTER YOUR DETAILS TO UNLOCK DOWNLOAD</p>", unsafe_allow_html=True)
-        name = st.text_input("FULL NAME")
-        contact = st.text_input("CONTACT NUMBER")
-        email = st.text_input("EMAIL")
+        name = st.text_input("FULL NAME")[cite: 1]
+        contact = st.text_input("CONTACT NUMBER")[cite: 1]
+        email = st.text_input("EMAIL")[cite: 1]
         
         submitted = st.form_submit_button("SUBMIT & UNLOCK PDF")
         if submitted:
-            if name and contact and email:
+            if name and contact and email:[cite: 1]
                 try:
-                    save_registration(name, contact, email)
-                    st.session_state.user_name = name
+                    save_registration(name, contact, email)[cite: 1]
+                    st.session_state.user_name = name[cite: 1]
                     st.session_state.page_step = 'download'
-                    st.rerun()
+                    st.rerun()[cite: 1]
                 except Exception as e:
-                    st.error(f"Failed to register. Error: {e}")
+                    st.error(f"Failed to register. Error: {e}")[cite: 1]
             else:
                 st.error("Please fill in all fields.")
 
