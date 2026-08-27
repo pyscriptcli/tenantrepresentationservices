@@ -1,8 +1,10 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import requests
+import base64
 from supabase import create_client, Client
 
-# --- PAGE CONFIGURATION (Full screen layout) ---
+# --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="The Confidence Gap - Publication", layout="wide", initial_sidebar_state="collapsed")
 
 # --- SUPABASE DATABASE SETUP ---
@@ -15,7 +17,6 @@ def init_connection():
 supabase: Client = init_connection()
 
 def save_registration(name, contact, email):
-    """Saves registration data directly to the Supabase cloud database."""
     data = {
         "name": name,
         "contact": contact,
@@ -23,19 +24,23 @@ def save_registration(name, contact, email):
     }
     supabase.table("attendees").insert(data).execute()
 
-# --- SESSION STATE ---
+# --- PDF CACHING AS BASE64 ---
+PDF_RAW_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1"
+DOWNLOAD_LINK = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
+
+@st.cache_data(show_spinner="Loading publication preview...")
+def get_pdf_base64():
+    response = requests.get(PDF_RAW_URL)
+    return base64.b64encode(response.content).decode("utf-8")
+
 if 'page_step' not in st.session_state:
     st.session_state.page_step = 'viewer'
 
-PDF_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1"
-DOWNLOAD_LINK = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
-
-# --- GLOBAL STYLES ---
+# --- CSS STYLES ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
 
-    /* Remove Streamlit default elements and padding */
     header, #MainMenu, footer { visibility: hidden !important; display: none !important; }
     
     .stApp {
@@ -47,32 +52,6 @@ st.markdown("""
         max-width: 100% !important;
     }
 
-    /* TOPBAR STYLING */
-    .topbar-wrapper {
-        background-color: #0c1a30;
-        padding: 14px 40px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid #1d2d44;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    
-    .brand-title {
-        font-family: 'Cormorant Garamond', serif !important;
-        font-size: 1.85rem !important;
-        font-weight: 700 !important;
-        color: #ffffff !important;
-        letter-spacing: 2px !important;
-        margin: 0;
-    }
-    
-    .brand-gap {
-        color: #c9a35e !important;
-    }
-
-    /* Streamlit Button as Topbar Action */
     .viewer-btn-container div[data-testid="stButton"] > button {
         background-color: #c9a35e !important;
         color: #0c1a30 !important;
@@ -89,16 +68,6 @@ st.markdown("""
     .viewer-btn-container div[data-testid="stButton"] > button:hover {
         background-color: #dfb76c !important;
         color: #0c1a30 !important;
-    }
-
-    /* FORM & SUCCESS CARD STYLES */
-    .centered-page-wrapper {
-        background-color: #ffffff;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 40px 20px;
     }
 
     [data-testid="stForm"], .success-box {
@@ -158,9 +127,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- VIEW 1: FULLSCREEN VIEWER ---
+# --- STEP 1: BRAVE-PROOF PDF.JS VIEWER ---
 if st.session_state.page_step == 'viewer':
-    # Top Bar Header
     bar_left, bar_right = st.columns([3.5, 1.2])
     with bar_left:
         st.markdown("""
@@ -177,8 +145,9 @@ if st.session_state.page_step == 'viewer':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Clean Fullscreen PDF.js Viewer (No toolbar/download icon displayed)
-    pdfjs_viewer = f"""
+    pdf_base64 = get_pdf_base64()
+
+    viewer_component = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -187,9 +156,9 @@ if st.session_state.page_step == 'viewer':
       <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
       <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body, html {{ width: 100%; height: 100%; overflow-x: hidden; background-color: #323639; }}
-        #viewer-container {{ width: 100%; display: flex; flex-direction: column; align-items: center; padding: 15px 0 60px 0; }}
-        canvas {{ margin-bottom: 18px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); max-width: 95%; height: auto !important; }}
+        body, html {{ width: 100%; height: 100%; overflow-x: hidden; background-color: #1a222d; }}
+        #viewer-container {{ width: 100%; display: flex; flex-direction: column; align-items: center; padding: 20px 0 60px 0; }}
+        canvas {{ margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); max-width: 90%; height: auto !important; }}
         #bottom-bar {{
             position: fixed;
             bottom: 0;
@@ -215,11 +184,16 @@ if st.session_state.page_step == 'viewer':
       <div id="bottom-bar">🔒 REGISTER TO DOWNLOAD FULL PUBLICATION</div>
 
       <script>
-        const url = "{PDF_URL}";
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-        const loadingTask = pdfjsLib.getDocument(url);
-        loadingTask.promise.then(function(pdf) {{
+        // Decode Base64 safely without network cross-origin calls
+        const pdfData = atob("{pdf_base64}");
+        const uint8Array = new Uint8Array(pdfData.length);
+        for (let i = 0; i < pdfData.length; i++) {{
+            uint8Array[i] = pdfData.charCodeAt(i);
+        }}
+
+        pdfjsLib.getDocument({{ data: uint8Array }}).promise.then(function(pdf) {{
           const container = document.getElementById('viewer-container');
           
           for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {{
@@ -232,24 +206,20 @@ if st.session_state.page_step == 'viewer':
 
               container.appendChild(canvas);
 
-              const renderContext = {{
+              page.render({{
                 canvasContext: context,
                 viewport: viewport
-              }};
-              page.render(renderContext);
+              }});
             }});
           }}
-        }}).catch(function(error) {{
-            const container = document.getElementById('viewer-container');
-            container.innerHTML = '<iframe src="{PDF_URL}#toolbar=0&navpanes=0" width="100%" height="900px" style="border:none;"></iframe>';
         }});
       </script>
     </body>
     </html>
     """
-    components.html(pdfjs_viewer, height=920, scrolling=True)
+    components.html(viewer_component, height=920, scrolling=True)
 
-# --- VIEW 2: REGISTRATION STEP ---
+# --- STEP 2: REGISTRATION FORM ---
 elif st.session_state.page_step == 'register':
     st.markdown("""
         <div style="background-color: #ffffff; padding: 40px 20px 10px 20px; text-align: center;">
@@ -285,7 +255,7 @@ elif st.session_state.page_step == 'register':
         st.session_state.page_step = 'viewer'
         st.rerun()
 
-# --- VIEW 3: DOWNLOAD READY STEP ---
+# --- STEP 3: DOWNLOAD READY STEP ---
 elif st.session_state.page_step == 'download':
     st.markdown("""
         <div style="background-color: #ffffff; padding: 40px 20px 10px 20px; text-align: center;">
