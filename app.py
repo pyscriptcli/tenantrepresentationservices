@@ -26,8 +26,8 @@ def save_registration(name, contact, email):
 if 'page_step' not in st.session_state:
     st.session_state.page_step = 'viewer'
 
-# Embed URL for SharePoint/OneDrive document viewer
-SHAREPOINT_EMBED_URL = "https://jpyholdings-my.sharepoint.com/personal/sondi_tuazon_primephilippines_com/_layouts/15/Doc.aspx?sourcedoc={personal/sondi_tuazon_primephilippines_com/Documents/CRD 2026  COMPILED ONE DRIVE/01_2026 ANNUAL PROPERTY OUTLOOK (1).pdf}&action=embedview&wdStartOn=1"
+# Google Drive Preview URL
+GDRIVE_EMBED_URL = "https://drive.google.com/file/d/1D6KDfPKNQX95u1EpYaN49wfwQA0kwT-o/preview"
 DOWNLOAD_LINK = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
 
 # --- GLOBAL STYLES ---
@@ -124,7 +124,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- STEP 1: SHAREPOINT EMBEDDED VIEWER WITH COVERED TOOLBAR ---
+# --- STEP 1: GOOGLE DRIVE VIEWER WITH COVERED TOOLBAR ---
 if st.session_state.page_step == 'viewer':
     bar_left, bar_right = st.columns([3.5, 1.2])
     with bar_left:
@@ -142,7 +142,8 @@ if st.session_state.page_step == 'viewer':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    sharepoint_viewer_html = f"""
+    # Clean Fullscreen Google Drive Viewer with masked toolbar
+    gdrive_viewer_html = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -159,18 +160,18 @@ if st.session_state.page_step == 'viewer':
             overflow: hidden;
         }}
         
-        /* Masks the default SharePoint top toolbar */
+        /* Masks Google Drive's native pop-out and print/download toolbar */
         .toolbar-mask {{
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 52px;
+            height: 56px;
             background-color: #0c1a30;
             z-index: 10;
             display: flex;
             align-items: center;
-            padding-left: 20px;
+            padding-left: 25px;
             border-bottom: 1px solid #1d2d44;
         }}
         
@@ -182,11 +183,12 @@ if st.session_state.page_step == 'viewer':
             letter-spacing: 2px;
         }}
 
+        /* Negative top margin pulls iframe upward under the dark topbar */
         iframe {{
             width: 100%;
-            height: calc(100% + 52px);
+            height: calc(100% + 56px);
             border: none;
-            margin-top: -52px;
+            margin-top: -56px;
         }}
 
         #bottom-bar {{
@@ -214,13 +216,13 @@ if st.session_state.page_step == 'viewer':
         <div class="toolbar-mask">
             <span>2026 PROPERTY OUTLOOK &bull; PREVIEW MODE</span>
         </div>
-        <iframe src="{SHAREPOINT_EMBED_URL}" allowfullscreen="true"></iframe>
+        <iframe src="{GDRIVE_EMBED_URL}" allow="autoplay"></iframe>
       </div>
       <div id="bottom-bar">🔒 REGISTER TO DOWNLOAD FULL PUBLICATION</div>
     </body>
     </html>
     """
-    components.html(sharepoint_viewer_html, height=920)
+    components.html(gdrive_viewer_html, height=920)
 
 # --- STEP 2: REGISTRATION FORM ---
 elif st.session_state.page_step == 'register':
