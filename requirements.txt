@@ -48,3 +48,4 @@ st-gsheets-connection
 folium
 supabase
 streamlit-folium
+pymupdf
