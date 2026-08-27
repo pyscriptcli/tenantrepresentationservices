@@ -25,7 +25,7 @@ def save_registration(name, contact, email):
         "contact": contact,
         "email": email
     }
-    supabase.table("attendees").insert(data).execute()[cite: 2]
+    supabase.table("attendees").insert(data).execute()
 
 # --- SESSION STATE ---
 if 'page_step' not in st.session_state:
@@ -33,7 +33,7 @@ if 'page_step' not in st.session_state:
 
 # Fast stream preview from Supabase & Full-resolution original download from Dropbox
 SUPABASE_PREVIEW_URL = "https://cyczyaswxkpdcremqnkn.supabase.co/storage/v1/object/public/Midyear/Confidence_Gap_2026_Optimized.pdf"
-DROPBOX_ORIGINAL_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"[cite: 1]
+DROPBOX_ORIGINAL_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
 
 # --- GLOBAL CSS ---
 st.markdown("""
@@ -349,26 +349,26 @@ elif st.session_state.page_step == 'register':
             <div class="sub-header-1">PHILIPPINE REAL ESTATE MARKET OVERVIEW</div>
             <div class="sub-header-2">INDUSTRIAL &nbsp;•&nbsp; OFFICE &nbsp;•&nbsp; RETAIL</div>
         </div>
-    """, unsafe_allow_html=True)[cite: 2]
+    """, unsafe_allow_html=True)
 
     col_l, col_m, col_r = st.columns([1, 1.8, 1])
     with col_m:
         with st.form("registration_form"):
             st.markdown("<p style='font-family: Montserrat; font-weight:800; color:#0c1a30; font-size:0.95rem; text-align:center; letter-spacing:1px; margin-bottom:20px;'>ENTER YOUR DETAILS TO UNLOCK DOWNLOAD</p>", unsafe_allow_html=True)
-            name = st.text_input("FULL NAME")[cite: 2]
-            contact = st.text_input("CONTACT NUMBER")[cite: 2]
-            email = st.text_input("EMAIL")[cite: 2]
+            name = st.text_input("FULL NAME")
+            contact = st.text_input("CONTACT NUMBER")
+            email = st.text_input("EMAIL")
             
             submitted = st.form_submit_button("SUBMIT & UNLOCK FULL PDF")
             if submitted:
-                if name and contact and email:[cite: 2]
+                if name and contact and email:
                     try:
-                        save_registration(name, contact, email)[cite: 2]
-                        st.session_state.user_name = name[cite: 2]
+                        save_registration(name, contact, email)
+                        st.session_state.user_name = name
                         st.session_state.page_step = 'download'
                         st.rerun() 
                     except Exception as e:
-                        st.error(f"Failed to register. Please try again. Error: {e}")[cite: 2]
+                        st.error(f"Failed to register. Please try again. Error: {e}")
                 else:
                     st.error("Please fill in all fields.")
 
@@ -378,7 +378,7 @@ elif st.session_state.page_step == 'register':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)[cite: 2]
+        st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)
     
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -402,7 +402,7 @@ elif st.session_state.page_step == 'download':
             f'<a href="{DROPBOX_ORIGINAL_DOWNLOAD_URL}" class="custom-download-btn">DOWNLOAD FULL PUBLICATION</a>'
             '</div>'
         )
-        st.markdown(success_html, unsafe_allow_html=True)[cite: 2]
+        st.markdown(success_html, unsafe_allow_html=True)
         
         st.markdown('<div class="secondary-btn">', unsafe_allow_html=True)
         if st.button("← Return to Viewer", use_container_width=True):
@@ -410,6 +410,6 @@ elif st.session_state.page_step == 'download':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)[cite: 2]
+        st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)
         
     st.markdown("</div>", unsafe_allow_html=True)
