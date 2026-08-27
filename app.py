@@ -1,6 +1,6 @@
 import streamlit as st
 from supabase import create_client, Client
-import urllib.parse  # for URL encoding
+import urllib.parse
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="The Confidence Gap - Publication", layout="centered", initial_sidebar_state="collapsed")
@@ -15,7 +15,6 @@ def init_connection():
 supabase: Client = init_connection()
 
 def save_registration(name, contact, email):
-    """Saves registration data directly to the Supabase cloud database."""
     data = {
         "name": name,
         "contact": contact if contact else "N/A",
@@ -35,33 +34,32 @@ DIRECT_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIM
 
 # --- Build PDF.js viewer URL with download/print disabled ---
 encoded_pdf = urllib.parse.quote(PDF_PREVIEW_URL, safe='')
-VIEWER_URL = f"https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/web/viewer.html?file={encoded_pdf}&disableDownload=true&disablePrint=true&disableOpenFile=true"
+# Use a stable CDN path for the viewer
+VIEWER_URL = (
+    f"https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/web/viewer.html"
+    f"?file={encoded_pdf}&disableDownload=true&disablePrint=true&disableOpenFile=true"
+)
 
 # --- CSS INJECTION ---
 st.markdown("""
     <style>
-    /* Imported Cormorant Garamond and Montserrat */
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
 
-    /* Hide default Streamlit elements */
     header { visibility: hidden; }
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     
-    /* Solid White Background */
     .stApp, .main {
         background-color: #ffffff !important;
     }
 
-    /* Container alignment */
     .main .block-container {
         padding-top: 1.5rem; 
-        max-width: 1000px;  /* wider to allow full-width viewer */
+        max-width: 1000px;
         padding-left: 0 !important;
         padding-right: 0 !important;
     }
 
-    /* HEADER TYPOGRAPHY */
     .header-container {
         margin-top: 10px;
         margin-bottom: 25px;
@@ -119,17 +117,16 @@ st.markdown("""
         letter-spacing: 4px !important; 
     }
 
-    /* PDF EMBED CONTAINER - full width, no border, tall */
+    /* PDF container – full width, no border, tall */
     .pdf-container {
         width: 100%;
-        height: 85vh;        /* almost full viewport height */
+        height: 85vh;
         border: none !important;
         margin: 0 !important;
         display: block;
-        background-color: #f5f5f5;  /* light background while loading */
+        background-color: #f5f5f5;
     }
 
-    /* FORM CONTAINER */
     [data-testid="stForm"] {
         background-color: white !important;
         border: 3px solid #c9a35e !important; 
@@ -141,7 +138,6 @@ st.markdown("""
         margin-right: 2rem;
     }
 
-    /* INPUT TEXT BOX UI */
     [data-testid="stTextInput"] > div > div {
         background-color: transparent !important;
         border: 2px solid #003366 !important;
@@ -168,7 +164,6 @@ st.markdown("""
         letter-spacing: 1px !important;
     }
 
-    /* SUBMIT & ACTION BUTTONS */
     [data-testid="stFormSubmitButton"] > button, .stButton > button {
         background-color: #003366 !important;
         color: white !important;
@@ -187,7 +182,6 @@ st.markdown("""
         color: white !important;
     }
     
-    /* CUSTOM DOWNLOAD BUTTON */
     a.custom-download-btn {
         display: block;
         width: 100%;
@@ -238,7 +232,7 @@ st.markdown("""
             letter-spacing: 0px !important;
         }
         .pdf-container {
-            height: 60vh;   /* smaller on mobile */
+            height: 60vh;
         }
         .main .block-container {
             padding-left: 0 !important;
@@ -252,7 +246,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- HEADER SECTION ---
+# --- HEADER ---
 st.markdown("""
 <div class="header-container">
     <h1 class="title-main">THE CONFIDENCE <span class="title-gap-gold">GAP</span></h1>
@@ -263,44 +257,37 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- PDF VIEWER (full‑width, border‑less, download disabled) ---
+# --- FULL-WIDTH PDF VIEWER (download disabled) ---
 st.markdown(f'''
     <iframe src="{VIEWER_URL}" class="pdf-container" frameborder="0" allowfullscreen></iframe>
 ''', unsafe_allow_html=True)
 
-# --- REGISTRATION / DOWNLOAD WORKFLOW ---
+# --- REGISTRATION WORKFLOW ---
 if not st.session_state.registered:
-    
     if not st.session_state.show_register_modal:
-        # Trigger button beneath the viewer
         if st.button("📥 DOWNLOAD FULL PUBLICATION"):
             st.session_state.show_register_modal = True
             st.rerun()
             
     if st.session_state.show_register_modal:
         st.markdown("### Complete Quick Registration to Download")
-        
         with st.form("registration_form"):
             name = st.text_input("FULL NAME *")
             contact = st.text_input("CONTACT NUMBER (OPTIONAL)")
             email = st.text_input("EMAIL *")
-            
             submitted = st.form_submit_button("SUBMIT & UNLOCK DOWNLOAD")
-            
             if submitted:
                 if name.strip() and email.strip():
                     try:
                         save_registration(name, contact, email)
                         st.session_state.registered = True
                         st.session_state.user_name = name
-                        st.rerun() 
+                        st.rerun()
                     except Exception as e:
                         st.error(f"Failed to register. Please try again. Error: {e}")
                 else:
                     st.error("Please provide both your Full Name and Email.")
-
 else:
-    # --- SUCCESS & DIRECT DOWNLOAD REVEAL ---
     success_html = (
         '<div class="success-box">'
         '<h3 style="font-family: \'Montserrat\', sans-serif; color: #0c1a30; margin-bottom: 10px;">Registration Complete!</h3>'
@@ -310,11 +297,9 @@ else:
     )
     st.markdown(success_html, unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
-    
     if st.button("Register Another User"):
         st.session_state.registered = False
         st.session_state.show_register_modal = False
         st.rerun()
 
-# --- FOOTER ---
 st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)
