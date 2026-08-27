@@ -32,11 +32,10 @@ if 'show_register_modal' not in st.session_state:
 PDF_PREVIEW_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1"
 DIRECT_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
 
-# --- Build PDF.js viewer URL with download/print disabled ---
+# --- PDF.js viewer URL (download/print/OpenFile disabled) ---
 encoded_pdf = urllib.parse.quote(PDF_PREVIEW_URL, safe='')
-# Use a stable CDN path for the viewer
 VIEWER_URL = (
-    f"https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/web/viewer.html"
+    f"https://unpkg.com/pdfjs-dist@3.11.174/web/viewer.html"
     f"?file={encoded_pdf}&disableDownload=true&disablePrint=true&disableOpenFile=true"
 )
 
@@ -45,6 +44,7 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
 
+    /* Hide default Streamlit elements */
     header { visibility: hidden; }
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
@@ -55,7 +55,7 @@ st.markdown("""
 
     .main .block-container {
         padding-top: 1.5rem; 
-        max-width: 1000px;
+        max-width: 1000px;          /* wider to allow full-width viewer */
         padding-left: 0 !important;
         padding-right: 0 !important;
     }
@@ -120,11 +120,11 @@ st.markdown("""
     /* PDF container – full width, no border, tall */
     .pdf-container {
         width: 100%;
-        height: 85vh;
+        height: 85vh;               /* almost full viewport height */
         border: none !important;
         margin: 0 !important;
         display: block;
-        background-color: #f5f5f5;
+        background-color: #f5f5f5;  /* light background while loading */
     }
 
     [data-testid="stForm"] {
@@ -232,7 +232,7 @@ st.markdown("""
             letter-spacing: 0px !important;
         }
         .pdf-container {
-            height: 60vh;
+            height: 60vh;           /* smaller on mobile */
         }
         .main .block-container {
             padding-left: 0 !important;
@@ -257,12 +257,12 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- FULL-WIDTH PDF VIEWER (download disabled) ---
+# --- FULL‑WIDTH PDF VIEWER (download disabled) ---
 st.markdown(f'''
     <iframe src="{VIEWER_URL}" class="pdf-container" frameborder="0" allowfullscreen></iframe>
 ''', unsafe_allow_html=True)
 
-# --- REGISTRATION WORKFLOW ---
+# --- REGISTRATION / DOWNLOAD WORKFLOW ---
 if not st.session_state.registered:
     if not st.session_state.show_register_modal:
         if st.button("📥 DOWNLOAD FULL PUBLICATION"):
