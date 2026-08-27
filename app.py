@@ -1,278 +1,270 @@
 import streamlit as st
 from supabase import create_client, Client
 
-st.set_page_config(page_title="The Confidence Gap - Publication", layout="wide", initial_sidebar_state="collapsed")
+# --- PAGE CONFIGURATION ---
+st.set_page_config(
+    page_title="The Confidence Gap - Publication", 
+    layout="wide", 
+    initial_sidebar_state="collapsed"
+)
 
+# --- SUPABASE DATABASE SETUP ---
 @st.cache_resource
 def init_connection():
-    return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
 
 supabase: Client = init_connection()
 
 def save_registration(name, contact, email):
-    supabase.table("attendees").insert({"name": name, "contact": contact if contact else "N/A", "email": email}).execute()
+    """Saves registration data directly to the Supabase cloud database."""
+    data = {
+        "name": name,
+        "contact": contact if contact else "N/A",
+        "email": email
+    }
+    supabase.table("attendees").insert(data).execute()
 
-if 'page' not in st.session_state:
-    st.session_state.page = 'viewer'
+# --- SESSION STATE ---
 if 'registered' not in st.session_state:
     st.session_state.registered = False
+if 'show_register_modal' not in st.session_state:
+    st.session_state.show_register_modal = False
 if 'user_name' not in st.session_state:
-    st.session_state.user_name = ''
+    st.session_state.user_name = ""
 
-PDF_PREVIEW_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1"
+# --- URL CONFIGURATION ---
 DIRECT_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
 
+# --- CSS INJECTION ---
 st.markdown("""
     <style>
+    /* Imported Fonts */
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
-    header, #MainMenu, footer { visibility: hidden !important; }
-    .stApp { background-color: #ffffff !important; }
 
-    .top-bar {
-        position: fixed; top: 0; left: 0; right: 0; height: 70px;
-        background-color: #0c1a30; display: flex; align-items: center;
-        justify-content: space-between; padding: 0 40px;
-        z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    .top-bar-title {
-        font-family: 'Cormorant Garamond', serif; font-size: 1.8rem;
-        font-weight: 700; color: #ffffff; letter-spacing: 1px;
-    }
-    .top-bar-title span { color: #c9a35e; }
-    .top-bar-actions { display: flex; gap: 15px; align-items: center; }
-
-    .nav-btn {
-        background-color: transparent !important; color: #ffffff !important;
-        padding: 8px 18px !important; border: 1px solid #ffffff !important;
-        border-radius: 0px !important; font-family: 'Montserrat', sans-serif !important;
-        font-weight: 600 !important; font-size: 0.85rem !important;
-        letter-spacing: 1px !important; cursor: pointer !important;
-        transition: all 0.3s ease !important;
-    }
-    .nav-btn:hover { background-color: #ffffff !important; color: #0c1a30 !important; }
-
-    .top-download-btn {
-        background-color: #c9a35e !important; color: #0c1a30 !important;
-        padding: 10px 25px !important; border-radius: 0px !important;
-        font-family: 'Montserrat', sans-serif !important; font-weight: 700 !important;
-        font-size: 0.9rem !important; letter-spacing: 1px !important;
-        border: 2px solid #c9a35e !important; cursor: pointer !important;
-        transition: all 0.3s ease !important;
-    }
-    .top-download-btn:hover { background-color: transparent !important; color: #c9a35e !important; }
-
-    .pdf-fullscreen-container {
-        position: fixed; top: 70px; left: 0; right: 0; bottom: 0;
-        width: 100vw; height: calc(100vh - 70px); overflow: hidden;
-    }
-    .pdf-fullscreen-container iframe { width: 100%; height: 100%; border: none; }
-
-    .toolbar-cover {
-        position: fixed; top: 70px; left: 0; right: 0; height: 45px;
-        background-color: #0c1a30; z-index: 999; pointer-events: all;
+    /* Hide default Streamlit elements */
+    header { visibility: hidden; }
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
+    
+    /* Full Screen Layout Adjustments */
+    .stApp, .main {
+        background-color: #ffffff !important;
     }
 
-    .brave-warning {
-        position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
-        background-color: #c9a35e; color: #0c1a30;
-        padding: 12px 30px; border-radius: 0; z-index: 1001;
-        font-family: 'Montserrat', sans-serif; font-weight: 700;
-        font-size: 0.85rem; letter-spacing: 1px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        text-align: center; max-width: 600px;
-    }
-    .brave-warning a {
-        color: #0c1a30; text-decoration: underline; margin-left: 10px;
+    .main .block-container {
+        padding-top: 0.5rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+        padding-bottom: 1rem !important;
+        max-width: 100% !important;
     }
 
-    .register-page {
-        min-height: 100vh; padding-top: 100px; padding-bottom: 60px;
-        display: flex; flex-direction: column; align-items: center;
-        background-color: #ffffff;
+    /* TOP BAR STYLING */
+    .brand-title {
+        font-family: 'Cormorant Garamond', serif !important;
+        font-size: 1.8rem !important;
+        font-weight: 700 !important;
+        color: #0c1a30 !important;
+        margin: 0 !important;
+        line-height: 1.1 !important;
+        letter-spacing: 0.5px !important;
     }
-    .register-card {
-        background-color: white; border: 3px solid #c9a35e;
-        padding: 40px; max-width: 550px; width: 90%;
-        box-shadow: 0px 10px 30px rgba(0,0,0,0.05); margin-top: 20px;
-    }
-    .register-title {
-        font-family: 'Cormorant Garamond', serif; color: #0c1a30;
-        font-size: 2.2rem; font-weight: 700; text-align: center; margin-bottom: 10px;
-    }
-    .register-subtitle {
-        font-family: 'Montserrat', sans-serif; color: #333;
-        text-align: center; margin-bottom: 30px; font-size: 0.95rem;
-    }
-    .success-box {
-        background-color: white; border: 3px solid #c9a35e;
-        padding: 40px; text-align: center; max-width: 550px; width: 90%;
-    }
-    .download-link {
-        display: inline-block; background-color: #003366; color: white;
-        padding: 14px 30px; text-decoration: none; font-family: 'Montserrat', sans-serif;
-        font-weight: 700; letter-spacing: 1px; margin-top: 15px;
-    }
-    .download-link:hover { background-color: #c9a35e; color: #0c1a30; }
 
-    [data-testid="stForm"] {
-        background-color: white !important; border: none !important;
-        padding: 0 !important; box-shadow: none !important; margin: 0 !important;
+    .brand-gold {
+        color: #c9a35e !important;
     }
+
+    .brand-subtitle {
+        font-family: 'Montserrat', sans-serif !important;
+        font-size: 0.7rem !important;
+        color: #003366 !important;
+        font-weight: 700 !important;
+        letter-spacing: 1.5px !important;
+        display: block;
+    }
+
+    /* LANDING HERO CONTAINER */
+    .hero-card {
+        border: 2px solid #003366;
+        background-color: #fcfcfc;
+        padding: 40px;
+        margin-top: 15px;
+        box-shadow: 0px 10px 30px rgba(0,0,0,0.03);
+    }
+
+    .hero-heading {
+        font-family: 'Cormorant Garamond', serif !important;
+        font-size: 3rem !important;
+        font-weight: 700 !important;
+        color: #0c1a30 !important;
+        line-height: 1.1;
+        margin-bottom: 20px;
+    }
+
+    .hero-description {
+        font-family: 'Montserrat', sans-serif !important;
+        font-size: 1rem !important;
+        color: #333333 !important;
+        line-height: 1.6;
+        margin-bottom: 25px;
+    }
+
+    .highlight-pill {
+        display: inline-block;
+        background-color: #003366;
+        color: #ffffff;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        padding: 6px 14px;
+        margin-bottom: 15px;
+    }
+
+    /* CUSTOM DOWNLOAD BUTTON IN TOP BAR */
+    a.custom-download-btn {
+        display: inline-block;
+        background-color: #003366;
+        color: white !important;
+        padding: 10px 20px;
+        border-radius: 0px !important;
+        text-decoration: none;
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 700;
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+        transition: background-color 0.3s ease;
+        text-align: center;
+    }
+    a.custom-download-btn:hover {
+        background-color: #c9a35e;
+    }
+
+    /* FORM INPUT STYLING */
     [data-testid="stTextInput"] > div > div {
         background-color: transparent !important;
-        border: 2px solid #003366 !important; border-radius: 0px !important;
+        border: 2px solid #003366 !important;
+        border-radius: 0px !important;
     }
-    [data-testid="stTextInput"] > div > div:focus-within { border-color: #c9a35e !important; }
     [data-testid="stTextInput"] input {
-        color: #0c1a30 !important; font-family: 'Montserrat', sans-serif !important;
+        color: #0c1a30 !important;
+        font-family: 'Montserrat', sans-serif !important;
         font-weight: 600 !important;
     }
-    .stTextInput label p {
-        font-family: 'Montserrat', sans-serif !important; color: #003366 !important;
-        font-weight: 800 !important; font-size: 0.85rem !important; letter-spacing: 1px !important;
-    }
-    [data-testid="stFormSubmitButton"] > button {
-        background-color: #003366 !important; color: white !important;
-        border-radius: 0px !important; font-family: 'Montserrat', sans-serif !important;
-        font-weight: 700 !important; letter-spacing: 1px !important;
-        border: none !important; width: 100% !important; padding: 14px !important;
-        margin-top: 10px !important;
-    }
-    [data-testid="stFormSubmitButton"] > button:hover {
-        background-color: #c9a35e !important; color: #0c1a30 !important;
-    }
-
+    
     @media screen and (max-width: 768px) {
-        .top-bar { padding: 0 20px !important; height: 60px !important; }
-        .top-bar-title { font-size: 1.3rem !important; }
-        .pdf-fullscreen-container { top: 60px !important; height: calc(100vh - 60px) !important; }
-        .toolbar-cover { top: 60px !important; }
-    }
-    </style>
-
-    <script>
-    // Detect Brave browser
-    function detectBrave() {
-        if (navigator.brave) {
-            navigator.brave.isBrave().then(function(isBrave) {
-                if (isBrave) {
-                    document.getElementById('brave-warning').style.display = 'block';
-                }
-            }).catch(function() {
-                // Fallback detection
-                if (navigator.plugins.length === 0 || 
-                    (navigator.plugins.length > 0 && 
-                     navigator.plugins['Brave Internal Notes'])) {
-                    document.getElementById('brave-warning').style.display = 'block';
-                }
-            });
+        .brand-title {
+            font-size: 1.3rem !important;
+        }
+        .hero-heading {
+            font-size: 2.1rem !important;
+        }
+        .hero-card {
+            padding: 20px;
         }
     }
-    window.onload = detectBrave;
-    </script>
+    </style>
 """, unsafe_allow_html=True)
 
-# --- TOP BAR ---
-top_bar_html = """
-<div class="top-bar">
-    <div class="top-bar-title">THE CONFIDENCE <span>GAP</span></div>
-    <div class="top-bar-actions">
-"""
-if st.session_state.page == 'viewer':
-    top_bar_html += """
-        <button class="top-download-btn" onclick="document.getElementById('goto-register').click()">
-            DOWNLOAD PUBLICATION
-        </button>
-    """
-else:
-    top_bar_html += """
-        <button class="nav-btn" onclick="document.getElementById('back-to-viewer').click()">
-            ← BACK TO VIEWER
-        </button>
-    """
-top_bar_html += "</div></div>"
-st.markdown(top_bar_html, unsafe_allow_html=True)
+# --- REGISTRATION MODAL DIALOG ---
+@st.dialog("Complete Quick Registration to Download")
+def registration_dialog():
+    st.markdown("<p style='font-family: Montserrat; font-size: 0.9rem; color: #0c1a30;'>Please enter your details below to unlock and download the full publication.</p>", unsafe_allow_html=True)
+    
+    with st.form("modal_registration_form"):
+        name = st.text_input("FULL NAME *")
+        contact = st.text_input("CONTACT NUMBER (OPTIONAL)")
+        email = st.text_input("EMAIL *")
+        
+        submitted = st.form_submit_button("SUBMIT & UNLOCK DOWNLOAD")
+        
+        if submitted:
+            if name.strip() and email.strip():
+                try:
+                    save_registration(name, contact, email)
+                    st.session_state.registered = True
+                    st.session_state.user_name = name
+                    st.session_state.show_register_modal = False
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to register. Error: {e}")
+            else:
+                st.error("Please provide both your Full Name and Email.")
 
-# --- BRAVE WARNING ---
-st.markdown("""
-<div id="brave-warning" class="brave-warning" style="display: none;">
-    ⚠️ Using Brave? Click the lion icon in the address bar and turn OFF "Shields" for this site to view the PDF.
-    <a href="https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1" target="_blank">Or view in new tab →</a>
-</div>
-""", unsafe_allow_html=True)
+# Trigger modal dialog if state is active
+if st.session_state.show_register_modal and not st.session_state.registered:
+    registration_dialog()
 
-# --- ROUTING ---
-if st.session_state.page == 'viewer':
-    st.markdown('<div id="goto-register" style="display:none;"></div>', unsafe_allow_html=True)
-    if st.button("GOTO_REGISTER", key="goto_register_btn"):
-        st.session_state.page = 'register'
-        st.rerun()
+# --- TOP NAVIGATION BAR ---
+col_logo, col_btn = st.columns([3, 1])
 
-    pdf_html = f'''
-    <div class="pdf-fullscreen-container">
-        <iframe src="{PDF_PREVIEW_URL}" frameborder="0"></iframe>
-    </div>
-    <div class="toolbar-cover"></div>
-    '''
-    st.markdown(pdf_html, unsafe_allow_html=True)
-
-elif st.session_state.page == 'register':
-    st.markdown('<div id="back-to-viewer" style="display:none;"></div>', unsafe_allow_html=True)
-    if st.button("BACK_TO_VIEWER", key="back_to_viewer_btn"):
-        st.session_state.page = 'viewer'
-        st.rerun()
-
-    if not st.session_state.registered:
-        register_html = """
-        <div class="register-page">
-            <div class="register-card">
-                <div class="register-title">Register to Download</div>
-                <div class="register-subtitle">
-                    Complete the form below to unlock the full publication download.
-                </div>
-        """
-        st.markdown(register_html, unsafe_allow_html=True)
-
-        with st.form("registration_form"):
-            name = st.text_input("FULL NAME *")
-            contact = st.text_input("CONTACT NUMBER (OPTIONAL)")
-            email = st.text_input("EMAIL *")
-            submitted = st.form_submit_button("SUBMIT & UNLOCK DOWNLOAD")
-
-            if submitted:
-                if name.strip() and email.strip():
-                    try:
-                        save_registration(name, contact, email)
-                        st.session_state.registered = True
-                        st.session_state.user_name = name
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Failed to register. Please try again. Error: {e}")
-                else:
-                    st.error("Please provide both your Full Name and Email.")
-
-        st.markdown("</div></div>", unsafe_allow_html=True)
-    else:
-        success_html = f"""
-        <div class="register-page">
-            <div class="success-box">
-                <h3 style="font-family: 'Montserrat', sans-serif; color: #0c1a30; margin-bottom: 10px; font-size: 1.5rem;">
-                    ✓ Registration Complete!
-                </h3>
-                <p style="font-family: 'Montserrat', sans-serif; color: #333; margin-bottom: 20px;">
-                    Thank you, <b>{st.session_state.user_name}</b>. Your download is ready.
-                </p>
-                <a href="{DIRECT_DOWNLOAD_URL}" class="download-link" download>
-                    DOWNLOAD PDF NOW
-                </a>
-                <br>
-                <button onclick="document.getElementById('back-to-viewer').click()"
-                        style="background-color: transparent; color: #0c1a30; border: 2px solid #0c1a30;
-                               padding: 10px 25px; margin-top: 20px; cursor: pointer;
-                               font-family: 'Montserrat', sans-serif; font-weight: 600;">
-                    ← BACK TO VIEWER
-                </button>
-            </div>
+with col_logo:
+    st.markdown("""
+        <div>
+            <h1 class="brand-title">THE CONFIDENCE <span class="brand-gold">GAP</span></h1>
+            <span class="brand-subtitle">PHILIPPINE REAL ESTATE MARKET OVERVIEW &nbsp;•&nbsp; INDUSTRIAL &nbsp;•&nbsp; OFFICE &nbsp;•&nbsp; RETAIL</span>
         </div>
-        """
-        st.markdown(success_html, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+
+with col_btn:
+    if not st.session_state.registered:
+        if st.button("📥 DOWNLOAD PUBLICATION", use_container_width=True, type="primary"):
+            st.session_state.show_register_modal = True
+            st.rerun()
+    else:
+        st.markdown(f'''
+            <div style="text-align: right;">
+                <a href="{DIRECT_DOWNLOAD_URL}" class="custom-download-btn">📥 DOWNLOAD PDF NOW</a>
+            </div>
+        ''', unsafe_allow_html=True)
+
+# Divider line under top bar
+st.markdown("<hr style='border: 1px solid #c9a35e; margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+
+# Success banner feedback if recently registered
+if st.session_state.registered and st.session_state.user_name:
+    st.success(f"Welcome, {st.session_state.user_name}! Registration successful. Your secure download button is now active in the top-right corner.")
+
+# --- FULL-SCREEN LANDING PAGE HERO CONTENT ---
+col_left, col_right = st.columns([1.2, 0.8], gap="large")
+
+with col_left:
+    st.markdown("""
+        <div class="hero-card">
+            <span class="highlight-pill">2026 MID-YEAR PUBLICATION</span>
+            <h1 class="hero-heading">Closing the distance between fear and fact.</h1>
+            <p class="hero-description">
+                Explore comprehensive data, metrics, and macro-economic trends shaping the Philippine Real Estate landscape. 
+                This comprehensive publication covers deep insights across <b>Industrial, Office, and Retail</b> property sectors.
+            </p>
+    """, unsafe_allow_html=True)
+    
+    if not st.session_state.registered:
+        if st.button("UNLOCK FULL PUBLICATION ACCESS", type="secondary", use_container_width=True):
+            st.session_state.show_register_modal = True
+            st.rerun()
+    else:
+        st.markdown(f'''
+            <a href="{DIRECT_DOWNLOAD_URL}" class="custom-download-btn" style="padding: 14px; font-size: 1rem;">📥 DOWNLOAD PDF PUBLICATION NOW</a>
+        ''', unsafe_allow_html=True)
+        
+    st.markdown("</div>", unsafe_allow_html=True)
+
+with col_right:
+    # Feature highlights box matching your brand theme
+    st.markdown("""
+        <div style="border: 2px solid #c9a35e; background-color: #ffffff; padding: 35px; height: 100%; box-shadow: 0px 10px 30px rgba(0,0,0,0.03);">
+            <h3 style="font-family: 'Cormorant Garamond', serif; font-size: 2rem; color: #0c1a30; margin-top: 0;">Key Insights Inside</h3>
+            <hr style="border: 0; height: 2px; background-color: #c9a35e; margin: 15px 0;">
+            <ul style="font-family: 'Montserrat', sans-serif; color: #333; font-size: 0.9rem; line-height: 1.8; padding-left: 20px;">
+                <li><b>Industrial Sector:</b> Logistics demand, warehouse yield expansion, and regional growth hubs.</li>
+                <li><b>Office Market:</b> Take-up trends, vacancy adjustments, and IT-BPM footprint shifts.</li>
+                <li><b>Retail Landscape:</b> Foot traffic velocity, consumer confidence markers, and prime lease rates.</li>
+            </ul>
+            <p style="font-family: 'Montserrat', sans-serif; font-size: 0.8rem; color: #003366; font-weight: 700; margin-top: 25px; letter-spacing: 1px;">
+                EVIDENCE CREATES CONFIDENCE.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
