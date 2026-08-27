@@ -20,14 +20,15 @@ def save_registration(name, contact, email):
         "contact": contact,
         "email": email
     }
-    supabase.table("attendees").insert(data).execute()
+    supabase.table("attendees").insert(data).execute()[cite: 1]
 
 # --- SESSION STATE ---
 if 'page_step' not in st.session_state:
     st.session_state.page_step = 'viewer'
 
-DROPBOX_RAW_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1"
-DOWNLOAD_LINK = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
+# --- SUPABASE CDN LINKS ---
+PDF_PUBLIC_URL = "https://cyczyaswxkpdcremqnkn.supabase.co/storage/v1/object/public/Midyear/Confidence_Gap_2026_Optimized.pdf"
+DOWNLOAD_LINK = "https://cyczyaswxkpdcremqnkn.supabase.co/storage/v1/object/public/Midyear/Confidence_Gap_2026_Optimized.pdf"
 
 # --- GLOBAL STYLES ---
 st.markdown("""
@@ -45,7 +46,7 @@ st.markdown("""
         max-width: 100% !important;
     }
 
-    /* TOP BAR ACTION BUTTON */
+    /* TOPBAR ACTION BUTTON */
     .viewer-btn-container div[data-testid="stButton"] > button {
         background-color: #c9a35e !important;
         color: #0c1a30 !important;
@@ -64,13 +65,7 @@ st.markdown("""
         color: #0c1a30 !important;
     }
 
-    /* CENTERED CONTAINER CARD */
-    .form-wrapper {
-        max-width: 600px;
-        margin: 40px auto;
-        padding: 0 20px;
-    }
-
+    /* CARD CONTAINERS FOR REGISTRATION & SUCCESS */
     [data-testid="stForm"], .success-card {
         background-color: #ffffff !important;
         border: 2px solid #c9a35e !important;
@@ -150,7 +145,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- STEP 1: HIGH-SPEED PDF VIEWER ---
+# --- STEP 1: FAST FULLSCREEN VIEWER ---
 if st.session_state.page_step == 'viewer':
     bar_left, bar_right = st.columns([3.5, 1.2])
     with bar_left:
@@ -168,8 +163,8 @@ if st.session_state.page_step == 'viewer':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Clean, on-demand canvas renderer (instantly displays without waiting for full download)
-    fast_viewer_html = f"""
+    # Supabase direct CDN streaming using PDF.js canvas pipeline
+    viewer_component = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -208,7 +203,7 @@ if st.session_state.page_step == 'viewer':
       <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-        const loadingTask = pdfjsLib.getDocument("{DROPBOX_RAW_URL}");
+        const loadingTask = pdfjsLib.getDocument("{PDF_PUBLIC_URL}");
         loadingTask.promise.then(async function(pdf) {{
           const container = document.getElementById('viewer-container');
           
@@ -232,9 +227,9 @@ if st.session_state.page_step == 'viewer':
     </body>
     </html>
     """
-    components.html(fast_viewer_html, height=920, scrolling=True)
+    components.html(viewer_component, height=920, scrolling=True)
 
-# --- STEP 2: REGISTRATION STEP ---
+# --- STEP 2: REGISTRATION FORM ---
 elif st.session_state.page_step == 'register':
     st.markdown("""
         <div style="text-align: center; padding-top: 45px; padding-bottom: 10px;">
@@ -292,7 +287,7 @@ elif st.session_state.page_step == 'download':
                 <p style="font-family: 'Montserrat', sans-serif; color: #555; font-size: 0.95rem; margin-bottom: 25px;">
                     Thank you, <b>{st.session_state.get('user_name', '')}</b>. Your file is ready for download.
                 </p>
-                <a href="{DOWNLOAD_LINK}" class="custom-download-btn">DOWNLOAD FULL PUBLICATION</a>
+                <a href="{DOWNLOAD_LINK}" download="Confidence_Gap_2026.pdf" class="custom-download-btn">DOWNLOAD FULL PUBLICATION</a>
             </div>
         """, unsafe_allow_html=True)
         
