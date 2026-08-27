@@ -46,25 +46,31 @@ if st.session_state.page_step == 'viewer':
         padding: 0 !important;
     }
     
-    /* COMPLETELY REMOVES STREAMLIT'S 96px 80px 160px DEFAULT PADDING */
+    /* OBLITERATE ALL STREAMLIT DEFAULT PADDINGS */
     [data-testid="stMainBlockContainer"] {
         padding: 0px !important;
         max-width: 100% !important;
         width: 100% !important;
     }
 
+    [data-testid="stHeader"] {
+        display: none !important;
+    }
+
     /* Force iframe to take exact remaining screen height */
     iframe[title="streamlit_components.v1.components.html"] {
-        height: calc(100vh - 45px) !important; 
+        height: calc(100vh - 55px) !important; 
         width: 100% !important;
+        border: none !important;
     }
     
-    /* Make button very compact */
+    /* Make top button ultra-compact */
     .topbar-btn-container div[data-testid="stButton"] > button {
-        padding: 6px 15px !important;
+        padding: 4px 15px !important;
         font-size: 0.75rem !important;
         min-height: 0 !important;
-        margin-top: 5px !important;
+        margin-top: 8px !important;
+        margin-bottom: 0px !important;
     }
     """
 else:
@@ -75,7 +81,7 @@ else:
         background-color: #0c1a30 !important;
     }
     [data-testid="stMainBlockContainer"] {
-        padding: 3rem 1rem !important;
+        padding: 4rem 1rem !important;
         max-width: 100% !important;
     }
     """
@@ -92,18 +98,19 @@ st.markdown(f"""
 
     /* TOPBAR ACTION BUTTON */
     .topbar-btn-container div[data-testid="stButton"] > button {{
-        background-color: #c9a35e !important;
+        background-color: #ffffff !important;
         color: #0c1a30 !important;
-        border-radius: 0px !important;
+        border-radius: 4px !important;
         font-family: 'Montserrat', sans-serif !important;
-        font-weight: 800 !important;
+        font-weight: 700 !important;
         letter-spacing: 1px !important;
         border: none !important;
         transition: all 0.2s ease !important;
     }}
 
     .topbar-btn-container div[data-testid="stButton"] > button:hover {{
-        background-color: #dfb76c !important;
+        background-color: #c9a35e !important;
+        color: #ffffff !important;
     }}
 
     /* REGISTRATION & SUCCESS UNIFIED CARD */
@@ -114,7 +121,7 @@ st.markdown(f"""
         padding: 50px 45px !important;
         box-shadow: 0px 15px 40px rgba(0,0,0,0.4) !important;
         margin: 0 auto !important;
-        max-width: 650px;
+        max-width: 600px;
     }}
 
     /* INPUT FIELDS */
@@ -187,17 +194,6 @@ st.markdown(f"""
         border-color: #c9a35e !important;
         color: #c9a35e !important;
     }}
-
-    .footer-text {{ 
-        margin-top: 50px; 
-        margin-bottom: 20px; 
-        text-align: center; 
-        font-family: 'Montserrat', sans-serif !important; 
-        color: #4a5c78 !important; 
-        font-weight: 700 !important; 
-        letter-spacing: 3px !important; 
-        font-size: 0.8rem !important; 
-    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -205,23 +201,23 @@ st.markdown(f"""
 if st.session_state.page_step == 'viewer':
     
     # Ultra-compact Top Bar Header
-    bar_col1, bar_col2 = st.columns([5, 1])
+    bar_col1, bar_col2 = st.columns([5, 1.2])
     with bar_col1:
         st.markdown("""
-            <div style="padding: 10px 0 0 20px;">
+            <div style="padding: 10px 0 0 25px;">
                 <span style="font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 700; color: #ffffff; letter-spacing: 1.5px;">
                     THE CONFIDENCE <span style="color: #c9a35e;">GAP</span>
                 </span>
             </div>
         """, unsafe_allow_html=True)
     with bar_col2:
-        st.markdown('<div class="topbar-btn-container" style="text-align: right; padding-right: 20px;">', unsafe_allow_html=True)
+        st.markdown('<div class="topbar-btn-container" style="text-align: right; padding-right: 25px;">', unsafe_allow_html=True)
         if st.button("DOWNLOAD PUBLICATION", use_container_width=True):
             st.session_state.page_step = 'register'
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Edge-to-edge PDF.js Viewport
+    # Edge-to-edge PDF.js Viewport (Handles its own scrolling internally)
     pdf_viewer_html = f"""
     <!DOCTYPE html>
     <html>
@@ -243,15 +239,15 @@ if st.session_state.page_step == 'viewer':
             display: flex; 
             flex-direction: column; 
             align-items: center; 
-            padding: 10px 0 50px 0; 
+            padding: 15px 0 60px 0; 
         }}
-        /* Render high-res internally, but restrict visual size to fit screen height perfectly */
+        /* THE FIT-TO-PAGE FIX: Forces height to fit screen, sets width to auto */
         canvas {{ 
-            max-width: 95vw; 
-            max-height: calc(100vh - 90px); /* Fits exactly one page minus the top and bottom bars */
+            height: calc(100vh - 85px) !important; 
+            width: auto !important; 
             object-fit: contain; 
-            margin-bottom: 20px; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.7); 
+            margin-bottom: 30px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6); 
         }}
         #bottom-bar {{
             position: fixed;
@@ -284,7 +280,7 @@ if st.session_state.page_step == 'viewer':
           const container = document.getElementById('viewer-container');
           for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {{
             const page = await pdf.getPage(pageNum);
-            /* Scale at 2.5x for sharp text rendering, CSS max-height handles scaling it to fit the screen */
+            /* Scale at 2.5x for sharp text rendering, CSS handles scaling it to fit the screen */
             const viewport = page.getViewport({{ scale: 2.5 }});
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
@@ -346,8 +342,6 @@ elif st.session_state.page_step == 'register':
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)
-
 # --- VIEW 3: DOWNLOAD READY STEP ---
 elif st.session_state.page_step == 'download':
     success_html = f"""
@@ -370,5 +364,3 @@ elif st.session_state.page_step == 'download':
         st.session_state.page_step = 'viewer'
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)
