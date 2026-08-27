@@ -29,10 +29,10 @@ if 'show_register_modal' not in st.session_state:
     st.session_state.show_register_modal = False
 
 # --- URL CONFIGURATION ---
-# Direct download link for Supabase completion
+# Direct download link revealed ONLY after registration
 DIRECT_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
-# Raw URL for embedding in custom PDF.js viewer
-PDF_RAW_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1"
+# Restricted view-only source link (toolbar hidden to prevent direct browser downloads)
+PDF_VIEW_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1&ui=false"
 
 # --- CSS INJECTION ---
 st.markdown("""
@@ -40,7 +40,7 @@ st.markdown("""
     /* Imported Cormorant Garamond and Montserrat */
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
 
-    /* Hide default Streamlit elements for clean full-screen experience */
+    /* Hide default Streamlit elements */
     header { visibility: hidden; }
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
@@ -50,11 +50,11 @@ st.markdown("""
         background-color: #ffffff !important;
     }
 
-    /* Full width container layout */
+    /* Full width layout setup */
     .main .block-container {
         padding-top: 1rem !important; 
-        padding-left: 1rem !important;
-        padding-right: 1.rem !important;
+        padding-left: 0rem !important;
+        padding-right: 0rem !important;
         max-width: 100% !important;
     }
 
@@ -63,6 +63,7 @@ st.markdown("""
         margin-top: 5px;
         margin-bottom: 20px;
         text-align: center;
+        padding: 0 20px;
     }
     
     .title-main { 
@@ -113,6 +114,16 @@ st.markdown("""
         color: #0c1a30 !important; 
         font-weight: 600 !important; 
         letter-spacing: 4px !important; 
+    }
+
+    /* FULL SCREEN EMBED STYLING */
+    .fullscreen-pdf-container {
+        width: 100vw;
+        height: 75vh;
+        border: none;
+        margin: 0;
+        padding: 0;
+        display: block;
     }
 
     /* FORM CONTAINER */
@@ -229,22 +240,15 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- FULL SCREEN CLEAN PDF VIEWER (Using PDF.js Viewer with Toolbar Disabled) ---
-# We use Mozilla's PDF.js viewer iframe configured with toolbar=0 (or viewer parameters to hide editing/drawing tools)
-pdf_viewer_html = f"""
-<div style="width: 100%; height: 82vh; border: 2px solid #003366; background: #f4f4f4;">
-    <iframe src="https://mozilla.github.io/pdf.js/web/viewer.html?file={PDF_RAW_URL}#pagemode=none" 
-            width="100%" 
-            height="100%" 
-            style="border: none;">
-    </iframe>
-</div>
-"""
-st.markdown(pdf_viewer_html, unsafe_allow_html=True)
+# --- FULL-SCREEN ONLINE VIEWER (Restricted Download & Toolbar Hidden) ---
+# Embeds the PDF raw link inside an object/embed configured to restrict browser UI download options where possible
+st.markdown(f'''
+    <iframe src="{PDF_VIEW_URL}#toolbar=0&navpanes=0&scrollbar=0" class="fullscreen-pdf-container"></iframe>
+''', unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- REGISTRATION / DOWNLOAD WORKFLOW ---
+# --- REGISTRATION / DOWNLOAD WORKFLOW SECTION ---
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     if not st.session_state.registered:
@@ -280,7 +284,7 @@ with col2:
         success_html = (
             '<div class="success-box">'
             '<h3 style="font-family: \'Montserrat\', sans-serif; color: #0c1a30; margin-bottom: 10px;">Registration Complete!</h3>'
-            f'<p style="font-family: \'Montserrat\', sans-serif; color: #333;">Thank you, <b>{st.session_state.user_name}</b>. Your download link is ready below.</p>'
+            f'<p style="font-family: \'Montserrat\', sans-serif; color: #333;">Thank you, <b>{st.session_state.user_name}</b>. Your download link is unlocked below.</p>'
             f'<a href="{DIRECT_DOWNLOAD_URL}" class="custom-download-btn">DOWNLOAD PDF NOW</a>'
             '</div>'
         )
