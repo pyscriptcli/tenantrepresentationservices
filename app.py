@@ -24,37 +24,31 @@ def save_registration(name, contact, email):
     supabase.table("attendees").insert(data).execute()[cite: 2]
 
 # --- SESSION STATE ---
-# Flow stages: "viewer" -> "register" -> "download"
 if 'page_step' not in st.session_state:
     st.session_state.page_step = 'viewer'
 
-# Public Supabase Storage URL (Optimized 8.35 MB PDF)
+# Public Supabase Storage URL
 SUPABASE_PDF_URL = "https://cyczyaswxkpdcremqnkn.supabase.co/storage/v1/object/public/Midyear/Confidence_Gap_2026_Optimized.pdf"
 DOWNLOAD_LINK = "https://cyczyaswxkpdcremqnkn.supabase.co/storage/v1/object/public/Midyear/Confidence_Gap_2026_Optimized.pdf"
 
 # --- CSS INJECTION ---
 st.markdown("""
     <style>
-    /* Imported Cormorant Garamond and Montserrat */
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
 
-    /* Hide default Streamlit elements */
     header { visibility: hidden; }
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     
-    /* Solid White Background */
     .stApp, .main {
         background-color: #ffffff !important;
     }
 
-    /* Edge-to-edge container */
     .main .block-container {
         padding: 0rem !important;
         max-width: 100% !important;
     }
 
-    /* HEADER TYPOGRAPHY */
     .header-container {
         margin-top: 10px;
         margin-bottom: 25px;
@@ -112,7 +106,6 @@ st.markdown("""
         letter-spacing: 4px !important; 
     }
 
-    /* TOPBAR CTA BUTTON */
     .topbar-btn-container div[data-testid="stButton"] > button {
         background-color: #003366 !important;
         color: white !important;
@@ -131,7 +124,6 @@ st.markdown("""
         color: white !important;
     }
 
-    /* FORM & CARD CONTAINER */
     [data-testid="stForm"], .success-box {
         background-color: white !important;
         border: 3px solid #c9a35e !important; 
@@ -142,7 +134,6 @@ st.markdown("""
         max-width: 650px;
     }
 
-    /* INPUT FIELDS */
     [data-testid="stTextInput"] > div > div {
         background-color: transparent !important;
         border: 2px solid #003366 !important;
@@ -169,7 +160,6 @@ st.markdown("""
         letter-spacing: 1px !important;
     }
 
-    /* FORM SUBMIT BUTTON */
     [data-testid="stFormSubmitButton"] > button {
         background-color: #003366 !important;
         color: white !important;
@@ -188,7 +178,6 @@ st.markdown("""
         color: white !important;
     }
     
-    /* DOWNLOAD BUTTON */
     a.custom-download-btn {
         display: block;
         width: 100%;
@@ -212,7 +201,6 @@ st.markdown("""
         background-color: #c9a35e;
     }
 
-    /* BACK / RESET BUTTON */
     .secondary-btn div[data-testid="stButton"] > button {
         background-color: transparent !important;
         color: #0c1a30 !important;
@@ -263,7 +251,6 @@ st.markdown("""
 
 # --- VIEW 1: FULLSCREEN VIEWER WITH TOPBAR ---
 if st.session_state.page_step == 'viewer':
-    # Top Action Bar
     top_col1, top_col2 = st.columns([3.5, 1.2])
     with top_col1:
         st.markdown("""
@@ -280,7 +267,6 @@ if st.session_state.page_step == 'viewer':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # PDF.js Fullpage Canvas Viewer (Native, no browser PDF toolbars)
     pdf_viewer_html = f"""
     <!DOCTYPE html>
     <html>
@@ -347,7 +333,6 @@ if st.session_state.page_step == 'viewer':
 
 # --- VIEW 2: REGISTRATION FORM ---
 elif st.session_state.page_step == 'register':
-    # Header Section
     st.markdown("""
     <div class="header-container" style="padding-top: 2rem;">
         <h1 class="title-main">THE CONFIDENCE <span class="title-gap-gold">GAP</span></h1>
@@ -366,18 +351,17 @@ elif st.session_state.page_step == 'register':
         submitted = st.form_submit_button("REGISTER TO DOWNLOAD")
         
         if submitted:
-            if name and contact and email:[cite: 2]
+            if name and contact and email:
                 try:
                     save_registration(name, contact, email)[cite: 2]
                     st.session_state.user_name = name[cite: 2]
                     st.session_state.page_step = 'download'
-                    st.rerun() 
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Failed to register. Please try again. Error: {e}")[cite: 2]
             else:
                 st.error("Please fill in all fields before submitting.")[cite: 2]
 
-    # Return Button
     col1, col2, col3 = st.columns([1, 1.8, 1])
     with col2:
         st.markdown('<div class="secondary-btn">', unsafe_allow_html=True)
@@ -390,7 +374,6 @@ elif st.session_state.page_step == 'register':
 
 # --- VIEW 3: SUCCESS & DOWNLOAD CONFIRMATION ---
 elif st.session_state.page_step == 'download':
-    # Header Section
     st.markdown("""
     <div class="header-container" style="padding-top: 2rem;">
         <h1 class="title-main">THE CONFIDENCE <span class="title-gap-gold">GAP</span></h1>
