@@ -21,7 +21,7 @@ def save_registration(name, contact, email):
         "contact": contact,
         "email": email
     }
-    supabase.table("attendees").insert(data).execute()[cite: 2]
+    supabase.table("attendees").insert(data).execute()
 
 # --- SESSION STATE ---
 if 'page_step' not in st.session_state:
@@ -341,26 +341,26 @@ elif st.session_state.page_step == 'register':
         <div class="sub-header-1">PHILIPPINE REAL ESTATE MARKET OVERVIEW</div>
         <div class="sub-header-2">INDUSTRIAL &nbsp;•&nbsp; OFFICE &nbsp;•&nbsp; RETAIL</div>
     </div>
-    """, unsafe_allow_html=True)[cite: 2]
+    """, unsafe_allow_html=True)
 
     with st.form("registration_form"):
-        name = st.text_input("FULL NAME")[cite: 2]
-        contact = st.text_input("CONTACT NUMBER")[cite: 2]
-        email = st.text_input("EMAIL")[cite: 2]
+        name = st.text_input("FULL NAME")
+        contact = st.text_input("CONTACT NUMBER")
+        email = st.text_input("EMAIL")
         
         submitted = st.form_submit_button("REGISTER TO DOWNLOAD")
         
         if submitted:
             if name and contact and email:
                 try:
-                    save_registration(name, contact, email)[cite: 2]
-                    st.session_state.user_name = name[cite: 2]
+                    save_registration(name, contact, email)
+                    st.session_state.user_name = name
                     st.session_state.page_step = 'download'
-                    st.rerun()
+                    st.rerun() 
                 except Exception as e:
-                    st.error(f"Failed to register. Please try again. Error: {e}")[cite: 2]
+                    st.error(f"Failed to register. Please try again. Error: {e}")
             else:
-                st.error("Please fill in all fields before submitting.")[cite: 2]
+                st.error("Please fill in all fields before submitting.")
 
     col1, col2, col3 = st.columns([1, 1.8, 1])
     with col2:
@@ -370,7 +370,7 @@ elif st.session_state.page_step == 'register':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)[cite: 2]
+    st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)
 
 # --- VIEW 3: SUCCESS & DOWNLOAD CONFIRMATION ---
 elif st.session_state.page_step == 'download':
@@ -389,7 +389,7 @@ elif st.session_state.page_step == 'download':
         f'<a href="{DOWNLOAD_LINK}" download="Confidence_Gap_2026.pdf" class="custom-download-btn">DOWNLOAD PUBLICATION</a>'
         '</div>'
     )
-    st.markdown(success_html, unsafe_allow_html=True)[cite: 2]
+    st.markdown(success_html, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 1.8, 1])
     with col2:
@@ -399,4 +399,4 @@ elif st.session_state.page_step == 'download':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)[cite: 2]
+    st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)
