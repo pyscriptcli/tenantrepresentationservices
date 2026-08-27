@@ -2,7 +2,6 @@ import streamlit as st
 import fitz  # PyMuPDF
 import requests
 import base64
-import json
 from supabase import create_client, Client
 
 # --- PAGE CONFIGURATION ---
@@ -25,23 +24,14 @@ def save_registration(name, contact, email):
     }
     supabase.table("attendees").insert(data).execute()
 
-# --- CACHED RENDERING & SUPABASE PERSISTENCE ---
-PUBLICATION_KEY = "confidence_gap_2026_midyear"
+# --- CONSTANTS & LINKS ---
 DROPBOX_RAW_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1"
 DOWNLOAD_LINK = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
 
-@st.cache_data(show_spinner="Loading document preview...")
-def get_or_create_rendered_pdf():
-    # 1. Check if rendered version exists in Supabase
-    try:
-        res = supabase.table("publication_cache").select("pages_json").eq("publication_key", PUBLICATION_KEY).execute()
-        if res.data and len(res.data) > 0:
-            return res.data[0]["pages_json"]
-    except Exception:
-        pass
-
-    # 2. If not found, download & render PDF pages
-    response = requests.get(DROPBOX_RAW_URL)
+# --- PERSISTENT DISK CACHE (Runs once, caches forever) ---
+@st.cache_data(ttl=None, persist="disk", show_spinner="Loading document preview...")
+def get_pdf_page_images(url: str):
+    response = requests.get(url)
     pdf_bytes = response.content
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     
@@ -51,16 +41,6 @@ def get_or_create_rendered_pdf():
         img_bytes = pix.tobytes("jpeg")
         b64 = base64.b64encode(img_bytes).decode("utf-8")
         images_base64.append(f"data:image/jpeg;base64,{b64}")
-
-    # 3. Save rendered pages to Supabase for all future visits
-    try:
-        supabase.table("publication_cache").upsert({
-            "publication_key": PUBLICATION_KEY,
-            "pages_json": images_base64
-        }).execute()
-    except Exception as e:
-        st.warning(f"Could not write cache to database: {e}")
-
     return images_base64
 
 # --- SESSION STATE ---
@@ -214,7 +194,7 @@ if st.session_state.page_step == 'viewer':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    pages = get_or_create_rendered_pdf()
+    pages = get_pdf_page_images(DROPBOX_RAW_URL)
     img_tags = "".join([f'<img class="pdf-page-img" src="{src}" alt="Page" />' for src in pages])
     
     st.markdown(f"""
@@ -260,7 +240,7 @@ elif st.session_state.page_step == 'register':
         st.session_state.page_step = 'viewer'
         st.rerun()
 
-# --- STEP 3: DOWNLOAD CONFIRMATION ---
+# --- STEP 3: DOWNLOAD READY STEP ---
 elif st.session_state.page_step == 'download':
     st.markdown("""
         <div style="background-color: #ffffff; padding: 40px 20px 10px 20px; text-align: center;">
