@@ -1,11 +1,10 @@
 import streamlit as st
 from supabase import create_client, Client
-import urllib.parse
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="The Confidence Gap", layout="wide", initial_sidebar_state="collapsed")
+# --- PAGE CONFIGURATION ---
+st.set_page_config(page_title="The Confidence Gap - Publication", layout="wide", initial_sidebar_state="collapsed")
 
-# --- SUPABASE ---
+# --- SUPABASE DATABASE SETUP ---
 @st.cache_resource
 def init_connection():
     url = st.secrets["SUPABASE_URL"]
@@ -15,7 +14,12 @@ def init_connection():
 supabase: Client = init_connection()
 
 def save_registration(name, contact, email):
-    data = {"name": name, "contact": contact or "N/A", "email": email}
+    """Saves registration data directly to the Supabase cloud database."""
+    data = {
+        "name": name,
+        "contact": contact if contact else "N/A",
+        "email": email
+    }
     supabase.table("attendees").insert(data).execute()
 
 # --- SESSION STATE ---
@@ -23,289 +27,301 @@ if 'registered' not in st.session_state:
     st.session_state.registered = False
 if 'show_register_modal' not in st.session_state:
     st.session_state.show_register_modal = False
-if 'user_name' not in st.session_state:
-    st.session_state.user_name = ""
 
-# --- URLS ---
+# --- URL CONFIGURATION ---
+# Using embed parameters to minimize toolbar
 PDF_PREVIEW_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1"
 DIRECT_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
 
-# --- PDF.js viewer with download/print disabled ---
-encoded_pdf = urllib.parse.quote(PDF_PREVIEW_URL, safe='')
-VIEWER_URL = (
-    f"https://cdn.jsdelivr.net/npm/pdfjs-dist@2.16.105/web/viewer.html"
-    f"?file={encoded_pdf}"
-    f"&disableDownload=true&disablePrint=true&disableOpenFile=true"
-    f"#toolbar=0"
-)
-
-# --- GLOBAL CSS ---
+# --- CSS INJECTION ---
 st.markdown("""
     <style>
-    /* Reset Streamlit padding */
-    .main .block-container {
-        padding: 0 !important;
-        max-width: 100% !important;
-    }
-    header, footer, #MainMenu {
-        visibility: hidden !important;
-    }
-    .stApp, .main {
-        background: #fff !important;
-        margin: 0 !important;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
 
-    /* Full‑screen iframe */
-    .pdf-iframe {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        border: none;
-        z-index: 0;
-    }
-
-    /* Top bar – fixed */
+    /* Hide default Streamlit elements */
+    header { visibility: hidden !important; }
+    #MainMenu { visibility: hidden !important; }
+    footer { visibility: hidden !important; }
+    .stApp { background-color: #ffffff !important; }
+    
+    /* TOP NAVIGATION BAR */
     .top-bar {
         position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
-        z-index: 10;
-        background: rgba(255,255,255,0.95);
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        padding: 12px 30px;
+        right: 0;
+        height: 70px;
+        background-color: #0c1a30;
         display: flex;
+        align-items: center;
         justify-content: space-between;
-        align-items: center;
-        backdrop-filter: blur(4px);
-        box-sizing: border-box;
+        padding: 0 40px;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
-    .top-bar .brand {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 2rem;
-        font-weight: 700;
-        color: #0c1a30;
-        letter-spacing: 0.5px;
+    
+    .top-bar-title {
+        font-family: 'Cormorant Garamond', serif !important;
+        font-size: 1.8rem !important;
+        font-weight: 700 !important;
+        color: #ffffff !important;
+        letter-spacing: 1px !important;
     }
-    .top-bar .brand span {
-        color: #c9a35e;
+    
+    .top-bar-title span {
+        color: #c9a35e !important;
     }
-    .top-bar .actions {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-    .top-bar .actions .btn {
-        background: #003366;
-        color: white;
+    
+    /* FULL SCREEN PDF CONTAINER */
+    .pdf-fullscreen-container {
+        position: fixed;
+        top: 70px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100vw;
+        height: calc(100vh - 70px);
         border: none;
-        padding: 10px 24px;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .pdf-fullscreen-container iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+    
+    /* TOOLBAR BLOCKER OVERLAY - Covers bottom toolbar */
+    .toolbar-blocker {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 50px;
+        background-color: #0c1a30;
+        z-index: 999;
+        pointer-events: all;
+    }
+    
+    .toolbar-blocker-text {
+        color: #c9a35e;
         font-family: 'Montserrat', sans-serif;
-        font-weight: 700;
-        font-size: 0.85rem;
-        letter-spacing: 0.5px;
-        cursor: pointer;
-        text-decoration: none;
-        transition: background 0.25s;
-        border-radius: 0;
-    }
-    .top-bar .actions .btn:hover {
-        background: #c9a35e;
-    }
-    .top-bar .actions .btn.gold {
-        background: #c9a35e;
-    }
-    .top-bar .actions .btn.gold:hover {
-        background: #003366;
-    }
-    .top-bar .actions .btn.outline {
-        background: transparent;
-        color: #003366;
-        border: 2px solid #003366;
-        padding: 8px 20px;
-    }
-    .top-bar .actions .btn.outline:hover {
-        background: #003366;
-        color: white;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 1px;
+        text-align: center;
+        padding-top: 15px;
     }
 
-    /* Modal overlay */
+    /* DOWNLOAD BUTTON IN TOP BAR */
+    .top-download-btn {
+        background-color: #c9a35e !important;
+        color: #0c1a30 !important;
+        padding: 10px 25px !important;
+        border-radius: 0px !important;
+        font-family: 'Montserrat', sans-serif !important;
+        font-weight: 700 !important;
+        font-size: 0.9rem !important;
+        letter-spacing: 1px !important;
+        border: 2px solid #c9a35e !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .top-download-btn:hover {
+        background-color: transparent !important;
+        color: #c9a35e !important;
+    }
+
+    /* REGISTRATION MODAL OVERLAY */
     .modal-overlay {
         position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
-        z-index: 20;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(12, 26, 48, 0.9);
+        z-index: 2000;
         display: flex;
-        justify-content: center;
         align-items: center;
-        animation: fadeIn 0.25s;
+        justify-content: center;
     }
-    .modal-box {
-        background: white;
-        padding: 40px 45px;
-        max-width: 460px;
+    
+    .modal-content {
+        background-color: white !important;
+        border: 3px solid #c9a35e !important;
+        border-radius: 0px !important;
+        padding: 40px !important;
+        max-width: 500px;
         width: 90%;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-        border-top: 6px solid #c9a35e;
-        position: relative;
-    }
-    .modal-box .close {
-        position: absolute;
-        top: 12px;
-        right: 18px;
-        font-size: 28px;
-        cursor: pointer;
-        color: #888;
-        background: transparent;
-        border: none;
-    }
-    .modal-box .close:hover {
-        color: #222;
-    }
-    .modal-box h2 {
-        font-family: 'Cormorant Garamond', serif;
-        font-weight: 700;
-        color: #0c1a30;
-        text-align: center;
-        margin-top: 0;
-        margin-bottom: 6px;
-    }
-    .modal-box p {
-        font-family: 'Montserrat', sans-serif;
-        color: #555;
-        text-align: center;
-        margin-bottom: 20px;
-    }
-    .modal-box .success {
-        text-align: center;
-        font-family: 'Montserrat', sans-serif;
-        color: #0c1a30;
-    }
-    .modal-box .success .dl-link {
-        display: inline-block;
-        margin-top: 15px;
-        background: #003366;
-        color: white;
-        padding: 12px 30px;
-        text-decoration: none;
-        font-weight: 700;
-        font-family: 'Montserrat', sans-serif;
-        transition: background 0.3s;
-    }
-    .modal-box .success .dl-link:hover {
-        background: #c9a35e;
+        box-shadow: 0px 20px 60px rgba(0,0,0,0.3) !important;
     }
 
-    @keyframes fadeIn {
-        from { opacity: 0; transform: scale(0.96); }
-        to { opacity: 1; transform: scale(1); }
+    /* FORM STYLING */
+    [data-testid="stForm"] {
+        background-color: white !important;
+        border: none !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        margin: 0 !important;
     }
 
-    @media (max-width: 640px) {
-        .top-bar { padding: 8px 15px; }
-        .top-bar .brand { font-size: 1.2rem; }
-        .top-bar .actions .btn { padding: 6px 14px; font-size: 0.7rem; }
-        .modal-box { padding: 30px 20px; }
+    [data-testid="stTextInput"] > div > div {
+        background-color: transparent !important;
+        border: 2px solid #003366 !important;
+        border-radius: 0px !important;
+    }
+
+    [data-testid="stTextInput"] > div > div:focus-within {
+        border-color: #c9a35e !important;
+    }
+
+    [data-testid="stTextInput"] input {
+        color: #0c1a30 !important;
+        font-family: 'Montserrat', sans-serif !important;
+        font-weight: 600 !important;
+    }
+    
+    .stTextInput label p {
+        font-family: 'Montserrat', sans-serif !important;
+        color: #003366 !important;
+        font-weight: 800 !important;
+        font-size: 0.85rem !important;
+        letter-spacing: 1px !important;
+    }
+
+    [data-testid="stFormSubmitButton"] > button {
+        background-color: #003366 !important;
+        color: white !important;
+        border-radius: 0px !important;
+        font-family: 'Montserrat', sans-serif !important;
+        font-weight: 700 !important;
+        letter-spacing: 1px !important;
+        border: none !important;
+        width: 100% !important;
+        padding: 14px !important;
+        margin-top: 10px !important;
+    }
+    
+    [data-testid="stFormSubmitButton"] > button:hover {
+        background-color: #c9a35e !important;
+        color: #0c1a30 !important;
+    }
+
+    /* SUCCESS MESSAGE */
+    .success-message {
+        background-color: white !important;
+        border: 3px solid #c9a35e !important;
+        padding: 30px !important;
+        text-align: center !important;
+        margin: 20px auto !important;
+        max-width: 500px;
+    }
+
+    .close-modal-btn {
+        background-color: #0c1a30 !important;
+        color: white !important;
+        padding: 8px 20px !important;
+        border-radius: 0px !important;
+        font-family: 'Montserrat', sans-serif !important;
+        font-weight: 600 !important;
+        border: none !important;
+        cursor: pointer !important;
+        margin-top: 15px !important;
+    }
+
+    /* BRAVE BROWSER WARNING */
+    .brave-warning {
+        position: fixed;
+        top: 70px;
+        left: 0;
+        right: 0;
+        background-color: #c9a35e;
+        color: #0c1a30;
+        padding: 10px;
+        text-align: center;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 0.8rem;
+        font-weight: 600;
+        z-index: 998;
+        display: none;
+    }
+
+    @media screen and (max-width: 768px) {
+        .top-bar {
+            padding: 0 20px !important;
+            height: 60px !important;
+        }
+        .top-bar-title {
+            font-size: 1.3rem !important;
+        }
+        .pdf-fullscreen-container {
+            top: 60px !important;
+            height: calc(100vh - 60px) !important;
+        }
     }
     </style>
+    
+    <script>
+    // Detect Brave browser and show warning
+    if (navigator.brave && navigator.brave.isBrave) {
+        navigator.brave.isBrave().then((isBrave) => {
+            if (isBrave) {
+                document.getElementById('brave-warning').style.display = 'block';
+            }
+        }).catch(() => {
+            // Fallback detection
+            if (navigator.plugins.length === 0 || 
+                navigator.languages.length === 0 ||
+                typeof navigator.plugins === 'undefined') {
+                document.getElementById('brave-warning').style.display = 'block';
+            }
+        });
+    }
+    </script>
 """, unsafe_allow_html=True)
 
-# --- FULL‑SCREEN PDF IFRAME ---
-st.markdown(f'<iframe src="{VIEWER_URL}" class="pdf-iframe" allowfullscreen></iframe>', unsafe_allow_html=True)
+# --- TOP NAVIGATION BAR ---
+top_bar_html = f"""
+<div class="top-bar">
+    <div class="top-bar-title">THE CONFIDENCE <span>GAP</span></div>
+    <button class="top-download-btn" onclick="document.getElementById('download-trigger').click()">
+        📥 DOWNLOAD PUBLICATION
+    </button>
+</div>
+<div id="brave-warning" class="brave-warning">
+    ⚠️ If using Brave browser, please disable Shields for this page to view the PDF
+</div>
+"""
+st.markdown(top_bar_html, unsafe_allow_html=True)
 
-# --- TOP BAR (conditional) ---
-top_bar_placeholder = st.empty()
-
-def render_top_bar():
-    if st.session_state.registered:
-        # Registered: show welcome, direct download, and reset button
-        top_bar_placeholder.markdown(f"""
-            <div class="top-bar">
-                <div class="brand">THE CONFIDENCE <span>GAP</span></div>
-                <div class="actions">
-                    <span style="font-family: 'Montserrat', sans-serif; font-weight: 600; color: #0c1a30;">
-                        👋 {st.session_state.user_name}
-                    </span>
-                    <a href="{DIRECT_DOWNLOAD_URL}" class="btn gold" download>⬇ DOWNLOAD PDF</a>
-                    <button class="btn outline" id="resetBtn">Register Another</button>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        # Reset button logic (JS + hidden Streamlit button)
-        if st.button("Reset", key="reset_btn", help=""):
-            st.session_state.registered = False
-            st.session_state.user_name = ""
-            st.session_state.show_register_modal = False
-            st.rerun()
-        st.markdown("""
-            <style>div[data-testid="stButton"]:has(button[key="reset_btn"]) { display: none !important; }</style>
-            <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const resetBtn = document.getElementById('resetBtn');
-                if (resetBtn) {
-                    resetBtn.addEventListener('click', function() {
-                        const hidden = document.querySelector('button[key="reset_btn"]');
-                        if (hidden) hidden.click();
-                    });
-                }
-            });
-            </script>
-        """, unsafe_allow_html=True)
-    else:
-        # Not registered: show brand and download button
-        top_bar_placeholder.markdown("""
-            <div class="top-bar">
-                <div class="brand">THE CONFIDENCE <span>GAP</span></div>
-                <div class="actions">
-                    <button class="btn" id="openModalBtn">📥 DOWNLOAD PUBLICATION</button>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        # Open modal via hidden button
-        if st.button("Open Modal", key="open_modal_btn", help=""):
-            st.session_state.show_register_modal = True
-            st.rerun()
-        st.markdown("""
-            <style>div[data-testid="stButton"]:has(button[key="open_modal_btn"]) { display: none !important; }</style>
-            <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const openBtn = document.getElementById('openModalBtn');
-                if (openBtn) {
-                    openBtn.addEventListener('click', function() {
-                        const hidden = document.querySelector('button[key="open_modal_btn"]');
-                        if (hidden) hidden.click();
-                    });
-                }
-            });
-            </script>
-        """, unsafe_allow_html=True)
-
-render_top_bar()
-
-# --- REGISTRATION MODAL ---
-if st.session_state.show_register_modal and not st.session_state.registered:
-    # We'll render the modal using a container with fixed positioning via CSS
-    with st.container():
-        st.markdown("""
-            <div class="modal-overlay" id="modalOverlay">
-                <div class="modal-box">
-                    <button class="close" id="closeModalBtn">✕</button>
-                    <h2>Quick Registration</h2>
-                    <p>Fill in your details to get the full publication.</p>
-        """, unsafe_allow_html=True)
-
-        # Streamlit form inside modal
-        with st.form("reg_form", clear_on_submit=False):
-            name = st.text_input("FULL NAME *", key="reg_name")
-            contact = st.text_input("CONTACT NUMBER (optional)", key="reg_contact")
-            email = st.text_input("EMAIL *", key="reg_email")
+# Hidden button to trigger registration modal
+if not st.session_state.registered:
+    st.markdown('<div id="download-trigger" style="display:none;"></div>', unsafe_allow_html=True)
+    
+    if st.session_state.show_register_modal:
+        # Registration Modal Overlay
+        modal_html = """
+        <div class="modal-overlay">
+            <div class="modal-content">
+                <h2 style="font-family: 'Cormorant Garamond', serif; color: #0c1a30; font-size: 2rem; margin-bottom: 10px; text-align: center;">
+                    Complete Registration
+                </h2>
+                <p style="font-family: 'Montserrat', sans-serif; color: #333; text-align: center; margin-bottom: 25px; font-size: 0.9rem;">
+                    Enter your details to download the full publication
+                </p>
+        """
+        st.markdown(modal_html, unsafe_allow_html=True)
+        
+        with st.form("registration_form"):
+            name = st.text_input("FULL NAME *")
+            contact = st.text_input("CONTACT NUMBER (OPTIONAL)")
+            email = st.text_input("EMAIL *")
+            
             submitted = st.form_submit_button("SUBMIT & UNLOCK DOWNLOAD")
-
+            
             if submitted:
                 if name.strip() and email.strip():
                     try:
@@ -313,31 +329,64 @@ if st.session_state.show_register_modal and not st.session_state.registered:
                         st.session_state.registered = True
                         st.session_state.user_name = name
                         st.session_state.show_register_modal = False
-                        st.rerun()
+                        st.rerun() 
                     except Exception as e:
-                        st.error(f"Registration failed: {e}")
+                        st.error(f"Failed to register. Please try again. Error: {e}")
                 else:
-                    st.error("Please enter both Full Name and Email.")
-
-        # Close modal via hidden button
-        if st.button("Close Modal", key="close_modal_btn", help=""):
+                    st.error("Please provide both your Full Name and Email.")
+        
+        # Close modal button
+        if st.button("CANCEL", key="close_modal"):
             st.session_state.show_register_modal = False
             st.rerun()
-        st.markdown("""
-            <style>div[data-testid="stButton"]:has(button[key="close_modal_btn"]) { display: none !important; }</style>
-            <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const closeBtn = document.getElementById('closeModalBtn');
-                if (closeBtn) {
-                    closeBtn.addEventListener('click', function() {
-                        const hidden = document.querySelector('button[key="close_modal_btn"]');
-                        if (hidden) hidden.click();
-                    });
-                }
-            });
-            </script>
-        """, unsafe_allow_html=True)
-
+        
         st.markdown("</div></div>", unsafe_allow_html=True)
+    
+    # Check if hidden trigger was activated (via JavaScript click)
+    if not st.session_state.show_register_modal:
+        # Create a visible but hidden button that can be triggered
+        if st.button("📥 DOWNLOAD PUBLICATION", key="hidden_download_trigger", type="primary"):
+            st.session_state.show_register_modal = True
+            st.rerun()
 
-# If registered, we don't show the modal.
+else:
+    # Registered user - show success and direct download
+    success_html = f"""
+    <div style="position: fixed; top: 120px; left: 50%; transform: translateX(-50%); z-index: 1500;">
+        <div class="success-message">
+            <h3 style="font-family: 'Montserrat', sans-serif; color: #0c1a30; margin-bottom: 10px; font-size: 1.5rem;">
+                ✓ Registration Complete!
+            </h3>
+            <p style="font-family: 'Montserrat', sans-serif; color: #333; margin-bottom: 20px;">
+                Thank you, <b>{st.session_state.user_name}</b>. Your download is ready.
+            </p>
+            <a href="{DIRECT_DOWNLOAD_URL}" 
+               style="display: inline-block; background-color: #003366; color: white; padding: 12px 30px; 
+                      text-decoration: none; font-family: 'Montserrat', sans-serif; font-weight: 700; 
+                      letter-spacing: 1px; border-radius: 0px;"
+               download>
+               DOWNLOAD PDF NOW
+            </a>
+            <br>
+            <button onclick="location.reload()" 
+                    style="background-color: transparent; color: #0c1a30; border: 2px solid #0c1a30; 
+                           padding: 8px 20px; margin-top: 15px; cursor: pointer; font-family: 'Montserrat', sans-serif;">
+                Close
+            </button>
+        </div>
+    </div>
+    """
+    st.markdown(success_html, unsafe_allow_html=True)
+
+# --- FULL SCREEN PDF VIEWER WITH TOOLBAR BLOCKER ---
+pdf_html = f'''
+<div class="pdf-fullscreen-container">
+    <iframe src="{PDF_PREVIEW_URL}" frameborder="0"></iframe>
+</div>
+<div class="toolbar-blocker">
+    <div class="toolbar-blocker-text">
+        🔒 REGISTER TO DOWNLOAD FULL PUBLICATION
+    </div>
+</div>
+'''
+st.markdown(pdf_html, unsafe_allow_html=True)
