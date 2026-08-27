@@ -14,7 +14,6 @@ def init_connection():
 supabase: Client = init_connection()
 
 def save_registration(name, contact, email):
-    """Saves registration data directly to the Supabase cloud database."""
     data = {
         "name": name,
         "contact": contact if contact else "N/A",
@@ -37,13 +36,11 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
 
-    /* Hide default Streamlit elements */
     header { visibility: hidden !important; }
     #MainMenu { visibility: hidden !important; }
     footer { visibility: hidden !important; }
     .stApp { background-color: #ffffff !important; }
     
-    /* TOP NAVIGATION BAR */
     .top-bar {
         position: fixed;
         top: 0;
@@ -71,7 +68,6 @@ st.markdown("""
         color: #c9a35e !important;
     }
     
-    /* FULL SCREEN PDF CONTAINER */
     .pdf-fullscreen-container {
         position: fixed;
         top: 70px;
@@ -92,42 +88,18 @@ st.markdown("""
         border: none;
     }
     
-    /* TOP TOOLBAR BLOCKER - Covers PDF viewer toolbar */
-    .toolbar-top-blocker {
+    /* Covers the PDF viewer toolbar */
+    .toolbar-cover {
         position: fixed;
         top: 70px;
         left: 0;
         right: 0;
         height: 45px;
-        background: linear-gradient(to bottom, rgba(12, 26, 48, 0.95), rgba(12, 26, 48, 0.7));
-        z-index: 999;
-        pointer-events: all;
-        backdrop-filter: blur(5px);
-    }
-    
-    /* BOTTOM TOOLBAR BLOCKER */
-    .toolbar-bottom-blocker {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 50px;
         background-color: #0c1a30;
         z-index: 999;
         pointer-events: all;
     }
-    
-    .toolbar-blocker-text {
-        color: #c9a35e;
-        font-family: 'Montserrat', sans-serif;
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 1px;
-        text-align: center;
-        padding-top: 15px;
-    }
 
-    /* DOWNLOAD BUTTON IN TOP BAR */
     .top-download-btn {
         background-color: #c9a35e !important;
         color: #0c1a30 !important;
@@ -147,7 +119,6 @@ st.markdown("""
         color: #c9a35e !important;
     }
 
-    /* REGISTRATION MODAL OVERLAY */
     .modal-overlay {
         position: fixed;
         top: 0;
@@ -171,7 +142,6 @@ st.markdown("""
         box-shadow: 0px 20px 60px rgba(0,0,0,0.3) !important;
     }
 
-    /* FORM STYLING */
     [data-testid="stForm"] {
         background-color: white !important;
         border: none !important;
@@ -222,7 +192,6 @@ st.markdown("""
         color: #0c1a30 !important;
     }
 
-    /* SUCCESS MESSAGE */
     .success-message {
         background-color: white !important;
         border: 3px solid #c9a35e !important;
@@ -244,7 +213,7 @@ st.markdown("""
             top: 60px !important;
             height: calc(100vh - 60px) !important;
         }
-        .toolbar-top-blocker {
+        .toolbar-cover {
             top: 60px !important;
         }
     }
@@ -256,18 +225,16 @@ top_bar_html = f"""
 <div class="top-bar">
     <div class="top-bar-title">THE CONFIDENCE <span>GAP</span></div>
     <button class="top-download-btn" onclick="document.getElementById('download-trigger').click()">
-        📥 DOWNLOAD PUBLICATION
+         DOWNLOAD PUBLICATION
     </button>
 </div>
 """
 st.markdown(top_bar_html, unsafe_allow_html=True)
 
-# Hidden button to trigger registration modal
 if not st.session_state.registered:
     st.markdown('<div id="download-trigger" style="display:none;"></div>', unsafe_allow_html=True)
     
     if st.session_state.show_register_modal:
-        # Registration Modal Overlay
         modal_html = """
         <div class="modal-overlay">
             <div class="modal-content">
@@ -300,21 +267,18 @@ if not st.session_state.registered:
                 else:
                     st.error("Please provide both your Full Name and Email.")
         
-        # Close modal button
         if st.button("CANCEL", key="close_modal"):
             st.session_state.show_register_modal = False
             st.rerun()
         
         st.markdown("</div></div>", unsafe_allow_html=True)
     
-    # Check if hidden trigger was activated (via JavaScript click)
     if not st.session_state.show_register_modal:
         if st.button("📥 DOWNLOAD PUBLICATION", key="hidden_download_trigger", type="primary"):
             st.session_state.show_register_modal = True
             st.rerun()
 
 else:
-    # Registered user - show success and direct download
     success_html = f"""
     <div style="position: fixed; top: 120px; left: 50%; transform: translateX(-50%); z-index: 1500;">
         <div class="success-message">
@@ -342,16 +306,11 @@ else:
     """
     st.markdown(success_html, unsafe_allow_html=True)
 
-# --- FULL SCREEN PDF VIEWER WITH TOOLBAR BLOCKERS ---
+# --- PDF VIEWER WITH TOOLBAR COVER ---
 pdf_html = f'''
 <div class="pdf-fullscreen-container">
     <iframe src="{PDF_PREVIEW_URL}" frameborder="0"></iframe>
 </div>
-<div class="toolbar-top-blocker"></div>
-<div class="toolbar-bottom-blocker">
-    <div class="toolbar-blocker-text">
-        🔒 REGISTER TO DOWNLOAD FULL PUBLICATION
-    </div>
-</div>
+<div class="toolbar-cover"></div>
 '''
 st.markdown(pdf_html, unsafe_allow_html=True)
