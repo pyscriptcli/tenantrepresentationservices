@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from supabase import create_client, Client
 
-# --- PAGE CONFIGURATION (Full screen edge-to-edge layout) ---
+# --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="The Confidence Gap - Publication", layout="wide", initial_sidebar_state="collapsed")
 
 # --- SUPABASE DATABASE SETUP ---
@@ -22,20 +22,20 @@ def save_registration(name, contact, email):
     }
     supabase.table("attendees").insert(data).execute()
 
-# --- SESSION STATE & LINKS ---
+# --- SESSION STATE & URLS ---
 if 'page_step' not in st.session_state:
     st.session_state.page_step = 'viewer'
 
-# Google Drive Preview URL
-GDRIVE_EMBED_URL = "https://drive.google.com/file/d/1D6KDfPKNQX95u1EpYaN49wfwQA0kwT-o/preview"
-DOWNLOAD_LINK = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
+# Dropbox preview URL with raw/embed parameter
+DROPBOX_EMBED_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&st=yd9so3nt&raw=1"
+DROPBOX_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
 
 # --- GLOBAL STYLES ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
 
-    /* Remove Streamlit chrome and margins */
+    /* Remove Streamlit default elements */
     header, #MainMenu, footer { visibility: hidden !important; display: none !important; }
     
     .stApp {
@@ -47,7 +47,7 @@ st.markdown("""
         max-width: 100% !important;
     }
 
-    /* TOPBAR BUTTON */
+    /* TOP BAR ACTION BUTTON */
     .viewer-btn-container div[data-testid="stButton"] > button {
         background-color: #c9a35e !important;
         color: #0c1a30 !important;
@@ -66,7 +66,7 @@ st.markdown("""
         color: #0c1a30 !important;
     }
 
-    /* FORM STYLES */
+    /* FORM & SUCCESS CARDS */
     [data-testid="stForm"], .success-box {
         background-color: #ffffff !important;
         border: 2px solid #c9a35e !important;
@@ -124,8 +124,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- STEP 1: GOOGLE DRIVE VIEWER WITH COVERED TOOLBAR ---
+# --- STEP 1: DROPBOX VIEWER WITH MASKED TOOLBAR ---
 if st.session_state.page_step == 'viewer':
+    # Top Bar
     bar_left, bar_right = st.columns([3.5, 1.2])
     with bar_left:
         st.markdown("""
@@ -142,8 +143,8 @@ if st.session_state.page_step == 'viewer':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Clean Fullscreen Google Drive Viewer with masked toolbar
-    gdrive_viewer_html = f"""
+    # Dropbox iframe wrapped with a CSS mask that conceals Dropbox's top controls
+    dropbox_viewer_html = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -153,29 +154,29 @@ if st.session_state.page_step == 'viewer':
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body, html {{ width: 100%; height: 100%; overflow: hidden; background-color: #0c1a30; }}
         
-        .viewer-wrapper {{
+        .viewer-container {{
             position: relative;
             width: 100%;
             height: calc(100vh - 75px);
             overflow: hidden;
         }}
         
-        /* Masks Google Drive's native pop-out and print/download toolbar */
-        .toolbar-mask {{
+        /* Solid header overlay concealing Dropbox controls */
+        .dropbox-mask {{
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            height: 56px;
+            height: 98px;
             background-color: #0c1a30;
             z-index: 10;
             display: flex;
             align-items: center;
-            padding-left: 25px;
+            justify-content: center;
             border-bottom: 1px solid #1d2d44;
         }}
         
-        .toolbar-mask span {{
+        .dropbox-mask span {{
             font-family: 'Montserrat', sans-serif;
             font-size: 11px;
             color: #c9a35e;
@@ -183,12 +184,12 @@ if st.session_state.page_step == 'viewer':
             letter-spacing: 2px;
         }}
 
-        /* Negative top margin pulls iframe upward under the dark topbar */
+        /* Negative top margin pulls Dropbox content upwards to tuck its ribbon underneath the mask */
         iframe {{
             width: 100%;
-            height: calc(100% + 56px);
+            height: calc(100% + 98px);
             border: none;
-            margin-top: -56px;
+            margin-top: -98px;
         }}
 
         #bottom-bar {{
@@ -212,17 +213,17 @@ if st.session_state.page_step == 'viewer':
       </style>
     </head>
     <body>
-      <div class="viewer-wrapper">
-        <div class="toolbar-mask">
-            <span>2026 PROPERTY OUTLOOK &bull; PREVIEW MODE</span>
+      <div class="viewer-container">
+        <div class="dropbox-mask">
+            <span>2026 ANNUAL PROPERTY OUTLOOK &bull; PREVIEW MODE</span>
         </div>
-        <iframe src="{GDRIVE_EMBED_URL}" allow="autoplay"></iframe>
+        <iframe src="{DROPBOX_EMBED_URL}" allowfullscreen="true"></iframe>
       </div>
       <div id="bottom-bar">🔒 REGISTER TO DOWNLOAD FULL PUBLICATION</div>
     </body>
     </html>
     """
-    components.html(gdrive_viewer_html, height=920)
+    components.html(dropbox_viewer_html, height=920)
 
 # --- STEP 2: REGISTRATION FORM ---
 elif st.session_state.page_step == 'register':
@@ -260,7 +261,7 @@ elif st.session_state.page_step == 'register':
         st.session_state.page_step = 'viewer'
         st.rerun()
 
-# --- STEP 3: DOWNLOAD READY STEP ---
+# --- STEP 3: DOWNLOAD CONFIRMATION ---
 elif st.session_state.page_step == 'download':
     st.markdown("""
         <div style="background-color: #ffffff; padding: 40px 20px 10px 20px; text-align: center;">
@@ -274,7 +275,7 @@ elif st.session_state.page_step == 'download':
         <div class="success-box" style="text-align: center;">
             <h3 style="font-family: 'Montserrat', sans-serif; color: #0c1a30; margin-bottom: 10px; font-weight: 700;">Registration Confirmed</h3>
             <p style="font-family: 'Montserrat', sans-serif; color: #555; font-size: 0.95rem;">Thank you, <b>{st.session_state.get('user_name', '')}</b>. Your file is ready for download.</p>
-            <a href="{DOWNLOAD_LINK}" class="custom-download-btn">DOWNLOAD FULL PUBLICATION</a>
+            <a href="{DROPBOX_DOWNLOAD_URL}" class="custom-download-btn">DOWNLOAD FULL PUBLICATION</a>
         </div>
     """, unsafe_allow_html=True)
     
