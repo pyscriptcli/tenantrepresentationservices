@@ -29,136 +29,125 @@ if 'show_register_modal' not in st.session_state:
     st.session_state.show_register_modal = False
 
 # --- URL CONFIGURATION ---
-# Online viewer preview - disabled toolbar and downloads via URL params
 PDF_PREVIEW_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1"
 DIRECT_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
 
 # --- CSS INJECTION ---
 st.markdown("""
     <style>
-    /* Imported Cormorant Garamond and Montserrat */
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
 
     /* Hide default Streamlit elements */
-    header { visibility: hidden; }
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
+    header { visibility: hidden !important; }
+    #MainMenu { visibility: hidden !important; }
+    footer { visibility: hidden !important; }
+    .stApp { background-color: #ffffff !important; }
     
-    /* Solid White Background */
-    .stApp, .main {
-        background-color: #ffffff !important;
-    }
-
-    /* Remove padding for full-screen */
-    .main .block-container {
-        padding-top: 0rem !important;
-        padding-bottom: 0rem !important;
-        max-width: 100% !important;
-    }
-
-    /* HEADER TYPOGRAPHY */
-    .header-container {
-        margin-top: 10px;
-        margin-bottom: 15px;
-        padding: 0 20px;
+    /* TOP NAVIGATION BAR */
+    .top-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 70px;
+        background-color: #0c1a30;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 40px;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
     
-    .title-main { 
-        font-family: 'Cormorant Garamond', serif !important; 
-        font-size: 3.2rem !important; 
-        font-weight: 700 !important; 
-        color: #0c1a30 !important; 
-        margin: 0 !important; 
-        line-height: 1.05 !important;
+    .top-bar-title {
+        font-family: 'Cormorant Garamond', serif !important;
+        font-size: 1.8rem !important;
+        font-weight: 700 !important;
+        color: #ffffff !important;
         letter-spacing: 1px !important;
-        white-space: nowrap !important;
     }
     
-    .title-gap-gold { 
-        font-family: 'Cormorant Garamond', serif !important; 
-        color: #c9a35e !important; 
-    }
-
-    .tagline { 
-        font-family: 'Montserrat', sans-serif !important; 
-        font-size: 0.95rem !important; 
-        color: #0c1a30 !important; 
-        font-weight: 700 !important; 
-        letter-spacing: 2px !important; 
-        margin-top: 8px !important;
-        margin-bottom: 15px !important;
-    }
-
-    .horizontal-divider {
-        width: 100%;
-        height: 2px;
-        background-color: #c9a35e;
-        margin: 10px 0;
+    .top-bar-title span {
+        color: #c9a35e !important;
     }
     
-    .sub-header-1 { 
-        font-family: 'Montserrat', sans-serif !important; 
-        font-size: 0.8rem !important; 
-        color: #0c1a30 !important; 
-        font-weight: 800 !important; 
-        letter-spacing: 2.5px !important; 
-        margin-bottom: 4px !important;
-    }
-
-    .sub-header-2 { 
-        font-family: 'Montserrat', sans-serif !important; 
-        font-size: 0.75rem !important; 
-        color: #0c1a30 !important; 
-        font-weight: 600 !important; 
-        letter-spacing: 4px !important; 
-    }
-
-    /* FULL-SCREEN PDF CONTAINER */
+    /* FULL SCREEN PDF CONTAINER */
     .pdf-fullscreen-container {
-        position: relative;
+        position: fixed;
+        top: 70px;
+        left: 0;
+        right: 0;
+        bottom: 0;
         width: 100vw;
-        height: calc(100vh - 180px);
+        height: calc(100vh - 70px);
+        border: none;
         margin: 0;
         padding: 0;
-        overflow: hidden;
     }
-
-    .pdf-iframe {
+    
+    .pdf-fullscreen-container iframe {
         width: 100%;
         height: 100%;
         border: none;
-        pointer-events: auto;
     }
 
-    /* OVERLAY TO BLOCK DOWNLOADS */
-    .pdf-overlay {
-        position: absolute;
+    /* DOWNLOAD BUTTON IN TOP BAR */
+    .top-download-btn {
+        background-color: #c9a35e !important;
+        color: #0c1a30 !important;
+        padding: 10px 25px !important;
+        border-radius: 0px !important;
+        font-family: 'Montserrat', sans-serif !important;
+        font-weight: 700 !important;
+        font-size: 0.9rem !important;
+        letter-spacing: 1px !important;
+        border: 2px solid #c9a35e !important;
+        cursor: pointer !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    .top-download-btn:hover {
+        background-color: transparent !important;
+        color: #c9a35e !important;
+    }
+
+    /* REGISTRATION MODAL OVERLAY */
+    .modal-overlay {
+        position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
-        height: 100%;
-        background: transparent;
-        z-index: 10;
-        pointer-events: auto;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(12, 26, 48, 0.9);
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-content {
+        background-color: white !important;
+        border: 3px solid #c9a35e !important;
+        border-radius: 0px !important;
+        padding: 40px !important;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0px 20px 60px rgba(0,0,0,0.3) !important;
     }
 
-    /* FORM CONTAINER */
+    /* FORM STYLING */
     [data-testid="stForm"] {
         background-color: white !important;
-        border: 3px solid #c9a35e !important; 
-        border-radius: 0px !important;
-        padding: 30px 35px !important;
-        box-shadow: 0px 10px 30px rgba(0,0,0,0.05) !important;
-        margin: 20px auto !important;
-        max-width: 600px !important;
+        border: none !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        margin: 0 !important;
     }
 
-    /* INPUT TEXT BOX UI */
     [data-testid="stTextInput"] > div > div {
         background-color: transparent !important;
         border: 2px solid #003366 !important;
         border-radius: 0px !important;
-        box-shadow: none !important;
     }
 
     [data-testid="stTextInput"] > div > div:focus-within {
@@ -166,7 +155,6 @@ st.markdown("""
     }
 
     [data-testid="stTextInput"] input {
-        background-color: transparent !important;
         color: #0c1a30 !important;
         font-family: 'Montserrat', sans-serif !important;
         font-weight: 600 !important;
@@ -176,12 +164,11 @@ st.markdown("""
         font-family: 'Montserrat', sans-serif !important;
         color: #003366 !important;
         font-weight: 800 !important;
-        font-size: 0.9rem !important;
+        font-size: 0.85rem !important;
         letter-spacing: 1px !important;
     }
 
-    /* SUBMIT & ACTION BUTTONS */
-    [data-testid="stFormSubmitButton"] > button, .stButton > button {
+    [data-testid="stFormSubmitButton"] > button {
         background-color: #003366 !important;
         color: white !important;
         border-radius: 0px !important;
@@ -191,136 +178,80 @@ st.markdown("""
         border: none !important;
         width: 100% !important;
         padding: 14px !important;
-        transition: all 0.3s ease;
+        margin-top: 10px !important;
     }
     
-    [data-testid="stFormSubmitButton"] > button:hover, .stButton > button:hover {
+    [data-testid="stFormSubmitButton"] > button:hover {
         background-color: #c9a35e !important;
-        color: white !important;
+        color: #0c1a30 !important;
     }
-    
-    /* CUSTOM DOWNLOAD BUTTON */
-    a.custom-download-btn {
-        display: block;
-        width: 100%;
-        text-align: center;
-        background-color: #003366;
-        color: white !important;
-        padding: 14px 20px;
-        border-radius: 0px !important;
-        text-decoration: none;
-        font-family: 'Montserrat', sans-serif;
-        font-weight: 700;
-        font-size: 1rem;
-        letter-spacing: 1px;
-        margin-top: 15px;
-        margin-bottom: 10px;
-        transition: background-color 0.3s ease;
-    }
-    a.custom-download-btn:hover {
-        background-color: #c9a35e;
-    }
-    
-    .success-box {
+
+    /* SUCCESS MESSAGE */
+    .success-message {
         background-color: white !important;
-        border: 3px solid #c9a35e !important; 
-        border-radius: 0px !important;
+        border: 3px solid #c9a35e !important;
         padding: 30px !important;
-        box-shadow: 0px 10px 30px rgba(0,0,0,0.05) !important;
         text-align: center !important;
         margin: 20px auto !important;
-        max-width: 600px !important;
+        max-width: 500px;
     }
 
-    .footer-text { 
-        margin-top: 30px; 
-        margin-bottom: 20px; 
-        text-align: center; 
-        font-family: 'Montserrat', sans-serif !important; 
-        color: #0c1a30 !important; 
-        font-weight: 700 !important; 
-        letter-spacing: 3px !important; 
-        font-size: 0.85rem !important; 
-    }
-
-    /* Prevent text selection and right-click */
-    .no-select {
-        -webkit-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        user-select: none;
+    .close-modal-btn {
+        background-color: #0c1a30 !important;
+        color: white !important;
+        padding: 8px 20px !important;
+        border-radius: 0px !important;
+        font-family: 'Montserrat', sans-serif !important;
+        font-weight: 600 !important;
+        border: none !important;
+        cursor: pointer !important;
+        margin-top: 15px !important;
     }
 
     @media screen and (max-width: 768px) {
-        .title-main { 
-            font-size: 1.8rem !important; 
-            letter-spacing: 0px !important;
+        .top-bar {
+            padding: 0 20px !important;
+            height: 60px !important;
+        }
+        .top-bar-title {
+            font-size: 1.3rem !important;
         }
         .pdf-fullscreen-container {
-            height: calc(100vh - 250px);
+            top: 60px !important;
+            height: calc(100vh - 60px) !important;
         }
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- JAVASCRIPT TO DISABLE RIGHT-CLICK AND DOWNLOADS ---
-st.markdown("""
-    <script>
-    // Disable right-click on PDF iframe
-    document.addEventListener('contextmenu', function(e) {
-        if (e.target.tagName === 'IFRAME') {
-            e.preventDefault();
-            return false;
-        }
-    });
-    
-    // Disable keyboard shortcuts for download
-    document.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'p')) {
-            e.preventDefault();
-            return false;
-        }
-    });
-    </script>
-""", unsafe_allow_html=True)
-
-# --- HEADER SECTION ---
-st.markdown("""
-<div class="header-container">
-    <h1 class="title-main">THE CONFIDENCE <span class="title-gap-gold">GAP</span></h1>
-    <div class="tagline">CLOSING THE DISTANCE BETWEEN FEAR AND FACT.</div>
-    <div class="horizontal-divider"></div>
-    <div class="sub-header-1">PHILIPPINE REAL ESTATE MARKET OVERVIEW</div>
-    <div class="sub-header-2">INDUSTRIAL &nbsp;•&nbsp; OFFICE &nbsp;•&nbsp; RETAIL</div>
+# --- TOP NAVIGATION BAR ---
+top_bar_html = f"""
+<div class="top-bar">
+    <div class="top-bar-title">THE CONFIDENCE <span>GAP</span></div>
+    <button class="top-download-btn" onclick="document.getElementById('download-trigger').click()">
+        📥 DOWNLOAD PUBLICATION
+    </button>
 </div>
-""", unsafe_allow_html=True)
+"""
+st.markdown(top_bar_html, unsafe_allow_html=True)
 
-# --- PDF VIEWER WITH DOWNLOAD PROTECTION ---
+# Hidden button to trigger registration modal
 if not st.session_state.registered:
-    # Show full-screen PDF with overlay protection
-    st.markdown(f'''
-        <div class="pdf-fullscreen-container no-select">
-            <iframe 
-                src="{PDF_PREVIEW_URL}" 
-                class="pdf-iframe"
-                frameborder="0"
-                oncontextmenu="return false;"
-            ></iframe>
-            <div class="pdf-overlay" oncontextmenu="return false;"></div>
-        </div>
-    ''', unsafe_allow_html=True)
+    st.markdown('<div id="download-trigger" style="display:none;"></div>', unsafe_allow_html=True)
     
-    # Download button beneath viewer
-    st.markdown("<div style='text-align: center; margin: 20px 0;'>", unsafe_allow_html=True)
-    if st.button("📥 DOWNLOAD FULL PUBLICATION", use_container_width=True, key="download_btn"):
-        st.session_state.show_register_modal = True
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    # Registration form
     if st.session_state.show_register_modal:
-        st.markdown("<div style='max-width: 600px; margin: 0 auto;'>", unsafe_allow_html=True)
-        st.markdown("### Complete Quick Registration to Download")
+        # Registration Modal Overlay
+        modal_html = """
+        <div class="modal-overlay">
+            <div class="modal-content">
+                <h2 style="font-family: 'Cormorant Garamond', serif; color: #0c1a30; font-size: 2rem; margin-bottom: 10px; text-align: center;">
+                    Complete Registration
+                </h2>
+                <p style="font-family: 'Montserrat', sans-serif; color: #333; text-align: center; margin-bottom: 25px; font-size: 0.9rem;">
+                    Enter your details to download the full publication
+                </p>
+        """
+        st.markdown(modal_html, unsafe_allow_html=True)
         
         with st.form("registration_form"):
             name = st.text_input("FULL NAME *")
@@ -335,30 +266,60 @@ if not st.session_state.registered:
                         save_registration(name, contact, email)
                         st.session_state.registered = True
                         st.session_state.user_name = name
+                        st.session_state.show_register_modal = False
                         st.rerun() 
                     except Exception as e:
                         st.error(f"Failed to register. Please try again. Error: {e}")
                 else:
                     st.error("Please provide both your Full Name and Email.")
-        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Close modal button
+        if st.button("CANCEL", key="close_modal"):
+            st.session_state.show_register_modal = False
+            st.rerun()
+        
+        st.markdown("</div></div>", unsafe_allow_html=True)
+    
+    # Check if hidden trigger was activated (via JavaScript click)
+    if not st.session_state.show_register_modal:
+        # Create a visible but hidden button that can be triggered
+        if st.button("📥 DOWNLOAD PUBLICATION", key="hidden_download_trigger", type="primary"):
+            st.session_state.show_register_modal = True
+            st.rerun()
 
 else:
-    # --- SUCCESS & DIRECT DOWNLOAD REVEAL ---
-    success_html = (
-        '<div class="success-box">'
-        '<h3 style="font-family: \'Montserrat\', sans-serif; color: #0c1a30; margin-bottom: 10px;">Registration Complete!</h3>'
-        f'<p style="font-family: \'Montserrat\', sans-serif; color: #333;">Thank you, <b>{st.session_state.user_name}</b>. Your download link is ready below.</p>'
-        f'<a href="{DIRECT_DOWNLOAD_URL}" class="custom-download-btn" download>DOWNLOAD PDF NOW</a>'
-        '</div>'
-    )
+    # Registered user - show success and direct download
+    success_html = f"""
+    <div style="position: fixed; top: 100px; left: 50%; transform: translateX(-50%); z-index: 1500;">
+        <div class="success-message">
+            <h3 style="font-family: 'Montserrat', sans-serif; color: #0c1a30; margin-bottom: 10px; font-size: 1.5rem;">
+                ✓ Registration Complete!
+            </h3>
+            <p style="font-family: 'Montserrat', sans-serif; color: #333; margin-bottom: 20px;">
+                Thank you, <b>{st.session_state.user_name}</b>. Your download is ready.
+            </p>
+            <a href="{DIRECT_DOWNLOAD_URL}" 
+               style="display: inline-block; background-color: #003366; color: white; padding: 12px 30px; 
+                      text-decoration: none; font-family: 'Montserrat', sans-serif; font-weight: 700; 
+                      letter-spacing: 1px; border-radius: 0px;"
+               download>
+               DOWNLOAD PDF NOW
+            </a>
+            <br>
+            <button onclick="location.reload()" 
+                    style="background-color: transparent; color: #0c1a30; border: 2px solid #0c1a30; 
+                           padding: 8px 20px; margin-top: 15px; cursor: pointer; font-family: 'Montserrat', sans-serif;">
+                Close
+            </button>
+        </div>
+    </div>
+    """
     st.markdown(success_html, unsafe_allow_html=True)
-    
-    st.markdown("<div style='text-align: center; margin: 20px 0;'>", unsafe_allow_html=True)
-    if st.button("Register Another User", use_container_width=True):
-        st.session_state.registered = False
-        st.session_state.show_register_modal = False
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
 
-# --- FOOTER ---
-st.markdown('<div class="footer-text">EVIDENCE CREATES CONFIDENCE.</div>', unsafe_allow_html=True)
+# --- FULL SCREEN PDF VIEWER ---
+pdf_html = f'''
+<div class="pdf-fullscreen-container">
+    <iframe src="{PDF_PREVIEW_URL}" frameborder="0"></iframe>
+</div>
+'''
+st.markdown(pdf_html, unsafe_allow_html=True)
