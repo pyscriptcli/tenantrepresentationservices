@@ -1,5 +1,7 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import fitz  # PyMuPDF
+import requests
+import base64
 from supabase import create_client, Client
 
 # --- PAGE CONFIGURATION ---
@@ -20,22 +22,36 @@ def save_registration(name, contact, email):
         "contact": contact,
         "email": email
     }
-    supabase.table("attendees").insert(data).execute()
+    supabase.table("attendees").insert(data).execute()[cite: 1]
 
-# --- SESSION STATE & URLS ---
+# --- SESSION STATE ---
 if 'page_step' not in st.session_state:
     st.session_state.page_step = 'viewer'
 
-# Dropbox preview URL with raw/embed parameter
-DROPBOX_EMBED_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&st=yd9so3nt&raw=1"
-DROPBOX_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
+DROPBOX_RAW_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1"
+DOWNLOAD_LINK = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"[cite: 1]
 
-# --- GLOBAL STYLES ---
+# Convert PDF directly to high-res images in server memory (completely immune to Brave blocking)
+@st.cache_data(show_spinner="Rendering preview document...")
+def get_pdf_page_images():
+    response = requests.get(DROPBOX_RAW_URL)
+    pdf_bytes = response.content
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    
+    images_base64 = []
+    # Renders all pages as crisp JPEG images
+    for page in doc:
+        pix = page.get_pixmap(dpi=150)
+        img_bytes = pix.tobytes("jpeg")
+        b64 = base64.b64encode(img_bytes).decode("utf-8")
+        images_base64.append(f"data:image/jpeg;base64,{b64}")
+    return images_base64
+
+# --- CSS INJECTION ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
 
-    /* Remove Streamlit default elements */
     header, #MainMenu, footer { visibility: hidden !important; display: none !important; }
     
     .stApp {
@@ -66,7 +82,43 @@ st.markdown("""
         color: #0c1a30 !important;
     }
 
-    /* FORM & SUCCESS CARDS */
+    /* VIEWER SCROLL CONTAINER */
+    .pdf-stream-wrapper {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px 0 60px 0;
+        background-color: #111e33;
+    }
+
+    .pdf-page-img {
+        max-width: 85%;
+        width: 1000px;
+        margin-bottom: 25px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    }
+
+    #bottom-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 38px;
+        background-color: #0c1a30;
+        color: #c9a35e;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        border-top: 1px solid #1d2d44;
+        z-index: 100;
+    }
+
+    /* FORM STYLES */
     [data-testid="stForm"], .success-box {
         background-color: #ffffff !important;
         border: 2px solid #c9a35e !important;
@@ -124,9 +176,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- STEP 1: DROPBOX VIEWER WITH MASKED TOOLBAR ---
+# --- STEP 1: BRAVE-PROOF PDF VIEWER ---
 if st.session_state.page_step == 'viewer':
-    # Top Bar
     bar_left, bar_right = st.columns([3.5, 1.2])
     with bar_left:
         st.markdown("""
@@ -143,87 +194,16 @@ if st.session_state.page_step == 'viewer':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Dropbox iframe wrapped with a CSS mask that conceals Dropbox's top controls
-    dropbox_viewer_html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body, html {{ width: 100%; height: 100%; overflow: hidden; background-color: #0c1a30; }}
-        
-        .viewer-container {{
-            position: relative;
-            width: 100%;
-            height: calc(100vh - 75px);
-            overflow: hidden;
-        }}
-        
-        /* Solid header overlay concealing Dropbox controls */
-        .dropbox-mask {{
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 98px;
-            background-color: #0c1a30;
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-bottom: 1px solid #1d2d44;
-        }}
-        
-        .dropbox-mask span {{
-            font-family: 'Montserrat', sans-serif;
-            font-size: 11px;
-            color: #c9a35e;
-            font-weight: 700;
-            letter-spacing: 2px;
-        }}
-
-        /* Negative top margin pulls Dropbox content upwards to tuck its ribbon underneath the mask */
-        iframe {{
-            width: 100%;
-            height: calc(100% + 98px);
-            border: none;
-            margin-top: -98px;
-        }}
-
-        #bottom-bar {{
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 38px;
-            background-color: #0c1a30;
-            color: #c9a35e;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Montserrat', sans-serif;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            border-top: 1px solid #1d2d44;
-            z-index: 100;
-        }}
-      </style>
-    </head>
-    <body>
-      <div class="viewer-container">
-        <div class="dropbox-mask">
-            <span>2026 ANNUAL PROPERTY OUTLOOK &bull; PREVIEW MODE</span>
+    # Render image pages (zero cross-origin iframes)
+    pages = get_pdf_page_images()
+    img_tags = "".join([f'<img class="pdf-page-img" src="{src}" alt="Page" />' for src in pages])
+    
+    st.markdown(f"""
+        <div class="pdf-stream-wrapper">
+            {img_tags}
         </div>
-        <iframe src="{DROPBOX_EMBED_URL}" allowfullscreen="true"></iframe>
-      </div>
-      <div id="bottom-bar">🔒 REGISTER TO DOWNLOAD FULL PUBLICATION</div>
-    </body>
-    </html>
-    """
-    components.html(dropbox_viewer_html, height=920)
+        <div id="bottom-bar">🔒 REGISTER TO DOWNLOAD FULL PUBLICATION</div>
+    """, unsafe_allow_html=True)
 
 # --- STEP 2: REGISTRATION FORM ---
 elif st.session_state.page_step == 'register':
@@ -240,20 +220,20 @@ elif st.session_state.page_step == 'register':
     
     with st.form("registration_form"):
         st.markdown("<p style='font-family: Montserrat; font-weight:800; color:#0c1a30; font-size:0.95rem; text-align:center; letter-spacing:1px; margin-bottom:20px;'>ENTER YOUR DETAILS TO UNLOCK DOWNLOAD</p>", unsafe_allow_html=True)
-        name = st.text_input("FULL NAME")
-        contact = st.text_input("CONTACT NUMBER")
-        email = st.text_input("EMAIL")
+        name = st.text_input("FULL NAME")[cite: 1]
+        contact = st.text_input("CONTACT NUMBER")[cite: 1]
+        email = st.text_input("EMAIL")[cite: 1]
         
         submitted = st.form_submit_button("SUBMIT & UNLOCK PDF")
         if submitted:
-            if name and contact and email:
+            if name and contact and email:[cite: 1]
                 try:
-                    save_registration(name, contact, email)
-                    st.session_state.user_name = name
+                    save_registration(name, contact, email)[cite: 1]
+                    st.session_state.user_name = name[cite: 1]
                     st.session_state.page_step = 'download'
-                    st.rerun()
+                    st.rerun()[cite: 1]
                 except Exception as e:
-                    st.error(f"Failed to register. Error: {e}")
+                    st.error(f"Failed to register. Error: {e}")[cite: 1]
             else:
                 st.error("Please fill in all fields.")
 
@@ -261,7 +241,7 @@ elif st.session_state.page_step == 'register':
         st.session_state.page_step = 'viewer'
         st.rerun()
 
-# --- STEP 3: DOWNLOAD CONFIRMATION ---
+# --- STEP 3: DOWNLOAD READY STEP ---
 elif st.session_state.page_step == 'download':
     st.markdown("""
         <div style="background-color: #ffffff; padding: 40px 20px 10px 20px; text-align: center;">
@@ -275,7 +255,7 @@ elif st.session_state.page_step == 'download':
         <div class="success-box" style="text-align: center;">
             <h3 style="font-family: 'Montserrat', sans-serif; color: #0c1a30; margin-bottom: 10px; font-weight: 700;">Registration Confirmed</h3>
             <p style="font-family: 'Montserrat', sans-serif; color: #555; font-size: 0.95rem;">Thank you, <b>{st.session_state.get('user_name', '')}</b>. Your file is ready for download.</p>
-            <a href="{DROPBOX_DOWNLOAD_URL}" class="custom-download-btn">DOWNLOAD FULL PUBLICATION</a>
+            <a href="{DOWNLOAD_LINK}" class="custom-download-btn">DOWNLOAD FULL PUBLICATION</a>
         </div>
     """, unsafe_allow_html=True)
     
