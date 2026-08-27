@@ -1,5 +1,7 @@
 import streamlit as st
 from supabase import create_client, Client
+import base64
+import requests
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -37,7 +39,20 @@ if 'user_name' not in st.session_state:
 # --- URL CONFIGURATION ---
 DIRECT_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
 
-# --- CSS INJECTION ---
+# --- FETCH & ENCODE PDF FOR BRAVE/PRIVACY BROWSER BYPASS ---
+@st.cache_data
+def get_pdf_base64(url):
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            return base64.b64encode(response.content).decode('utf-8')
+    except Exception:
+        pass
+    return None
+
+pdf_base64 = get_pdf_base64(DIRECT_DOWNLOAD_URL)
+
+# --- CSS INJECTION & FULL SCREEN STYLING ---
 st.markdown("""
     <style>
     /* Imported Fonts */
@@ -55,9 +70,9 @@ st.markdown("""
 
     .main .block-container {
         padding-top: 0.5rem !important;
-        padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important;
-        padding-bottom: 1rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        padding-bottom: 0.5rem !important;
         max-width: 100% !important;
     }
 
@@ -85,42 +100,31 @@ st.markdown("""
         display: block;
     }
 
-    /* LANDING HERO CONTAINER */
-    .hero-card {
+    /* FULL SCREEN PDF WRAPPER & TOOLBAR BLOCKER */
+    .pdf-wrapper {
+        position: relative;
+        width: 100%;
+        height: calc(100vh - 110px);
         border: 2px solid #003366;
-        background-color: #fcfcfc;
-        padding: 40px;
-        margin-top: 15px;
-        box-shadow: 0px 10px 30px rgba(0,0,0,0.03);
+        background-color: #f8f9fa;
     }
 
-    .hero-heading {
-        font-family: 'Cormorant Garamond', serif !important;
-        font-size: 3rem !important;
-        font-weight: 700 !important;
-        color: #0c1a30 !important;
-        line-height: 1.1;
-        margin-bottom: 20px;
+    .pdf-container {
+        width: 100%;
+        height: 100%;
+        border: none;
     }
 
-    .hero-description {
-        font-family: 'Montserrat', sans-serif !important;
-        font-size: 1rem !important;
-        color: #333333 !important;
-        line-height: 1.6;
-        margin-bottom: 25px;
-    }
-
-    .highlight-pill {
-        display: inline-block;
-        background-color: #003366;
-        color: #ffffff;
-        font-family: 'Montserrat', sans-serif;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 1.5px;
-        padding: 6px 14px;
-        margin-bottom: 15px;
+    /* Covers up the default toolbar/download buttons on the PDF viewer iframe */
+    .iframe-cover-top-right {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 220px;
+        height: 50px;
+        background-color: #525659;
+        z-index: 10;
+        pointer-events: auto;
     }
 
     /* CUSTOM DOWNLOAD BUTTON IN TOP BAR */
@@ -142,7 +146,7 @@ st.markdown("""
         background-color: #c9a35e;
     }
 
-    /* FORM INPUT STYLING */
+    /* FORM AND INPUT STYLING */
     [data-testid="stTextInput"] > div > div {
         background-color: transparent !important;
         border: 2px solid #003366 !important;
@@ -158,11 +162,8 @@ st.markdown("""
         .brand-title {
             font-size: 1.3rem !important;
         }
-        .hero-heading {
-            font-size: 2.1rem !important;
-        }
-        .hero-card {
-            padding: 20px;
+        .pdf-wrapper {
+            height: calc(100vh - 130px);
         }
     }
     </style>
@@ -202,9 +203,11 @@ col_logo, col_btn = st.columns([3, 1])
 
 with col_logo:
     st.markdown("""
-        <div>
-            <h1 class="brand-title">THE CONFIDENCE <span class="brand-gold">GAP</span></h1>
-            <span class="brand-subtitle">PHILIPPINE REAL ESTATE MARKET OVERVIEW &nbsp;•&nbsp; INDUSTRIAL &nbsp;•&nbsp; OFFICE &nbsp;•&nbsp; RETAIL</span>
+        <div style="padding:0; margin:0;">
+            <div>
+                <h1 class="brand-title">THE CONFIDENCE <span class="brand-gold">GAP</span></h1>
+                <span class="brand-subtitle">PHILIPPINE REAL ESTATE MARKET OVERVIEW &nbsp;•&nbsp; INDUSTRIAL &nbsp;•&nbsp; OFFICE &nbsp;•&nbsp; RETAIL</span>
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -220,51 +223,18 @@ with col_btn:
             </div>
         ''', unsafe_allow_html=True)
 
-# Divider line under top bar
-st.markdown("<hr style='border: 1px solid #c9a35e; margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
-
 # Success banner feedback if recently registered
 if st.session_state.registered and st.session_state.user_name:
-    st.success(f"Welcome, {st.session_state.user_name}! Registration successful. Your secure download button is now active in the top-right corner.")
+    st.success(f"Welcome, {st.session_state.user_name}! Registration successful. Your download link in the top bar is active.")
 
-# --- FULL-SCREEN LANDING PAGE HERO CONTENT ---
-col_left, col_right = st.columns([1.2, 0.8], gap="large")
-
-with col_left:
-    st.markdown("""
-        <div class="hero-card">
-            <span class="highlight-pill">2026 MID-YEAR PUBLICATION</span>
-            <h1 class="hero-heading">Closing the distance between fear and fact.</h1>
-            <p class="hero-description">
-                Explore comprehensive data, metrics, and macro-economic trends shaping the Philippine Real Estate landscape. 
-                This comprehensive publication covers deep insights across <b>Industrial, Office, and Retail</b> property sectors.
-            </p>
-    """, unsafe_allow_html=True)
-    
-    if not st.session_state.registered:
-        if st.button("UNLOCK FULL PUBLICATION ACCESS", type="secondary", use_container_width=True):
-            st.session_state.show_register_modal = True
-            st.rerun()
-    else:
-        st.markdown(f'''
-            <a href="{DIRECT_DOWNLOAD_URL}" class="custom-download-btn" style="padding: 14px; font-size: 1rem;">📥 DOWNLOAD PDF PUBLICATION NOW</a>
-        ''', unsafe_allow_html=True)
-        
-    st.markdown("</div>", unsafe_allow_html=True)
-
-with col_right:
-    # Feature highlights box matching your brand theme
-    st.markdown("""
-        <div style="border: 2px solid #c9a35e; background-color: #ffffff; padding: 35px; height: 100%; box-shadow: 0px 10px 30px rgba(0,0,0,0.03);">
-            <h3 style="font-family: 'Cormorant Garamond', serif; font-size: 2rem; color: #0c1a30; margin-top: 0;">Key Insights Inside</h3>
-            <hr style="border: 0; height: 2px; background-color: #c9a35e; margin: 15px 0;">
-            <ul style="font-family: 'Montserrat', sans-serif; color: #333; font-size: 0.9rem; line-height: 1.8; padding-left: 20px;">
-                <li><b>Industrial Sector:</b> Logistics demand, warehouse yield expansion, and regional growth hubs.</li>
-                <li><b>Office Market:</b> Take-up trends, vacancy adjustments, and IT-BPM footprint shifts.</li>
-                <li><b>Retail Landscape:</b> Foot traffic velocity, consumer confidence markers, and prime lease rates.</li>
-            </ul>
-            <p style="font-family: 'Montserrat', sans-serif; font-size: 0.8rem; color: #003366; font-weight: 700; margin-top: 25px; letter-spacing: 1px;">
-                EVIDENCE CREATES CONFIDENCE.
-            </p>
+# --- FULL-SCREEN PDF VIEWER LANDING PAGE ---
+if pdf_base64:
+    st.markdown(f'''
+        <div class="pdf-wrapper">
+            <!-- Covers up the built-in PDF viewer download/print buttons -->
+            <div class="iframe-cover-top-right"></div>
+            <iframe src="data:application/pdf;base64,{pdf_base64}#toolbar=0" class="pdf-container" type="application/pdf"></iframe>
         </div>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
+else:
+    st.error("Could not load publication preview. Please check your network connection or URL source.")
