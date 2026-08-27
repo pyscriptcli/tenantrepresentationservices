@@ -239,15 +239,16 @@ if st.session_state.page_step == 'viewer':
             display: flex; 
             flex-direction: column; 
             align-items: center; 
-            padding: 15px 0 60px 0; 
+            padding: 25px 0 60px 0; 
         }}
-        /* THE FIT-TO-PAGE FIX: Forces height to fit screen, sets width to auto */
+        /* SMALLER FIT-TO-PAGE FIX: Set height to 75% of the screen */
         canvas {{ 
-            height: calc(100vh - 85px) !important; 
+            height: 75vh !important; 
+            max-height: 800px;
             width: auto !important; 
             object-fit: contain; 
-            margin-bottom: 30px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6); 
+            margin-bottom: 35px; 
+            box-shadow: 0 8px 25px rgba(0,0,0,0.6); 
         }}
         #bottom-bar {{
             position: fixed;
