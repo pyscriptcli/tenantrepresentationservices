@@ -34,34 +34,37 @@ if 'page_step' not in st.session_state:
 SUPABASE_PREVIEW_URL = "https://cyczyaswxkpdcremqnkn.supabase.co/storage/v1/object/public/Midyear/Confidence_Gap_2026_Optimized.pdf"
 DROPBOX_ORIGINAL_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
 
-# --- DYNAMIC CSS HANDLING (Scroll Lock & Tighter Margins) ---
+# --- DYNAMIC CSS HANDLING (Scroll Lock & Zero Padding) ---
 if st.session_state.page_step == 'viewer':
-    # Lock outer scroll, reduce margins, make iframe fill the screen
+    # Lock outer scroll, remove ALL Streamlit padding, make iframe fill screen
     layout_css = """
     html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
         overflow: hidden !important;
         height: 100vh !important;
         background-color: #0c1a30 !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
-    .main .block-container {
-        padding: 0rem !important;
+    
+    /* COMPLETELY REMOVES STREAMLIT'S 96px 80px 160px DEFAULT PADDING */
+    [data-testid="stMainBlockContainer"] {
+        padding: 0px !important;
         max-width: 100% !important;
+        width: 100% !important;
     }
+
     /* Force iframe to take exact remaining screen height */
     iframe[title="streamlit_components.v1.components.html"] {
         height: calc(100vh - 45px) !important; 
         width: 100% !important;
     }
+    
     /* Make button very compact */
     .topbar-btn-container div[data-testid="stButton"] > button {
-        padding: 4px 15px !important;
+        padding: 6px 15px !important;
         font-size: 0.75rem !important;
         min-height: 0 !important;
-        margin-top: 8px !important;
-    }
-    /* Remove vertical gaps in top bar */
-    [data-testid="stVerticalBlock"] {
-        gap: 0 !important;
+        margin-top: 5px !important;
     }
     """
 else:
@@ -71,7 +74,7 @@ else:
         overflow: auto !important;
         background-color: #0c1a30 !important;
     }
-    .main .block-container {
+    [data-testid="stMainBlockContainer"] {
         padding: 3rem 1rem !important;
         max-width: 100% !important;
     }
@@ -206,7 +209,7 @@ if st.session_state.page_step == 'viewer':
     with bar_col1:
         st.markdown("""
             <div style="padding: 10px 0 0 20px;">
-                <span style="font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 700; color: #ffffff; letter-spacing: 1.5px;">
+                <span style="font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 700; color: #ffffff; letter-spacing: 1.5px;">
                     THE CONFIDENCE <span style="color: #c9a35e;">GAP</span>
                 </span>
             </div>
@@ -218,7 +221,7 @@ if st.session_state.page_step == 'viewer':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Edge-to-edge PDF.js Viewport (Handles its own scrolling internally)
+    # Edge-to-edge PDF.js Viewport
     pdf_viewer_html = f"""
     <!DOCTYPE html>
     <html>
@@ -242,13 +245,13 @@ if st.session_state.page_step == 'viewer':
             align-items: center; 
             padding: 10px 0 50px 0; 
         }}
-        /* Render high-res internally, but restrict visual size to fit screen height */
+        /* Render high-res internally, but restrict visual size to fit screen height perfectly */
         canvas {{ 
             max-width: 95vw; 
-            max-height: 85vh; /* Fits one page per screen height perfectly */
+            max-height: calc(100vh - 90px); /* Fits exactly one page minus the top and bottom bars */
             object-fit: contain; 
             margin-bottom: 20px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.7); 
         }}
         #bottom-bar {{
             position: fixed;
@@ -281,7 +284,7 @@ if st.session_state.page_step == 'viewer':
           const container = document.getElementById('viewer-container');
           for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {{
             const page = await pdf.getPage(pageNum);
-            /* Scale at 2.5x for sharp text, CSS max-height scales it down to fit screen */
+            /* Scale at 2.5x for sharp text rendering, CSS max-height handles scaling it to fit the screen */
             const viewport = page.getViewport({{ scale: 2.5 }});
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
@@ -295,12 +298,10 @@ if st.session_state.page_step == 'viewer':
     </body>
     </html>
     """
-    # The height parameter here doesn't restrict it because our global CSS overrides the iframe to fill `100vh`
-    components.html(pdf_viewer_html, height=800, scrolling=True)
+    components.html(pdf_viewer_html, height=1200, scrolling=True)
 
 # --- VIEW 2: REGISTRATION FORM ---
 elif st.session_state.page_step == 'register':
-    # Everything is rendered inside the form block so it belongs to a single white unified card.
     with st.form("registration_form"):
         st.markdown("""
         <div style="text-align: center; margin-bottom: 25px;">
@@ -339,7 +340,6 @@ elif st.session_state.page_step == 'register':
             else:
                 st.error("Please fill in all fields.")
 
-    # Return Button located outside the white box, blending with the navy bg
     st.markdown('<div class="secondary-btn">', unsafe_allow_html=True)
     if st.button("← Return to Publication Preview", use_container_width=True):
         st.session_state.page_step = 'viewer'
@@ -350,8 +350,6 @@ elif st.session_state.page_step == 'register':
 
 # --- VIEW 3: DOWNLOAD READY STEP ---
 elif st.session_state.page_step == 'download':
-    
-    # Unified success box
     success_html = f"""
     <div class="success-box" style="text-align: center;">
         <h1 style="font-family: 'Cormorant Garamond', serif; font-size: 3.2rem; font-weight: 700; color: #0c1a30; margin: 0; line-height: 1.1;">
