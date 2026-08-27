@@ -22,16 +22,16 @@ def save_registration(name, contact, email):
         "contact": contact,
         "email": email
     }
-    supabase.table("attendees").insert(data).execute()[cite: 1]
+    supabase.table("attendees").insert(data).execute()
 
 # --- SESSION STATE ---
 if 'page_step' not in st.session_state:
     st.session_state.page_step = 'viewer'
 
 DROPBOX_RAW_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1"
-DOWNLOAD_LINK = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"[cite: 1]
+DOWNLOAD_LINK = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
 
-# Convert PDF directly to high-res images in server memory (completely immune to Brave blocking)
+# Convert PDF directly to high-res images in server memory
 @st.cache_data(show_spinner="Rendering preview document...")
 def get_pdf_page_images():
     response = requests.get(DROPBOX_RAW_URL)
@@ -39,7 +39,6 @@ def get_pdf_page_images():
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     
     images_base64 = []
-    # Renders all pages as crisp JPEG images
     for page in doc:
         pix = page.get_pixmap(dpi=150)
         img_bytes = pix.tobytes("jpeg")
@@ -176,7 +175,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- STEP 1: BRAVE-PROOF PDF VIEWER ---
+# --- STEP 1: PDF VIEWER ---
 if st.session_state.page_step == 'viewer':
     bar_left, bar_right = st.columns([3.5, 1.2])
     with bar_left:
@@ -194,7 +193,6 @@ if st.session_state.page_step == 'viewer':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # Render image pages (zero cross-origin iframes)
     pages = get_pdf_page_images()
     img_tags = "".join([f'<img class="pdf-page-img" src="{src}" alt="Page" />' for src in pages])
     
@@ -220,20 +218,20 @@ elif st.session_state.page_step == 'register':
     
     with st.form("registration_form"):
         st.markdown("<p style='font-family: Montserrat; font-weight:800; color:#0c1a30; font-size:0.95rem; text-align:center; letter-spacing:1px; margin-bottom:20px;'>ENTER YOUR DETAILS TO UNLOCK DOWNLOAD</p>", unsafe_allow_html=True)
-        name = st.text_input("FULL NAME")[cite: 1]
-        contact = st.text_input("CONTACT NUMBER")[cite: 1]
-        email = st.text_input("EMAIL")[cite: 1]
+        name = st.text_input("FULL NAME")
+        contact = st.text_input("CONTACT NUMBER")
+        email = st.text_input("EMAIL")
         
         submitted = st.form_submit_button("SUBMIT & UNLOCK PDF")
         if submitted:
-            if name and contact and email:[cite: 1]
+            if name and contact and email:
                 try:
-                    save_registration(name, contact, email)[cite: 1]
-                    st.session_state.user_name = name[cite: 1]
+                    save_registration(name, contact, email)
+                    st.session_state.user_name = name
                     st.session_state.page_step = 'download'
-                    st.rerun()[cite: 1]
+                    st.rerun()
                 except Exception as e:
-                    st.error(f"Failed to register. Error: {e}")[cite: 1]
+                    st.error(f"Failed to register. Error: {e}")
             else:
                 st.error("Please fill in all fields.")
 
