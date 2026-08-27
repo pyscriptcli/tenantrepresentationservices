@@ -32,10 +32,10 @@ if 'show_register_modal' not in st.session_state:
 PDF_PREVIEW_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&raw=1"
 DIRECT_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
 
-# --- PDF.js viewer URL (download/print/OpenFile disabled) ---
+# --- PDF.js viewer URL (download/print/open disabled) using jsdelivr ---
 encoded_pdf = urllib.parse.quote(PDF_PREVIEW_URL, safe='')
 VIEWER_URL = (
-    f"https://unpkg.com/pdfjs-dist@3.11.174/web/viewer.html"
+    f"https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/web/viewer.html"
     f"?file={encoded_pdf}&disableDownload=true&disablePrint=true&disableOpenFile=true"
 )
 
@@ -55,7 +55,7 @@ st.markdown("""
 
     .main .block-container {
         padding-top: 1.5rem; 
-        max-width: 1000px;          /* wider to allow full-width viewer */
+        max-width: 1000px;
         padding-left: 0 !important;
         padding-right: 0 !important;
     }
@@ -120,11 +120,11 @@ st.markdown("""
     /* PDF container – full width, no border, tall */
     .pdf-container {
         width: 100%;
-        height: 85vh;               /* almost full viewport height */
+        height: 85vh;
         border: none !important;
         margin: 0 !important;
         display: block;
-        background-color: #f5f5f5;  /* light background while loading */
+        background-color: #f5f5f5;
     }
 
     [data-testid="stForm"] {
@@ -232,7 +232,7 @@ st.markdown("""
             letter-spacing: 0px !important;
         }
         .pdf-container {
-            height: 60vh;           /* smaller on mobile */
+            height: 60vh;
         }
         .main .block-container {
             padding-left: 0 !important;
