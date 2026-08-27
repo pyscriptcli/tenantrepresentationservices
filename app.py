@@ -20,7 +20,7 @@ def save_registration(name, contact, email):
         "contact": contact,
         "email": email
     }
-    supabase.table("attendees").insert(data).execute()[cite: 1]
+    supabase.table("attendees").insert(data).execute()
 
 # --- SESSION STATE & LINKS ---
 if 'page_step' not in st.session_state:
@@ -28,7 +28,7 @@ if 'page_step' not in st.session_state:
 
 # Embed URL for SharePoint/OneDrive document viewer
 SHAREPOINT_EMBED_URL = "https://jpyholdings-my.sharepoint.com/personal/sondi_tuazon_primephilippines_com/_layouts/15/Doc.aspx?sourcedoc={personal/sondi_tuazon_primephilippines_com/Documents/CRD 2026  COMPILED ONE DRIVE/01_2026 ANNUAL PROPERTY OUTLOOK (1).pdf}&action=embedview&wdStartOn=1"
-DOWNLOAD_LINK = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"[cite: 1]
+DOWNLOAD_LINK = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
 
 # --- GLOBAL STYLES ---
 st.markdown("""
@@ -126,7 +126,6 @@ st.markdown("""
 
 # --- STEP 1: SHAREPOINT EMBEDDED VIEWER WITH COVERED TOOLBAR ---
 if st.session_state.page_step == 'viewer':
-    # Top Action Bar
     bar_left, bar_right = st.columns([3.5, 1.2])
     with bar_left:
         st.markdown("""
@@ -143,7 +142,6 @@ if st.session_state.page_step == 'viewer':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # SharePoint Iframe with a CSS top overlay that hides the OneDrive/SharePoint ribbon header
     sharepoint_viewer_html = f"""
     <!DOCTYPE html>
     <html>
@@ -184,7 +182,6 @@ if st.session_state.page_step == 'viewer':
             letter-spacing: 2px;
         }}
 
-        /* Negative top margin pulls iframe upward to tuck SharePoint toolbar under mask */
         iframe {{
             width: 100%;
             height: calc(100% + 52px);
@@ -236,24 +233,24 @@ elif st.session_state.page_step == 'register':
                 CLOSING THE DISTANCE BETWEEN FEAR AND FACT.
             </p>
         </div>
-    """, unsafe_allow_html=True)[cite: 1]
+    """, unsafe_allow_html=True)
     
     with st.form("registration_form"):
         st.markdown("<p style='font-family: Montserrat; font-weight:800; color:#0c1a30; font-size:0.95rem; text-align:center; letter-spacing:1px; margin-bottom:20px;'>ENTER YOUR DETAILS TO UNLOCK DOWNLOAD</p>", unsafe_allow_html=True)
-        name = st.text_input("FULL NAME")[cite: 1]
-        contact = st.text_input("CONTACT NUMBER")[cite: 1]
-        email = st.text_input("EMAIL")[cite: 1]
+        name = st.text_input("FULL NAME")
+        contact = st.text_input("CONTACT NUMBER")
+        email = st.text_input("EMAIL")
         
         submitted = st.form_submit_button("SUBMIT & UNLOCK PDF")
         if submitted:
-            if name and contact and email:[cite: 1]
+            if name and contact and email:
                 try:
-                    save_registration(name, contact, email)[cite: 1]
-                    st.session_state.user_name = name[cite: 1]
+                    save_registration(name, contact, email)
+                    st.session_state.user_name = name
                     st.session_state.page_step = 'download'
-                    st.rerun()[cite: 1]
+                    st.rerun()
                 except Exception as e:
-                    st.error(f"Failed to register. Error: {e}")[cite: 1]
+                    st.error(f"Failed to register. Error: {e}")
             else:
                 st.error("Please fill in all fields.")
 
