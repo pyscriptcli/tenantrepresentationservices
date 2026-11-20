@@ -1,367 +1,163 @@
+import base64
+import os
+import re
+from pathlib import Path
+
 import streamlit as st
-import streamlit.components.v1 as components
-from supabase import create_client, Client
+from supabase import create_client
 
-# --- PAGE CONFIGURATION ---
-st.set_page_config(
-    page_title="The Confidence Gap - Publication", 
-    layout="wide", 
-    initial_sidebar_state="collapsed"
-)
 
-# --- SUPABASE DATABASE SETUP ---
+DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
+
+st.set_page_config(page_title="The Confidence Gap | PRIME Philippines", layout="wide")
+
+
 @st.cache_resource
 def init_connection():
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
+    url = os.getenv("SUPABASE_URL") or st.secrets["SUPABASE_URL"]
+    key = os.getenv("SUPABASE_KEY") or st.secrets["SUPABASE_KEY"]
     return create_client(url, key)
 
-supabase: Client = init_connection()
 
-def save_registration(name, contact, email):
-    data = {
-        "name": name,
-        "contact": contact,
-        "email": email
-    }
-    supabase.table("attendees").insert(data).execute()
+@st.cache_data
+def font_styles():
+    directory = Path(__file__).with_name("confidencegap_fonts")
+    faces = []
+    for family in ("Cormorant Garamond", "Montserrat"):
+        filename = family.lower().replace(" ", "") + ".woff2"
+        data = base64.b64encode((directory / filename).read_bytes()).decode("ascii")
+        faces.append(f"@font-face {{font-family:'{family}';font-weight:400 700;"
+                     f"font-display:swap;src:url(data:font/woff2;base64,{data}) format('woff2')}}")
+    return "<style>" + "".join(faces) + "</style>"
 
-# --- SESSION STATE ---
-if 'page_step' not in st.session_state:
-    st.session_state.page_step = 'viewer'
 
-# URLs
-SUPABASE_PREVIEW_URL = "https://cyczyaswxkpdcremqnkn.supabase.co/storage/v1/object/public/Midyear/Confidence_Gap_2026_Optimized.pdf"
-DROPBOX_ORIGINAL_DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
+st.html(font_styles())
+st.html("""
+<style>
+:root {
+    --prime-blue:#003366; --prime-warm-white:#fff; --prime-gold:#c9a35e; --navy:#0c1a30;
+    --prime-gray:#181D1E; --font-display:'Cormorant Garamond',Georgia,serif;
+    --font-ui:Montserrat,Arial,Helvetica,sans-serif;
+}
+[data-testid="stHeader"] {display:none}
+[data-testid="stAppViewContainer"] {background:var(--navy)}
+[data-testid="stMainBlockContainer"] {
+    width:calc(100% - 1rem);max-width:675px; padding:88px 0 18px; margin-inline:auto;
+}
+.st-key-publication {
+    background:var(--prime-warm-white); color:var(--prime-blue); border:2px solid var(--prime-gold);
+    padding:clamp(2rem,10vw,79px) clamp(1rem,7vw,51px) 56px;
+    font-family:var(--font-ui);
+}
+.cover {text-align:center; text-transform:uppercase}
+.cover h1 {
+    font:700 clamp(1.8rem,.6rem + 6vw,3.6rem)/1.1 var(--font-display);
+    color:var(--navy); letter-spacing:0; padding:0; margin:0;
+}
+.cover h1 span {display:block;color:var(--prime-gold);padding-inline-end:.68em}
+.cover p,.panel-title,.panel-note,[data-testid="stTextInput"] label p,
+[data-testid="stFormSubmitButton"] button p,.st-key-download_panel a p {font-family:var(--font-ui)}
+.cover p {text-wrap:balance;line-height:1.5}
+.cover .subtitle {
+    font-size:clamp(.81rem,.62rem + .8vw,1.02rem);font-weight:700;letter-spacing:.13em;color:var(--navy);
+    margin:clamp(1rem,4vw,1.85rem) 0 0;padding-bottom:1.25rem;border-bottom:2px solid var(--prime-gold);
+}
+.scope {font-weight:700;font-size:.91rem;letter-spacing:.13em;margin:1.1rem 0 .35rem}
+.sector {font-size:.87rem;font-weight:500;letter-spacing:.35em;margin:0}
+[data-testid="stForm"] {padding:0;border:0;background:transparent}
+.panel-title {color:var(--prime-blue);text-align:center;text-transform:uppercase;text-wrap:balance;
+    font-size:clamp(.95rem,.7rem + .8vw,1.07rem);font-weight:700;letter-spacing:.045em;line-height:1.45;
+    padding:0;margin:clamp(1rem,5.5vw,3.4rem) 0 .4rem}
+.panel-note {color:var(--prime-gray);text-align:center}
+[data-testid="stTextInput"] label p {color:var(--prime-blue);font-weight:700;
+    font-size:.98rem;letter-spacing:.05em;text-transform:uppercase}
+[data-testid="stTextInputRootElement"] {
+    background:var(--prime-warm-white);border:2px solid var(--prime-blue);border-radius:0;
+    min-height:45px;
+}
+[data-testid="stTextInput"] input {min-height:41px;background:var(--prime-warm-white);
+    color:var(--prime-gray);font:400 1rem/1.5 var(--font-ui)}
+[data-testid="stTextInputRootElement"]:focus-within,button:focus-visible,a:focus-visible {
+    outline:2px solid var(--prime-blue)!important;outline-offset:3px}
+[data-testid="stFormSubmitButton"] button,.st-key-download_panel a {
+    background:var(--prime-blue);color:var(--prime-warm-white);border:2px solid var(--prime-blue);
+    border-radius:0;min-height:57px;padding:.75rem .9rem;margin-top:1.1rem;text-transform:uppercase;
+}
+[data-testid="stFormSubmitButton"] button {width:248px}
+[data-testid="stFormSubmitButton"] button p {font:600 .92rem/1.45 "Source Sans",Arial,sans-serif;letter-spacing:.035em}
+[data-testid="stFormSubmitButton"] button:hover,.st-key-download_panel a:hover {
+    color:var(--prime-blue);background:var(--prime-warm-white);border-color:var(--prime-blue)}
+@media(min-width:48rem) {
+    [data-testid="stMainBlockContainer"] {position:relative;left:-6.5px}
+    .panel-title {margin-top:2.86rem}
+    [data-testid="stTextInput"] {margin-bottom:4.5px}
+    [data-testid="stFormSubmitButton"] button {margin-top:14px}
+}
+@media(max-width:36rem) {
+    [data-testid="stMainBlockContainer"] {padding:.5rem 0}
+    .cover h1 span {padding-inline-end:0}
+    .st-key-publication {padding-inline:clamp(.85rem,4vw,1.5rem)}
+    .scope {font-size:.81rem}
+    .stElementContainer:has([data-testid="stFormSubmitButton"]),
+    [data-testid="stFormSubmitButton"],[data-testid="stFormSubmitButton"] button {width:100%}
+}
+@media (max-height: 62rem) {
+    [data-testid="stMain"] {display:flex;flex-direction:column}
+    [data-testid="stMainBlockContainer"] {flex:none;margin-block:auto}
+    [data-testid="stMainBlockContainer"] {padding-block:clamp(6px, 2dvh, 18px)}
+    .st-key-publication {padding-block:clamp(12px, 3dvh, 32px)}
+    .cover h1 {font-size:clamp(1.8rem, min(7vw, 6dvh), 3.6rem)}
+    .cover .subtitle {margin-top:1.4dvh;padding-bottom:1.3dvh}
+    .scope {margin-block:.8dvh .25rem}
+    .panel-title {margin-block:1.6dvh .25rem}
+    [data-testid="stTextInput"] {margin-bottom:0}
+    [data-testid="stFormSubmitButton"] button {margin-top:.5dvh;min-height:46px}
+    .st-key-publication, [data-testid="stForm"] [data-testid="stVerticalBlock"] {gap:clamp(4px, 1.2dvh, 12px)}
+}
+@media (max-height: 43rem) {
+    [data-testid="stMainBlockContainer"] {padding-block:4px}
+    .st-key-publication {padding-block:8px;gap:4px}
+    .cover .subtitle,.scope,.panel-title {margin-top:4px}
+    .cover .subtitle {padding-bottom:4px}
+    [data-testid="stForm"] [data-testid="stVerticalBlock"] {gap:4px}
+}
+</style>
+""")
 
-# --- DYNAMIC CSS HANDLING (Scroll Lock & Zero Padding) ---
-if st.session_state.page_step == 'viewer':
-    # Lock outer scroll, remove ALL Streamlit padding, make iframe fill screen
-    layout_css = """
-    html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
-        overflow: hidden !important;
-        height: 100vh !important;
-        background-color: #0c1a30 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    
-    /* OBLITERATE ALL STREAMLIT DEFAULT PADDINGS */
-    [data-testid="stMainBlockContainer"] {
-        padding: 0px !important;
-        max-width: 100% !important;
-        width: 100% !important;
-    }
-
-    [data-testid="stHeader"] {
-        display: none !important;
-    }
-
-    /* Force iframe to take exact remaining screen height */
-    iframe[title="streamlit_components.v1.components.html"] {
-        height: calc(100vh - 55px) !important; 
-        width: 100% !important;
-        border: none !important;
-    }
-    
-    /* Make top button ultra-compact */
-    .topbar-btn-container div[data-testid="stButton"] > button {
-        padding: 4px 15px !important;
-        font-size: 0.75rem !important;
-        min-height: 0 !important;
-        margin-top: 8px !important;
-        margin-bottom: 0px !important;
-    }
-    """
-else:
-    # Allow scrolling for registration/success forms
-    layout_css = """
-    html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
-        overflow: auto !important;
-        background-color: #0c1a30 !important;
-    }
-    [data-testid="stMainBlockContainer"] {
-        padding: 4rem 1rem !important;
-        max-width: 100% !important;
-    }
-    """
-
-# --- GLOBAL STYLES ---
-st.markdown(f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Montserrat:wght@500;600;700;800&display=swap');
-
-    /* Hide Default Streamlit Elements */
-    header, #MainMenu, footer {{ visibility: hidden !important; display: none !important; }}
-    
-    {layout_css}
-
-    /* TOPBAR ACTION BUTTON */
-    .topbar-btn-container div[data-testid="stButton"] > button {{
-        background-color: #ffffff !important;
-        color: #0c1a30 !important;
-        border-radius: 4px !important;
-        font-family: 'Montserrat', sans-serif !important;
-        font-weight: 700 !important;
-        letter-spacing: 1px !important;
-        border: none !important;
-        transition: all 0.2s ease !important;
-    }}
-
-    .topbar-btn-container div[data-testid="stButton"] > button:hover {{
-        background-color: #c9a35e !important;
-        color: #ffffff !important;
-    }}
-
-    /* REGISTRATION & SUCCESS UNIFIED CARD */
-    [data-testid="stForm"], .success-box {{
-        background-color: #ffffff !important;
-        border: 2px solid #c9a35e !important; 
-        border-radius: 0px !important;
-        padding: 50px 45px !important;
-        box-shadow: 0px 15px 40px rgba(0,0,0,0.4) !important;
-        margin: 0 auto !important;
-        max-width: 600px;
-    }}
-
-    /* INPUT FIELDS */
-    [data-testid="stTextInput"] > div > div {{
-        background-color: transparent !important;
-        border: 2px solid #003366 !important;
-        border-radius: 0px !important;
-        box-shadow: none !important;
-    }}
-
-    [data-testid="stTextInput"] > div > div:focus-within {{
-        border-color: #c9a35e !important;
-    }}
-
-    [data-testid="stTextInput"] input {{
-        background-color: transparent !important;
-        color: #0c1a30 !important;
-        font-family: 'Montserrat', sans-serif !important;
-        font-weight: 600 !important;
-    }}
-    
-    .stTextInput label p {{
-        font-family: 'Montserrat', sans-serif !important;
-        color: #003366 !important;
-        font-weight: 800 !important;
-        font-size: 0.9rem !important;
-        letter-spacing: 1px !important;
-    }}
-
-    /* PRIMARY CTA BUTTONS */
-    [data-testid="stFormSubmitButton"] > button, a.custom-download-btn {{
-        background-color: #003366 !important;
-        color: white !important;
-        border-radius: 0px !important;
-        font-family: 'Montserrat', sans-serif !important;
-        font-weight: 700 !important;
-        letter-spacing: 1px !important;
-        border: none !important;
-        width: 100% !important;
-        padding: 14px !important;
-        margin-top: 15px !important;
-        text-align: center;
-        text-decoration: none;
-        display: block;
-        transition: background-color 0.2s ease;
-    }}
-    
-    [data-testid="stFormSubmitButton"] > button:hover, a.custom-download-btn:hover {{
-        background-color: #c9a35e !important;
-        color: #ffffff !important;
-    }}
-
-    /* SECONDARY BACK BUTTON */
-    .secondary-btn div[data-testid="stButton"] > button {{
-        background-color: transparent !important;
-        color: #ffffff !important;
-        border: 1px solid #ffffff !important;
-        border-radius: 0px !important;
-        font-family: 'Montserrat', sans-serif !important;
-        font-weight: 600 !important;
-        letter-spacing: 1px !important;
-        width: auto !important;
-        min-width: 250px;
-        padding: 10px !important;
-        margin: 25px auto 0 auto !important;
-        display: block;
-    }}
-
-    .secondary-btn div[data-testid="stButton"] > button:hover {{
-        border-color: #c9a35e !important;
-        color: #c9a35e !important;
-    }}
-    </style>
-""", unsafe_allow_html=True)
-
-# --- VIEW 1: FULLSCREEN VIEWER ---
-if st.session_state.page_step == 'viewer':
-    
-    # Ultra-compact Top Bar Header
-    bar_col1, bar_col2 = st.columns([5, 1.2])
-    with bar_col1:
-        st.markdown("""
-            <div style="padding: 10px 0 0 25px;">
-                <span style="font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 700; color: #ffffff; letter-spacing: 1.5px;">
-                    THE CONFIDENCE <span style="color: #c9a35e;">GAP</span>
-                </span>
-            </div>
-        """, unsafe_allow_html=True)
-    with bar_col2:
-        st.markdown('<div class="topbar-btn-container" style="text-align: right; padding-right: 25px;">', unsafe_allow_html=True)
-        if st.button("DOWNLOAD PUBLICATION", use_container_width=True):
-            st.session_state.page_step = 'register'
-            st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # Edge-to-edge PDF.js Viewport (Handles its own scrolling internally)
-    pdf_viewer_html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-      <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body, html {{ 
-            width: 100%; 
-            height: 100%; 
-            overflow-y: auto; 
-            overflow-x: hidden; 
-            background-color: #0c1a30; 
-        }}
-        #viewer-container {{ 
-            width: 100%; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 25px 0 60px 0; 
-        }}
-        /* SMALLER FIT-TO-PAGE FIX: Set height to 75% of the screen */
-        canvas {{ 
-            height: 75vh !important; 
-            max-height: 800px;
-            width: auto !important; 
-            object-fit: contain; 
-            margin-bottom: 35px; 
-            box-shadow: 0 8px 25px rgba(0,0,0,0.6); 
-        }}
-        #bottom-bar {{
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 35px;
-            background-color: #0c1a30;
-            color: #c9a35e;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Montserrat', sans-serif;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            border-top: 1px solid #1a2a44;
-            z-index: 100;
-        }}
-      </style>
-    </head>
-    <body>
-      <div id="viewer-container"></div>
-      <div id="bottom-bar">🔒 REGISTER TO DOWNLOAD FULL PUBLICATION</div>
-
-      <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-        const loadingTask = pdfjsLib.getDocument("{SUPABASE_PREVIEW_URL}");
-        loadingTask.promise.then(async function(pdf) {{
-          const container = document.getElementById('viewer-container');
-          for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {{
-            const page = await pdf.getPage(pageNum);
-            /* Scale at 2.5x for sharp text rendering, CSS handles scaling it to fit the screen */
-            const viewport = page.getViewport({{ scale: 2.5 }});
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            container.appendChild(canvas);
-            await page.render({{ canvasContext: context, viewport: viewport }}).promise;
-          }}
-        }});
-      </script>
-    </body>
-    </html>
-    """
-    components.html(pdf_viewer_html, height=1200, scrolling=True)
-
-# --- VIEW 2: REGISTRATION FORM ---
-elif st.session_state.page_step == 'register':
-    with st.form("registration_form"):
-        st.markdown("""
-        <div style="text-align: center; margin-bottom: 25px;">
-            <h1 style="font-family: 'Cormorant Garamond', serif; font-size: 3.2rem; font-weight: 700; color: #0c1a30; margin: 0; line-height: 1.1;">
-                THE CONFIDENCE <span style="color: #c9a35e;">GAP</span>
-            </h1>
-            <p style="font-family: 'Montserrat', sans-serif; font-size: 0.9rem; font-weight: 700; color: #0c1a30; letter-spacing: 2px; margin-top: 10px;">
-                CLOSING THE DISTANCE BETWEEN FEAR AND FACT.
-            </p>
-            <div style="width: 100%; height: 2px; background-color: #c9a35e; margin: 15px 0;"></div>
-            <p style="font-family: 'Montserrat', sans-serif; font-size: 0.8rem; font-weight: 800; color: #0c1a30; letter-spacing: 2px; margin-bottom: 5px;">
-                PHILIPPINE REAL ESTATE MARKET OVERVIEW
-            </p>
-            <p style="font-family: 'Montserrat', sans-serif; font-size: 0.75rem; font-weight: 600; color: #0c1a30; letter-spacing: 3px;">
-                INDUSTRIAL &bull; OFFICE &bull; RETAIL
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("<p style='font-family: Montserrat; font-weight:800; color:#0c1a30; font-size:0.95rem; text-align:center; letter-spacing:1px; margin-top:30px; margin-bottom:15px;'>ENTER YOUR DETAILS TO UNLOCK DOWNLOAD</p>", unsafe_allow_html=True)
-        
-        name = st.text_input("FULL NAME")
-        contact = st.text_input("CONTACT NUMBER")
-        email = st.text_input("EMAIL")
-        
-        submitted = st.form_submit_button("SUBMIT & UNLOCK FULL PDF")
-        if submitted:
-            if name and contact and email:
-                try:
-                    save_registration(name, contact, email)
-                    st.session_state.user_name = name
-                    st.session_state.page_step = 'download'
-                    st.rerun() 
-                except Exception as e:
-                    st.error(f"Failed to register. Please try again. Error: {e}")
-            else:
-                st.error("Please fill in all fields.")
-
-    st.markdown('<div class="secondary-btn">', unsafe_allow_html=True)
-    if st.button("← Return to Publication Preview", use_container_width=True):
-        st.session_state.page_step = 'viewer'
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# --- VIEW 3: DOWNLOAD READY STEP ---
-elif st.session_state.page_step == 'download':
-    success_html = f"""
-    <div class="success-box" style="text-align: center;">
-        <h1 style="font-family: 'Cormorant Garamond', serif; font-size: 3.2rem; font-weight: 700; color: #0c1a30; margin: 0; line-height: 1.1;">
-            THE CONFIDENCE <span style="color: #c9a35e;">GAP</span>
-        </h1>
-        <div style="width: 100%; height: 2px; background-color: #c9a35e; margin: 25px 0;"></div>
-        <h3 style="font-family: 'Montserrat', sans-serif; color: #0c1a30; margin-bottom: 15px; font-weight: 800;">Registration Successful!</h3>
-        <p style="font-family: 'Montserrat', sans-serif; color: #555; font-size: 0.95rem; margin-bottom: 30px;">
-            Thank you, <b>{st.session_state.get("user_name", "")}</b>. Click below to download the full resolution publication.
-        </p>
-        <a href="{DROPBOX_ORIGINAL_DOWNLOAD_URL}" target="_blank" class="custom-download-btn">DOWNLOAD FULL PUBLICATION</a>
-    </div>
-    """
-    st.markdown(success_html, unsafe_allow_html=True)
-    
-    st.markdown('<div class="secondary-btn">', unsafe_allow_html=True)
-    if st.button("← Return to Viewer", use_container_width=True):
-        st.session_state.page_step = 'viewer'
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+with st.container(key="publication"):
+    st.html("""
+    <section class="cover">
+      <h1>The Confidence <span>Gap</span></h1>
+      <p class="subtitle">Closing the distance between fear and fact.</p>
+      <p class="scope">Philippine real estate market overview</p>
+      <p class="sector">Retail Report</p>
+    </section>
+    """)
+    if st.session_state.get("page_step") == "download":
+        with st.container(key="download_panel"):
+            st.html('<h2 class="panel-title">Your publication is ready</h2>'
+                    '<p class="panel-note">Registration complete. Download the full midyear report below.</p>')
+            st.link_button("Download publication (PDF)", DOWNLOAD_URL)
+    else:
+        with st.form("registration_form"):
+            st.html('<h2 class="panel-title">Enter your details to unlock download</h2>')
+            name = st.text_input("Full name", autocomplete="name").strip()
+            contact = st.text_input("Contact number", autocomplete="tel").strip()
+            email = st.text_input("Email", autocomplete="email").strip()
+            submitted = st.form_submit_button("Submit & unlock full PDF")
+            if submitted:
+                if not all((name, contact, email)):
+                    st.error("Enter your full name, contact number and email address.")
+                elif not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+                    st.error("Enter an email address such as name@example.com.")
+                else:
+                    try:
+                        with st.spinner("Saving your registration…"):
+                            init_connection().table("attendees").insert(
+                                {"name": name, "contact": contact, "email": email}
+                            ).execute()
+                    except Exception:
+                        st.error("Registration is unavailable. Your details are still here. Please try again later.")
+                    else:
+                        st.session_state.page_step = "download"
+                        st.rerun()
