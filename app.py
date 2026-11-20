@@ -7,7 +7,7 @@ import streamlit as st
 from supabase import create_client
 
 
-DOWNLOAD_URL = "https://www.dropbox.com/scl/fi/sabby4jlnqn8n9ba1fdoe/PRIME-PHILIPPINES-2026-MID-YEAR-PUBLICATION-1.pdf?rlkey=jrcmg67cxfsjro9sx83c5tmcx&dl=1"
+DOWNLOAD_URL = ""https://www.dropbox.com/scl/fi/gq0e9fgy8ya24v3hbr6tu/The-Confidende-Gap.pdf?rlkey=x7zc276sd0dh2bo4znm2ckdmk&st=koyo4weg&dl=1""
 
 st.set_page_config(page_title="The Confidence Gap | PRIME Philippines", layout="wide")
 
