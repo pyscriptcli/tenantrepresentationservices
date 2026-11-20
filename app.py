@@ -23,11 +23,18 @@ def init_connection():
 def font_styles():
     directory = Path(__file__).with_name("confidencegap_fonts")
     faces = []
-    for family in ("Cormorant Garamond", "Montserrat"):
+    for family, hosted_url in (
+        ("Cormorant Garamond", "https://fonts.gstatic.com/s/cormorantgaramond/v21/co3bmX5slCNuHLi8bLeY9MK7whWMhyjYqXtK.woff2"),
+        ("Montserrat", "https://fonts.gstatic.com/s/montserrat/v31/JTUSjIg1_i6t8kCHKm459Wlhyw.woff2"),
+    ):
         filename = family.lower().replace(" ", "") + ".woff2"
-        data = base64.b64encode((directory / filename).read_bytes()).decode("ascii")
+        try:
+            data = base64.b64encode((directory / filename).read_bytes()).decode("ascii")
+            source = f"data:font/woff2;base64,{data}"
+        except FileNotFoundError:
+            source = hosted_url
         faces.append(f"@font-face {{font-family:'{family}';font-weight:400 700;"
-                     f"font-display:swap;src:url(data:font/woff2;base64,{data}) format('woff2')}}")
+                     f"font-display:swap;src:url('{source}') format('woff2')}}")
     return "<style>" + "".join(faces) + "</style>"
 
 
