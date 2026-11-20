@@ -76,6 +76,7 @@ st.html("""
     font-size:clamp(.95rem,.7rem + .8vw,1.07rem);font-weight:700;letter-spacing:.045em;line-height:1.45;
     padding:0;margin:clamp(1rem,5.5vw,3.4rem) 0 .4rem}
 .panel-note {color:var(--prime-gray);text-align:center}
+.st-key-download_panel .stElementContainer:has([data-testid="stLinkButton"]) {margin-inline:auto}
 [data-testid="stTextInput"] label p {color:var(--prime-blue);font-weight:700;
     font-size:.98rem;letter-spacing:.05em;text-transform:uppercase}
 [data-testid="stTextInputRootElement"] {
