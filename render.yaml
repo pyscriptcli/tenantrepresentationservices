@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: prime-midyear-report
+    runtime: docker
+    region: singapore
+    plan: free
+    dockerfilePath: ./render/Dockerfile
+    healthCheckPath: /_stcore/health
+    buildFilter:
+      paths:
+        - app.py
+        - render/**
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
