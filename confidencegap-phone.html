@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>The Confidence Gap | PRIME Philippines</title>
+  <style>
+    html, body { margin: 0; background: #0c1a30; }
+    body {
+      height: 100vh;
+      height: 100dvh;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+    /* Community Cloud appends a 36px credit and fullscreen row below the app. */
+    .report { min-height: 0; overflow: clip; }
+    iframe { display: block; width: 100%; height: calc(100% + 36px); border: 0; }
+    .bottom-bar { height: calc(16px + env(safe-area-inset-bottom, 0px)); }
+  </style>
+</head>
+<body>
+  <main class="report">
+    <iframe title="The Confidence Gap registration" src="https://primephilippines2026midyearpropertymarketreport.streamlit.app/?embed=true"></iframe>
+  </main>
+  <div class="bottom-bar" aria-hidden="true"></div>
+</body>
+</html>
